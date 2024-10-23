@@ -1,0 +1,36 @@
+# Common makefile to be included from all other makefiles
+
+INSTALLDIR=$(LU_GCC_INSTALLDIR)
+
+GMPDIR=$(HOME)/gcc-build/gmp
+
+CC=$(INSTALLDIR)/bin/gcc
+CXX=$(INSTALLDIR)/bin/g++
+PLUGINDIR=$(shell $(CC) -print-file-name=plugin)
+
+CXXFLAGS=-std=gnu++20 -fPIC -Wall -g -fno-rtti -I$(PLUGINDIR)/include -I$(GMPDIR)
+# This is a side effect of using C++11
+CXXFLAGS+=-Wno-literal-suffix
+
+LDFLAGS=
+LDADD=
+
+END=
+OBJECTS=$(patsubst %.cpp,%.o,$(SOURCES))
+
+all: $(PLUGIN)
+
+$(PLUGIN): $(OBJECTS)
+	$(CXX) $(LDFLAGS) -o $@ -shared $+ $(LDADD)
+
+%.o: %.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+PLUGINFLAG=-fplugin=./$(PLUGIN)
+
+CCPLUGIN=$(CC) $(PLUGINFLAG)
+CXXPLUGIN=$(CXX)  $(PLUGINFLAG)
+
+.PHONY: all clean test
+clean:
+	rm -f $(OBJECTS) $(PLUGIN)
