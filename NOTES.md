@@ -5,6 +5,8 @@ I'm using WSL and I am extremely *not* familiar with Linux or its ecosystem, so 
 
 I chose the name `LU_GCC_INSTALLDIR` for my environment variable rather than `INSTALLDIR`, because the latter seems a tad generic, no?
 
+I'm currently targeting GCC 11.4, so [this reference of C++ standards support by GCC version](https://gcc.gnu.org/projects/cxx-status.html) should be useful.
+
 ### GCC
 
 ```sh
@@ -113,16 +115,27 @@ Indicates that you're missing a program that bakes Texinfo files to HTML or plai
 
 [GCC itself is limited to C++11 at the newest](https://gcc.gnu.org/codingconventions.html#Portability) for portability's sake. Despite this, it's supposed to be possible to compile GCC plug-ins in C++20 per [this (fixed) bug report](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98059).
 
+* [DECL](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Declarations.html)-type tree data
+* [TYPE](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Types.html)-type tree data
+* [Accessing attributes on a DECL or TYPE](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Attributes.html)
+* [TREE_LIST and TREE_VEC](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Containers.html) info
+
 
 ## Tips
 
 ### The makefile and the build process
 
-To build any of the plug-ins, navigate to its folder and run `make`. To test it on a sample C file, run `make test`. If the build fails, or it seems like your code changes aren't doing anything, delete all of the build's output files in order to run a clean build.
+To build any of the plug-ins, navigate to its folder and run `make`. To test it on a sample C file, run `make test`. If the build fails, if it seems like your code changes aren't doing anything, or if you start getting weird segfaults or memory corruption issues without clear cause, then delete all of the build's output files in order to run a clean build, and see if that helps you.
 
-Make is a build automation tool that was created half a century ago, designed to detect when a file or its dependencies change and automatically rebuild that file. Despite being built for that exact purpose and, originally, for the C language, make has no means of understanding `#include`s, and so will fail to properly recompile a file if that file isn't modified but another C file that it depends on (by way of including a corresponding H) *is* modified. It's [possible to use GCC and specialized make rules to work around this deficiency](https://make.mad-scientist.net/papers/advanced-auto-dependency-generation/), but I haven't been able to get them to work: the exact problems that that article claims to solve still occur, with no way to meaningfully debug them thanks to make's dreadful error reporting.
+Make is a build automation tool that was created half a century ago, designed to detect when a file or its dependencies change and automatically rebuild that file. Despite being built for that exact purpose and AFAIK originally for the C language, make has no means of understanding `#include`s, and so will fail to properly recompile a file if *that* file isn't modified but another C file that it depends on (by way of including a corresponding H) *is* modified. It's [possible to use GCC and specialized make rules to work around this deficiency](https://make.mad-scientist.net/papers/advanced-auto-dependency-generation/), but I haven't been able to get them to work: the exact problems that that article claims to solve still occur, with no way to meaningfully debug them thanks to make's vague error reporting.
 
-The most reliable way to build anything is therefore to just completely delete all build output (e.g. `.o` files) and do a clean rebuild from scratch, almost entirely defeating the purpose of using make in the first place. There are tools that layer on top of makefiles to deal with dependencies (supposedly) more reliably, like Automake, but that one's a third of a century old, and as of this writing I literally do not have the time to install, test, and inevitably have to band-aid more ancient utilities and their dozen dependencies.
+The most reliable way to build anything is to just completely delete all build output (e.g. `.o` files) and do a clean rebuild from scratch, almost entirely defeating the purpose of using make in the first place. There are tools that layer on top of makefiles to deal with dependencies (supposedly) more reliably, like Automake, but that one's a third of a century old, and as of this writing I literally do not have the time to install, test, and inevitably struggle with yet more ancient utilities and the litany of dependencies that a lot of them have. It's faster to do things the low-tech way and just manually clean the build.
+
+Useful things to know for makefiles:
+
+* [String manipulation functions](https://www.gnu.org/software/make/manual/html_node/Text-Functions.html) e.g. `patsubst`
+* [Path manipulation functions](https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html). In the context of make, the precise operational definition of a "file name" is a file *path*.
+* [Automatic variables](https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html) e.g. `$@` and friends
 
 
 ### Opening a Linux subsystem file in Windows
@@ -138,12 +151,12 @@ Opening Windows-side files in a Windows-side program from a Linus bash script ta
 #
 ```
 
-Opening Linus-side files in a Windows-side program from the Windows command line is also possible (per [here](https://unix.stackexchange.com/a/600508). You may need to change the name of the top-level directory as needed to match whatever flavor of Linux you have, or alternatively, [just open the home folder in Windows Explorer directly](https://devblogs.microsoft.com/commandline/whats-new-for-wsl-in-windows-10-version-1903/).
+Opening Linux-side files in a Windows-side program from the Windows command line is also possible (per [here](https://unix.stackexchange.com/a/600508). You may need to change the name of the top-level directory as needed to match whatever flavor of Linux you have, or alternatively, [just open the home folder in Windows Explorer directly](https://devblogs.microsoft.com/commandline/whats-new-for-wsl-in-windows-10-version-1903/).
 
 ```
 Notepad++.exe \\wsl$\Ubuntu-18.04\home\user\foo.txt
 ```
 
-If for whatever reason the latter doesn't work, the former means we can write a bash script to copy the to-be-viewed file to Windows `%TEMP%` and then invoke Notepad++ to open it Windows-side.
+Windows Explorer will also show a "Linux" category at the bottom of its sidebar while WSL is running, allowing fast and easy access to Linux-side files without having to `cd` back to `$HOME` in the Linux shell. Neat!
 
 Note that on WSL1, Linux-side access to the Windows filesystem is fast, but the Linux filesystem is slow; whereas on WSL2, Linux-side access to the Windows filesystem is slow, but the Linux filesystem is fast ([source](https://news.ycombinator.com/item?id=28321568)).
