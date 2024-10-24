@@ -116,6 +116,15 @@ Indicates that you're missing a program that bakes Texinfo files to HTML or plai
 
 ## Tips
 
+### The makefile and the build process
+
+To build any of the plug-ins, navigate to its folder and run `make`. To test it on a sample C file, run `make test`. If the build fails, or it seems like your code changes aren't doing anything, delete all of the build's output files in order to run a clean build.
+
+Make is a build automation tool that was created half a century ago, designed to detect when a file or its dependencies change and automatically rebuild that file. Despite being built for that exact purpose and, originally, for the C language, make has no means of understanding `#include`s, and so will fail to properly recompile a file if that file isn't modified but another C file that it depends on (by way of including a corresponding H) *is* modified. It's [possible to use GCC and specialized make rules to work around this deficiency](https://make.mad-scientist.net/papers/advanced-auto-dependency-generation/), but I haven't been able to get them to work: the exact problems that that article claims to solve still occur, with no way to meaningfully debug them thanks to make's dreadful error reporting.
+
+The most reliable way to build anything is therefore to just completely delete all build output (e.g. `.o` files) and do a clean rebuild from scratch, almost entirely defeating the purpose of using make in the first place. There are tools that layer on top of makefiles to deal with dependencies (supposedly) more reliably, like Automake, but that one's a third of a century old, and as of this writing I literally do not have the time to install, test, and inevitably have to band-aid more ancient utilities and their dozen dependencies.
+
+
 ### Opening a Linux subsystem file in Windows
 
 Opening Windows-side files in a Windows-side program from a Linus bash script taking the file path as an argument (per [here](https://stackoverflow.com/a/72328682)):

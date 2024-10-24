@@ -8,7 +8,7 @@ CC=$(INSTALLDIR)/bin/gcc
 CXX=$(INSTALLDIR)/bin/g++
 PLUGINDIR=$(shell $(CC) -print-file-name=plugin)
 
-CXXFLAGS=-std=gnu++20 -fPIC -Wall -g -fno-rtti -I$(PLUGINDIR)/include -I$(GMPDIR)
+CXXFLAGS=-std=gnu++20 -fPIC -Wall -g -fno-rtti -I$(PLUGINDIR)/include -I$(GMPDIR) -I$(INCDIR)
 # This is a side effect of using C++11
 CXXFLAGS+=-Wno-literal-suffix
 
@@ -16,14 +16,15 @@ LDFLAGS=
 LDADD=
 
 END=
-OBJECTS=$(patsubst %.cpp,%.o,$(SOURCES))
+OBJECTS=$(patsubst src/%.cpp,build/%.o,$(SOURCES))
 
 all: $(PLUGIN)
 
 $(PLUGIN): $(OBJECTS)
 	$(CXX) $(LDFLAGS) -o $@ -shared $+ $(LDADD)
 
-%.o: %.cpp
+build/%.o: src/%.cpp
+	$(shell mkdir -p $(dir $@))
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
 PLUGINFLAG=-fplugin=./$(PLUGIN)
