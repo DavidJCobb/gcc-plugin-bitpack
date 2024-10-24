@@ -120,6 +120,9 @@ Indicates that you're missing a program that bakes Texinfo files to HTML or plai
 * [Accessing attributes on a DECL or TYPE](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Attributes.html)
 * [TREE_LIST and TREE_VEC](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Containers.html) info
 
+Pending stuff:
+
+* Can't use `same_type_p` as recommended by the GCC documentation because GCC doesn't seem to export the underlying `comptypes` function: the plug-in fails to load, citing that [the mangled name of] `comptypes` isn't found.
 
 ## Tips
 

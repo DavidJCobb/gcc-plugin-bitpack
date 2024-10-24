@@ -5,7 +5,6 @@
 * Custom pragma to define a set of `HeritableOptions`, and a singleton to store them
   * Error on redefinition
   * Error on internally inconsistent options (e.g. string with a max integral value)
-* `lu_bitpack_string` should error if used on something that isn't an array of [arrays of [...]] `char`.
 * If `lu_bitpack_string` specifies a string length, it should error if the deepest rank of the char array it's used on is not of that length (e.g. if the length is 7, `char foo[3][7]` should be accepted and `char foo[3][5]` should fail).
 * Finish implementing `lu_bitpack_inherit` for having a struct member use a set of heritable options
 * Finish implementing `lu_bitpack_funcs` (parsing only)

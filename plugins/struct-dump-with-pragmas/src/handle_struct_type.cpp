@@ -6,6 +6,15 @@
 
 #include <iostream> // debug printing
 
+// debugging
+#include <cp/cp-tree.h> // same_type_p
+#include "gcc_helpers/for_each_in_list_tree.h"
+#include "gcc_helpers/for_each_transitive_typedef.h"
+#include "gcc_helpers/extract_string_constant_from_tree.h"
+#include "gcc_helpers/type_min_max.h"
+#include "gcc_helpers/type_name.h"
+#include "gcc_helpers/typedef_map.h" 
+
 extern void handle_struct_type(tree type) {
    Struct s;
    s.from_gcc_tree(type);
@@ -147,8 +156,87 @@ extern void handle_struct_type(tree type) {
       }
    }
    
-   //
-   // TODO: Figure out how to walk the members.
-   //
    debug_tree(type);
+   
+   //
+   // TEST: distinguishing `char` from `int8_t` and friends
+   //
+   {
+      std::cerr << " - Char [array [array [...]]] members (debug):\n";
+      bool any = false;
+      
+      gcc_helpers::for_each_in_list_tree(TYPE_FIELDS(type), [&any](tree decl) -> bool {
+         if (TREE_CODE(decl) != FIELD_DECL)
+            return true;
+         
+         std::string_view name;
+         if (auto d_name = DECL_NAME(decl))
+            name = IDENTIFIER_POINTER(d_name);
+         if (name.empty())
+            return true;
+         
+         auto decl_type = TREE_TYPE(decl);
+         if (TREE_CODE(decl_type) != ARRAY_TYPE)
+            return true;
+         
+         auto value_type = TREE_TYPE(decl_type);
+         while (value_type != NULL_TREE && TREE_CODE(value_type) == ARRAY_TYPE)
+            value_type = TREE_TYPE(value_type);
+         if (value_type == NULL_TREE)
+            return true;
+         if (TREE_CODE(value_type) != INTEGER_TYPE)
+            return true;
+         {  // check numeric limits against those of `char` on typical platforms
+            if (TYPE_UNSIGNED(value_type))
+               return true;
+            auto pair = gcc_helpers::type_min_max(value_type);
+            if (!pair.first.has_value() || !pair.second.has_value())
+               return true;
+            auto min = pair.first.value();
+            auto max = pair.second.value();
+            if (min != -128 || max != 127) // if not a signed-char type
+               return true;
+         }
+         
+         bool is_char = false;
+         gcc_helpers::for_each_transitive_typedef(value_type, [&is_char](tree type) {
+            auto name = gcc_helpers::type_name(type);
+            if (name == "int8_t") {
+               return false; // stop iterating
+            }
+            if (name == "char") {
+               is_char = true;
+               return false; // stop iterating
+            }
+            return true;
+         });
+         
+         if (is_char) {
+            any = true;
+            std::cerr << "    - ";
+            std::cerr << name;
+            auto value_type_name = gcc_helpers::type_name(value_type);
+            if (value_type_name == "char") {
+               std::cerr << " explicitly as char\n";
+            } else {
+               std::cerr << " via typedefs:\n";
+               gcc_helpers::for_each_transitive_typedef(value_type, [&is_char](tree type) {
+                  auto name = gcc_helpers::type_name(type);
+                  if (name.empty())
+                     name = "<unnamed>";
+                  std::cerr << "       - " << name << '\n';
+                  
+                  if (name == "char")
+                     return false; // stop iterating
+                  return true;
+               });
+            }
+         }
+         
+         return true;
+      });
+      if (!any) {
+         std::cerr << "    - <none>\n";
+      }
+   }
 }

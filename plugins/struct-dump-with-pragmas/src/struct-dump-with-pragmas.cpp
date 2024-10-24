@@ -27,7 +27,9 @@ static tree handle_user_attribute(tree* node, tree name, tree args, int flags, b
    // leading or trailing underscores stripped out.
    //
    // The `flags` gives information about the context in which the 
-   // attribute was used.
+   // attribute was used. The flags are defined in the `attribute_flags` 
+   // enum in `tree-core.h`, and are used to indicate what tree type(s) 
+   // the attribute is being applied to.
    //
    // If you set `no_add_attrs` to true, then your attribute will not be 
    // added to the DECL_ATTRIBUTES or TYPE_ATTRIBUTES of the target node. 

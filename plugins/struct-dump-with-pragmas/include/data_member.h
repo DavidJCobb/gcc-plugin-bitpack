@@ -1,10 +1,16 @@
+#pragma once
 #include <array>
 #include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "bitpack_options.h"
+
+#include <gcc-plugin.h> 
+#include <tree.h>
+
 
 struct IntegralTypeinfo {
    int64_t  min = 0;
@@ -69,4 +75,6 @@ struct DataMember {
       } enum_bounds;
    } type;
    BitpackOptions options;
+   
+   static std::optional<DataMember> from_tree(tree decl);
 };

@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 // GCC:
 #include <gcc-plugin.h> 
