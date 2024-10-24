@@ -3,10 +3,10 @@
 typedef uint8_t bool8;
 
 struct FooStruct {
-   __attribute__((lu_bitpack_string("with-terminator,length=7"))) char x[7];
+   __attribute__((lu_bitpack_string("with-terminator, length = 7 "))) char x[7];
    __attribute__((lu_bitpack_bitcount(30))) int32_t a;
    __attribute__((lu_bitpack_bitcount(1))) bool8 b;
-   __attribute__((lu_bitpack_string("with-terminator,length=7"))) char c[7];
+   __attribute__((lu_bitpack_string("with-terminator, length =7"))) char c[7];
    struct {
       int32_t e;
    } d;

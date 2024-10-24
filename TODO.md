@@ -2,7 +2,6 @@
 # To-do
 
 * `handle_kv_string` should throw an exception with detailed error information for its caller to report
-* `handle_kv_string` should trim whitespace from keys and values before inspecting them in detail
 * Custom pragma to define a set of `HeritableOptions`, and a singleton to store them
   * Error on redefinition
   * Error on internally inconsistent options (e.g. string with a max integral value)

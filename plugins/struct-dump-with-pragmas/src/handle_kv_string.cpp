@@ -1,6 +1,7 @@
 #include "handle_kv_string.h"
 #include <iostream>
 #include <charconv> // std::from_chars
+#include "lu/strings/trim.h"
 
 namespace _impl {
    //
@@ -27,6 +28,7 @@ namespace _impl {
          } else {
             subarg = data.substr(prev + 1, i - (prev + 1));
          }
+         lu::strings::trim_in_place(subarg);
          for(size_t _pi = 0; _pi < param_count; ++_pi) {
             auto& p = params[_pi];
             
@@ -45,10 +47,12 @@ namespace _impl {
                size_t j = data.find_first_of(",=", i + 1);
                if (j == std::string::npos) {
                   value = data.substr(i + 1);
-                  i     = data.size();
+                  i = data.size();
+                  lu::strings::trim_in_place(value);
                } else {
                   value = data.substr(i + 1, j - (i + 1));
-                  i     = j;
+                  i = j;
+                  lu::strings::trim_in_place(value);
                   if (data[j] == '=') {
                      std::cerr << "ERROR: `key=value=value` isn't valid (seen: ";
                      std::cerr << subarg;
@@ -76,7 +80,7 @@ namespace _impl {
                      return false;
                   }
                   if (conv.ptr < value.data() + value.size()) {
-                     std::cerr << "ERROR: unexpected content after number (seen: ";
+                     std::cerr << "ERROR: unexpected non-whitespace content after number (seen: ";
                      std::cerr << subarg;
                      std::cerr << '=';
                      std::cerr << value;
@@ -99,7 +103,7 @@ namespace _impl {
             }
             break;
          }
-      } while (i + 1 < data.size());
+      } while (i != std::string::npos && i + 1 < data.size());
       return true;
    }
 }

@@ -1,7 +1,6 @@
 # Common makefile to be included from all other makefiles
 
-INSTALLDIR=$(LU_GCC_INSTALLDIR)
-
+INSTALLDIR=$(HOME)/gcc/gcc-install
 GMPDIR=$(HOME)/gcc-build/gmp
 
 CC=$(INSTALLDIR)/bin/gcc
