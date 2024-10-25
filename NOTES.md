@@ -90,9 +90,9 @@ If you build GCC using `download_prerequisites` to get the prerequisites, then y
 
 There is, ah, one problem, though. You have to tell the makefile where to find the in-tree copy of GMP. It'll be in a subfolder of the GCC "objdir," i.e. `$(HOME)/gcc-build/gmp` with our above setup.
 
-## Potential warnings
+## Potential warnings and errors
 
-### GCC
+### Building GCC
 
 #### Configure
 
@@ -110,6 +110,24 @@ Shouldn't matter. The "subdirectories" listed are for the various languages that
 ```
 
 Indicates that you're missing a program that bakes Texinfo files to HTML or plain-text files. Texinfo is just used for GNU documentation; we don't need it here.
+
+### Building plug-ins
+
+#### Link errors when running a plug-in
+
+A typical example:
+
+```
+cc1: error: cannot load plugin ./function-manip.so: ./function-manip.so: undefined symbol: _Z13cp_type_qualsPK9tree_node
+```
+
+These errors are generally unintuitive because they'll be caused by the underlying functions that several GCC macros use. For example, the above was caused by `DECL_CONST_MEMFUNC_P`, which uses the `cp_type_quals` function (from `/cp/cp-tree.h`) to check whether a member function declaration is a const member function.
+
+The problem *usually* results from calling C++-related functions while your plug-in is being used to compile C code. Try to avoid that. Note that some functions may vary between C and C++, and the plugin headers may only include the C++ version (`comptypes`, the underlying function for `same_type_p`, is one example).
+
+If that's *not* your issue, then it is technically possible for something to go wrong while building GCC, such that the built executable simply doesn't export all of the functions that it's supposed to. It's difficult to actually find potential explanations for that, though, in part because every conceivable combination of search terms you could ever use will be polluted by people who are having problems *using* GCC, and in part because this entire class of problem falls into the category of "weirdo nonsense." To illustrate the latter point: back in 2022, [using Homebrew to install GCC on an x86/x64 machine running MacOS](https://github.com/Homebrew/homebrew-core/issues/106394) could cause GCC to be missing exports due to the MacOS `strip` tool being overenthusiastic.
+
+You can use the `nm` utility to dump a list of all of a program or object file's exports. I recommend dumping to a file rather than a console, since you can't copy that much text out of the WSL terminal when it's running in Powershell.
 
 ## Research
 
