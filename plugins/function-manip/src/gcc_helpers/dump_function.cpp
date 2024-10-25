@@ -106,7 +106,26 @@ namespace gcc_helpers {
             std::cerr << IDENTIFIER_POINTER(DECL_NAME(item));
             std::cerr << ":\n";
             
-            std::cerr << "       - Type: " << type_name(TREE_TYPE(item)) << '\n';
+            {  // Print type (simple only)
+               std::cerr << "       - Type: ";
+               
+               size_t pointer_count = 0;
+               auto   type = TREE_TYPE(item);
+               while (type != NULL_TREE && TREE_CODE(type) == POINTER_TYPE) {
+                  ++pointer_count;
+                  type = TREE_TYPE(type);
+               }
+               if (TYPE_READONLY(type)) {
+                  std::cerr << "const ";
+               }
+               std::cerr << type_name(type);
+               for(size_t i = 0; i < pointer_count; ++i)
+                  std::cerr << '*';
+               
+               std::cerr << '\n';
+            }
+            
+            // print default value (faulty; always claims to have a default)
             if (auto expr = DECL_INITIAL(item); expr != NULL_TREE) {
                if (expr == error_mark_node) {
                   std::cerr << "       - Has a default value (further info unavailable)\n";

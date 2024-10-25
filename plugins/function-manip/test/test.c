@@ -53,9 +53,17 @@ static struct StructC {
 } sStructC;
 
 extern void save(u8* dst, int sector_id) {
+   //
+   // The goal is to have this function's code generated entirely by this 
+   // pragma. Right now, we only serialize a single sector, but we want 
+   // to eventually have an if/else tree on the sector ID and delegate 
+   // out to separate per-sector functions whenever multiple sectors are 
+   // used. The plug-in should generate those per-sector functions from 
+   // scratch.
+   //
    #pragma lu_bitpack generate_pack( \
-      data   = ( gStructA, gStructB, gStructC ), \
-      buffer = buffer,   \
+      data   = ( sStructA, sStructB, sStructC ), \
+      buffer = dst,      \
       sector = sector_id \
    )
    
@@ -72,9 +80,17 @@ extern void save(u8* dst, int sector_id) {
 #pragma lu_bitpack debug_dump_function save
 
 extern void read(const u8* src, int sector_id) {
+   //
+   // The goal is to have this function's code generated entirely by this 
+   // pragma. Right now, we only serialize a single sector, but we want 
+   // to eventually have an if/else tree on the sector ID and delegate 
+   // out to separate per-sector functions whenever multiple sectors are 
+   // used. The plug-in should generate those per-sector functions from 
+   // scratch.
+   //
    #pragma lu_bitpack generate_read( \
-      data   = ( gStructA, gStructB, gStructC ), \
-      buffer = buffer,   \
+      data   = ( sStructA, sStructB, sStructC ), \
+      buffer = src,      \
       sector = sector_id \
    )
    
