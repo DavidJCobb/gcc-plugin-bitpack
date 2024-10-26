@@ -138,9 +138,14 @@ You can use the `nm` utility to dump a list of all of a program or object file's
 * [Accessing attributes on a DECL or TYPE](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Attributes.html)
 * [TREE_LIST and TREE_VEC](https://gcc.gnu.org/onlinedocs/gcc-3.3.6/gccint/Containers.html) info
 
-Pending stuff:
+Generating code and control flow structures in GENERIC:
 
-* Can't use `same_type_p` as recommended by the GCC documentation because GCC doesn't seem to export the underlying `comptypes` function: the plug-in fails to load, citing that [the mangled name of] `comptypes` isn't found.
+* [`PREINCREMENT_EXPR`](https://github.com/giuseppe/gccbrainfuck/blob/60f0e00b512fb0466b23e5a86f3c8ffe50ae665d/brainfuck-lang.c#L176) and integer constants
+* Addressof operator: `build_unary_op(input_location, ADDR_EXPR, decl, 0)`
+* Converting a FOR-loop from the C-specific `FOR_STMT` to GENERIC
+  * [`genericize_for_stmt`](https://codebrowser.dev/gcc/gcc/c-family/c-gimplify.cc.html#_ZL19genericize_for_stmtPP9tree_nodePiPvPFS0_S1_S2_S3_EPFS0_S1_S2_S5_S3_P8hash_setIS0_Lb0E19default_hash_traitsIS0_EEE)
+    * Takes a function pointer argument that gets applied to all instruction trees within the for-loop. This is used to recursively transform nested for-loops all in one go. It can be safely ignored for our purposes.
+  * [`genericize_c_loop`](https://codebrowser.dev/gcc/gcc/c-family/c-gimplify.cc.html#_ZL17genericize_c_loopPP9tree_nodejS0_S0_S0_bPiPvPFS0_S1_S2_S3_EPFS0_S1_S2_S5_S3_P8hash_setIS0_Lb0E19default_hash_traitsIS0_EEE)
 
 ## Tips
 
