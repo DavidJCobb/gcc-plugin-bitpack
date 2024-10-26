@@ -13,6 +13,17 @@
 #include "gcc_helpers/make_indexed_unbroken_for_loop.h"
 #include "gcc_helpers/make_member_access_expr.h"
 
+#include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/expr/declare.h"
+#include "gcc_wrappers/expr/member_access.h"
+#include "gcc_wrappers/statement_list.h"
+#include "gcc_wrappers/type.h"
+namespace {
+   namespace gw {
+      using namespace gcc_wrappers;
+   }
+}
+
 #include "bp_func_decl_set.h"
 
 /*
@@ -46,15 +57,14 @@ void generate_read_func(const generate_request& request) {
       if (func_decl == NULL_TREE) {
          warning(OPT_Wpragmas, "to-be-generated bitpack-read function with name %<%s%> has not been declared in this scope; generating an implicit declaration", name);
          
-         auto buffer_arg_type = c_build_qualified_type(
-            build_pointer_type(uint8_type_node),
-            TYPE_QUAL_CONST
-         );
+         gw buffer_type;
+         gw.set_from_untyped(uint8_type_node);
+         gw = gw.add_pointer().add_const_qualifier();
          
          auto func_type = build_function_type_list(
             void_type_node,
             // start of args
-            buffer_arg_type,
+            gw.as_untyped(),
             integer_type_node, // sector_id
             // end of args
             NULL_TREE
@@ -95,80 +105,56 @@ void generate_read_func(const generate_request& request) {
    
    tree state_type = NULL_TREE;
    {
-      if constexpr (true) {
-         auto node = identifier_global_tag(get_identifier("lu_BitstreamState"));
-         if (node == NULL_TREE) {
-            error("failed to find bitstream state type");
-            return;
-         }
-         switch (TREE_CODE(node)) {
-            case TYPE_DECL:
-               state_type = TREE_TYPE(node);
-               break;
-            case RECORD_TYPE:
-               state_type = node;
-               break;
-            default:
-               error("failed to find bitstream state type (found declaration was not a type declaration)");
-               return;
-         }
-      } else {
-         auto decl = lookup_name(get_identifier("lu_BitstreamState"));
-         if (decl == NULL_TREE) {
-            error("failed to find bitstream state type");
-            return;
-         }
-         if (TREE_CODE(decl) != TYPE_DECL) {
+      auto node = identifier_global_tag(get_identifier("lu_BitstreamState"));
+      if (node == NULL_TREE) {
+         error("failed to find bitstream state type");
+         return;
+      }
+      switch (TREE_CODE(node)) {
+         case TYPE_DECL:
+            state_type = TREE_TYPE(node);
+            break;
+         case RECORD_TYPE:
+            state_type = node;
+            break;
+         default:
             error("failed to find bitstream state type (found declaration was not a type declaration)");
             return;
-         }
-         state_type = TREE_TYPE(decl);
       }
    }
-   tree state_decl = build_decl(
-      UNKNOWN_LOCATION,
-      VAR_DECL,
-      get_identifier("__lu_bitstream_state"),
-      state_type
-   );
-   TREE_USED(state_decl) = 1;
-   DECL_ARTIFICIAL(state_decl) = 1;
+   
+   auto state_decl = gw::variable::create("__lu_bitstream_state", state_type);
+   state_decl.mark_artificial();
+   state_decl.mark_used();
    {
-      auto declare_state_stmt = build_stmt(UNKNOWN_LOCATION, DECL_EXPR, state_decl);
-      tsi_link_after(&stmt_iter, declare_state_stmt, TSI_CONTINUE_LINKING);
+      auto declare = state_decl.make_declare_expr();
+      tsi_link_after(&stmt_iter, declare.as_untyped(), TSI_CONTINUE_LINKING);
    }
    
    {  // for (int i = 0; i < 9; ++i) { ... }
-      tree loop_index; // VAR_DECL
+      auto loop_index = gw::variable::create("__i", uint8_type_node);
+      loop_index.mark_artificial();
+      loop_index.mark_used();
+   
       tree loop_body = alloc_stmt_list();
-      {
-         loop_index = build_decl(
-            UNKNOWN_LOCATION,
-            VAR_DECL,
-            get_identifier("__i"),
-            uint8_type_node
-         );
-         DECL_ARTIFICIAL(loop_index) = 1;
-      }
       {  // body statement: sStructA.a[i] = lu_BitstreamRead_u8(&state, 6);
       
          // sStructA.a[i]
-         auto object_decl   = lookup_name(get_identifier("sStructA"));
-         auto member_access = gcc_helpers::make_member_access_expr(
-            object_decl,
-            get_identifier("a")
-         );
+         gw::decl::variable object_decl;
+         object_decl.set_from_untyped(lookup_name(get_identifier("sStructA")));
+         
+         auto member_access = object_decl.access_member("a");
          auto array_access  = build_array_ref(
             UNKNOWN_LOCATION,
-            member_access,
-            loop_index
+            member_access.as_untyped(),
+            loop_index.as_untyped()
          );
          
          // lu_BitstreamRead_u8(&state, 6)
          tree read_call = build_call_expr(
             needed_functions.bitstream_read_u8.decl,
             2, // argcount
-            build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl, 0),
+            build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl.as_untyped(), 0),
             build_int_cst(uint8_type_node, 6) // arg: bitcount
          );
          
@@ -182,7 +168,7 @@ void generate_read_func(const generate_request& request) {
       }
       auto for_loop = gcc_helpers::make_indexed_unbroken_for_loop(
          func_decl,
-         loop_index,
+         loop_index.as_untyped(),
          0,
          8,
          1,
@@ -205,7 +191,7 @@ void generate_read_func(const generate_request& request) {
       tree read_call = build_call_expr(
          needed_functions.bitstream_read_u8.decl,
          2, // argcount
-         build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl, 0),
+         build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl.as_untyped(), 0),
          build_int_cst(uint8_type_node, 5) // arg: bitcount
       );
       
@@ -231,7 +217,7 @@ void generate_read_func(const generate_request& request) {
       tree read_call = build_call_expr(
          needed_functions.bitstream_read_string_wt.decl,
          3, // argcount
-         build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl, 0),
+         build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl.as_untyped(), 0),
          member_access,
          build_int_cst(uint8_type_node, 5) // arg: max length
       );

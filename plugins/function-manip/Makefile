@@ -11,6 +11,13 @@ SOURCES=\
         src/gcc_helpers/type_name.cpp \
         src/gcc_helpers/type_size_in_bytes.cpp \
         src/gcc_helpers/type_to_string.cpp \
+        src/gcc_wrappers/decl/base.cpp \
+        src/gcc_wrappers/decl/variable.cpp \
+        src/gcc_wrappers/expr/base.cpp \
+        src/gcc_wrappers/expr/declare.cpp \
+        src/gcc_wrappers/expr/membrr_access.cpp \
+        src/gcc_wrappers/statement_list.cpp \
+        src/gcc_wrappers/type.cpp \
         src/lu/strings/trim.cpp \
         src/handle_kv_string.cpp \
         src/data_member.cpp \
