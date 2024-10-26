@@ -21,5 +21,8 @@ namespace gcc_wrappers::expr {
             location_t      field_name_location = UNKNOWN_LOCATION,
             location_t      arrow_operator_loc  = UNKNOWN_LOCATION
          );
+         
+         tree object_untyped() const; // could be a DECL or EXPR
+         tree field_untyped() const; // FIELD_DECL
    };
 }

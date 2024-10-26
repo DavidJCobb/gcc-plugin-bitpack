@@ -279,6 +279,7 @@ Overall table:
 | `AGGR_INIT_EXPR` | ? | ? | ? | ? |
 | `ARRAY_REF` | `ARRAY_TYPE` | | `TREE_TYPE(a)` | |
 | `ARRAY_RANGE_REF` | `ARRAY_TYPE` | | `ARRAY_TYPE` | Result has the same value type as operand 0, copying and returning a slice of the array. |
+| `ASM_EXPR` | ? | ? | ? | Inline assembly. |
 | `BIND_EXPR` | `TREE_LIST` of `VAR_DECL` | block body | ? | Local block of statements. |
 | `BIT_AND_EXPR` | `INTEGER_TYPE` | `INTEGER_TYPE` | `INTEGER_TYPE` | Bitwise-AND (`&`). |
 | `BIT_IOR_EXPR` | `INTEGER_TYPE` | `INTEGER_TYPE` | `INTEGER_TYPE` | Bitwise-OR (`|`). |
@@ -294,6 +295,7 @@ Overall table:
 | `CONJ_EXPR` | ? | ? | ? | ? |
 | `CONSTRUCTOR` | ? | ? | ? | ? |
 | `CONVERT_EXPR` | &lt;any&gt; | | &lt;any&gt; | Conversion, excluding C++ superclass/subclass pointer conversions and user-defined conversions. |
+| `DECL_EXPR` | | | | Local declaration; use `DECL_EXPR_DECL(decl)` to get the `*_DECL`. |
 | `EQ_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a == b (numeric only?) |
 | `EXACT_DIV_EXPR` | ? | ? | ? | ? |
 | `EXIT_EXPR` | condition | | | Conditionally break from the nearest enclosing `LOOP_EXPR`. |
@@ -323,9 +325,11 @@ Overall table:
 | `PREINCREMENT_EXPR` | ? | ? | `INTEGER_TYPE` or `REAL_TYPE` or `BOOLEAN_TYPE` | `++x` |
 | `RDIV_EXPR` | ? | ? | ? | Floating-point division. |
 | `REALPART_EXPR` | `COMPLEX_TYPE` | | ? | Access the real part of a complex number. |
+| `RETURN_EXPR` | `RESULT_DECL`, `MODIFY_EXPR`, `INIT_EXPR`, or `NULL_TREE` | | | Null tree if no return value; else either containing function's result decl, or a modify/init expr acting directly on the result decl. |
 | `RSHIFT_EXPR` | `INTEGER_TYPE` | number of bits to shift | Same as Operand 0 | Bitshift right. (Sign-extending shift if operand type is signed.) Value undefined if Operand 1 evaluates to a number creater than `TYPE_SIZE(TREE_TYPE(a))`. |
 | `SAVE_EXPR` | &lt;any&gt; | | same as operand 0? | Memoize an expression to prevent duplicate side-effects |
 | `STMT_EXPR` | | | &lt;any&gt; | See below. If no result, uses `void` type. |
+| `SWITCH_EXPR` | ? | ? | ? | |
 | `TARGET_EXPR` | ? | ? | ? | ? |
 | `THROW_EXPR` | code | | ? | See `emit_throw`. |
 | `TRUNC_DIV_EXPR` | ? | ? | `INTEGER_TYPE` | Integer division, with truncation. |

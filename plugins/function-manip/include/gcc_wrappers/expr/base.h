@@ -1,6 +1,7 @@
 #pragma once
 #include <gcc-plugin.h>
 #include <tree.h>
+#include "gcc_wrappers/type.h"
 
 namespace gcc_wrappers::expr {
    class base {
@@ -20,6 +21,8 @@ namespace gcc_wrappers::expr {
          constexpr bool empty() const noexcept {
             return this->_node == NULL_TREE;
          }
+         
+         type get_result_type() const;
          
          void suppress_unused_warnings();
          

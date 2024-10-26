@@ -65,4 +65,15 @@ namespace gcc_wrappers::decl {
       #endif
       return out;
    }
+   
+   tree member_access::object_untyped() const {
+      if (empty())
+         return NULL_TREE;
+      return TREE_OPERAND(this->_node, 0);
+   }
+   tree member_access::field_untyped() const {
+      if (empty())
+         return NULL_TREE;
+      return TREE_OPERAND(this->_node, 1);
+   }
 }
