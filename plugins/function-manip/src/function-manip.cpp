@@ -22,6 +22,9 @@ static plugin_info _my_plugin_info = {
 
 #include "handle_struct_type.h"
 
+#include "parse_generate_request.h" // for generate pragmas
+#include "generate_read_code.h"
+
 static tree handle_user_attribute(tree* node, tree name, tree args, int flags, bool* no_add_attrs) {
    //
    // The `node` is the node to which the attribute has been applied. If 
@@ -191,7 +194,21 @@ namespace _pragmas {
    static void generate_read(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_read";
       
-      std::cerr << "saw #pragma lu_bitpack generate_read (not yet implemented)\n";
+      auto request_opt = parse_generate_request(reader);
+      if (request_opt.has_value()) {
+         
+         static_assert(false, "TODO");
+         //
+         // I'm not sure if pragmas have enough visibility into the current parse state 
+         // to know a) that they're being invoked in a function body and b) be able to 
+         // inject code directly into that function body.
+         //
+         // Worst-case, we may need to have the user forward-declare a function, specify 
+         // its identifier as another argument here, and then we can generate the body 
+         // of the function.
+         //
+         
+      }
    }
    static void generate_pack(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_pack";

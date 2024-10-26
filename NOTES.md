@@ -147,6 +147,11 @@ Generating code and control flow structures in GENERIC:
     * Takes a function pointer argument that gets applied to all instruction trees within the for-loop. This is used to recursively transform nested for-loops all in one go. It can be safely ignored for our purposes.
   * [`genericize_c_loop`](https://codebrowser.dev/gcc/gcc/c-family/c-gimplify.cc.html#_ZL17genericize_c_loopPP9tree_nodejS0_S0_S0_bPiPvPFS0_S1_S2_S3_EPFS0_S1_S2_S5_S3_P8hash_setIS0_Lb0E19default_hash_traitsIS0_EEE)
 
+GCC's own parsing:
+
+* Function definitions
+  * `start_function` (`c/c-decl.cc`) synthesizes `DECLSPECS`, a `DECLARATOR`, and an attribute list into a `FUNCTION_DECL`, fires off the `PLUGIN_START_PARSE_FUNCTION` callback for that decl, and then calls `start_preparsed_function` to "create the `FUNCTION_DECL`."
+
 ## Tips
 
 ### The makefile and the build process

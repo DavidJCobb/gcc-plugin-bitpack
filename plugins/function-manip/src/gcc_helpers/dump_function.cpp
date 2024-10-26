@@ -5,6 +5,9 @@
 #include "gcc_helpers/for_each_in_list_tree.h"
 #include "gcc_helpers/type_name.h"
 
+// test
+#include "gcc_helpers/compare_to_template_param.h"
+
 namespace gcc_helpers {
    void dump_function(tree decl) {
       if (decl == NULL_TREE) {
@@ -139,5 +142,36 @@ namespace gcc_helpers {
       }
       std::cerr << " - Dumping function body...\n";
       debug_tree(DECL_SAVED_TREE(decl));
+      
+      std::cerr << "\n\n";
+      std::cerr << "Testing comparison (read) to template params...\n";
+      
+      using u8 = uint8_t;
+      using arg_0   = const u8*;
+      using arg_1   = int;
+      using fn_type = void(*)(arg_0, arg_1);
+      std::cerr << " - Whole function matches? ";
+      std::cerr << gcc_helpers::function_decl_matches_template_param<fn_type>(decl); 
+      std::cerr << '\n';
+      {
+         auto args = DECL_ARGUMENTS(decl);
+         if (args != NULL_TREE) {
+            std::cerr << " - Argument 0 matches? ";
+            std::cerr << gcc_helpers::type_node_matches_template_param<arg_0>(TREE_TYPE(args));
+            std::cerr << '\n';
+            args = TREE_CHAIN(args);
+            if (args != NULL_TREE) {
+               std::cerr << " - Argument 1 matches? ";
+               std::cerr << gcc_helpers::type_node_matches_template_param<arg_1>(TREE_TYPE(args));
+               std::cerr << '\n';
+            } else {
+               std::cerr << " - Argument 1 not present.\n";
+            }
+         } else {
+            std::cerr << " - Argument 0 not present.\n";
+         }
+      }
+      
+      
    }
 }

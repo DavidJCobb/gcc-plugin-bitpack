@@ -80,6 +80,19 @@ extern void save(u8* dst, int sector_id) {
 #pragma lu_bitpack debug_dump_function save
 
 extern void read(const u8* src, int sector_id) {
+   struct lu_BitstreamState state;
+   lu_BitstreamInitialize(&state, (u8*)src);
+   
+   for(int i = 0; i < 9; ++i)
+      sStructA.a[i] = lu_BitstreamRead_u8(&state, 6);
+   
+   sStructA.b = lu_BitstreamRead_u8(&state, 5);
+   
+   lu_BitstreamRead_string(&state, sStructB.a, 5);
+}
+#pragma lu_bitpack debug_dump_function read
+
+extern void read_generated(const u8* src, int sector_id) {
    //
    // The goal is to have this function's code generated entirely by this 
    // pragma. Right now, we only serialize a single sector, but we want 
@@ -93,18 +106,8 @@ extern void read(const u8* src, int sector_id) {
       buffer = src,      \
       sector = sector_id \
    )
-   
-   struct lu_BitstreamState state;
-   lu_BitstreamInitialize(&state, (u8*)src);
-   
-   for(int i = 0; i < 9; ++i)
-      sStructA.a[i] = lu_BitstreamRead_u8(&state, 6);
-   
-   sStructA.b = lu_BitstreamRead_u8(&state, 5);
-   
-   lu_BitstreamRead_string(&state, sStructB.a, 5);
 }
-#pragma lu_bitpack debug_dump_function read
+#pragma lu_bitpack debug_dump_function read_generated
 
 extern void trigger_read() {
    u8 buffer[20];
