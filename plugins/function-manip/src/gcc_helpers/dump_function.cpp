@@ -7,7 +7,7 @@
 
 // test
 #include "gcc_helpers/compare_to_template_param.h"
-
+ 
 namespace gcc_helpers {
    void dump_function(tree decl) {
       if (decl == NULL_TREE) {

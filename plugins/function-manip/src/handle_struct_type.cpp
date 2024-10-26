@@ -13,7 +13,6 @@
 #include "gcc_helpers/extract_string_constant_from_tree.h"
 #include "gcc_helpers/type_min_max.h"
 #include "gcc_helpers/type_name.h"
-#include "gcc_helpers/typedef_map.h" 
 
 extern void handle_struct_type(tree type) {
    Struct s;

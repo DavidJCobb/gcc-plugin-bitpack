@@ -23,7 +23,8 @@ static plugin_info _my_plugin_info = {
 #include "handle_struct_type.h"
 
 #include "parse_generate_request.h" // for generate pragmas
-#include "generate_read_code.h"
+//#include "generate_read_code.h"
+#include "generate_read_func.h"
 
 static tree handle_user_attribute(tree* node, tree name, tree args, int flags, bool* no_add_attrs) {
    //
@@ -197,7 +198,7 @@ namespace _pragmas {
       auto request_opt = parse_generate_request(reader);
       if (request_opt.has_value()) {
          
-         static_assert(false, "TODO");
+         //static_assert(false, "TODO");
          //
          // I'm not sure if pragmas have enough visibility into the current parse state 
          // to know a) that they're being invoked in a function body and b) be able to 
@@ -207,7 +208,9 @@ namespace _pragmas {
          // its identifier as another argument here, and then we can generate the body 
          // of the function.
          //
-         
+      std::cerr << "generating...\n";
+         generate_read_func(request_opt.value());
+      std::cerr << "generated.\n";
       }
    }
    static void generate_pack(cpp_reader* reader) {

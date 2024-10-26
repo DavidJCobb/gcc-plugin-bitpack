@@ -76,6 +76,16 @@ This function properly handles access through anonymous member structs or unions
 
 ## Misc
 
+### Creating function types
+
+#### `build_function_type_list`
+
+```c
+tree build_function_type_list(tree, ...)
+```
+
+Given a return type and zero or more function argument types, returns a new `FUNCTION_TYPE`. At the end of the passed-in arguments, pass `NULL_TREE` to indicate the end of the passed-in argument list (e.g. `build_function_type_list(integer_type_node, NULL_TREE)` to make a function that takes zero arguments).
+
 ### `lookup_attribute`
 
 **Defined in:** `attribs.h`
@@ -94,7 +104,7 @@ If multiple attributes with the same name are present, this returns only the fir
 
 ## `PLUGIN_START_PARSE_FUNCTION`
 
-Invoked when parsing of a function begins, before the body has been seen, with a tree passed as an argument. Check if the tree is not `NULL_TREE` and is a `FUNCTION_DECL` before proceeding (if either condition is met, a parse error will be emitted, but only after the plug-in callback is made).
+Invoked (by `start_function` in `c/c-decl.cc`) when parsing of a function begins, before the body has been seen, with a tree passed as an argument. Check if the tree is not `NULL_TREE` and is a `FUNCTION_DECL` before proceeding (if either condition is met, a parse error will be emitted, but only after the plug-in callback is made).
 
 At this point, the following information is available about the function:
 

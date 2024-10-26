@@ -149,6 +149,8 @@ Generating code and control flow structures in GENERIC:
 
 GCC's own parsing:
 
+* Function external/forward declarations
+  * `start_decl` (`c/c-decl.cc`)
 * Function definitions
   * `start_function` (`c/c-decl.cc`) synthesizes `DECLSPECS`, a `DECLARATOR`, and an attribute list into a `FUNCTION_DECL`, fires off the `PLUGIN_START_PARSE_FUNCTION` callback for that decl, and then calls `start_preparsed_function` to "create the `FUNCTION_DECL`."
 

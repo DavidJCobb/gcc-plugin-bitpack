@@ -7,7 +7,9 @@
 #include <c-family/c-pragma.h>
 
 struct generate_request {
-   std::vector<std::string>> data_identifiers;
+   std::string generated_function_identifier;
+   
+   std::vector<std::string> data_identifiers;
    std::string buffer_identifier;
    std::string sector_identifier;
 };

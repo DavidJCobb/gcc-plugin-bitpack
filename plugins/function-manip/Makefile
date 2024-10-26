@@ -4,6 +4,7 @@ SOURCES=\
         src/gcc_helpers/array_extent.cpp \
         src/gcc_helpers/dump_function.cpp \
         src/gcc_helpers/extract_pragma_kv_args.cpp \
+        src/gcc_helpers/make_indexed_unbroken_for_loop.cpp \
         src/gcc_helpers/make_member_access_expr.cpp \
         src/gcc_helpers/type_is_char.cpp \
         src/gcc_helpers/type_min_max.cpp \
@@ -17,6 +18,7 @@ SOURCES=\
         src/handle_struct_type.cpp \
         src/parse_generate_request.cpp \
         src/generate_read_code.cpp \
+        src/generate_read_func.cpp \
         src/function-manip.cpp \
 		$(END)
 

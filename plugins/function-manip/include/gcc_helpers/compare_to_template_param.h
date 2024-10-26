@@ -9,11 +9,13 @@
 #include "lu/type_traits/name_of_type.h"
 #include "gcc_helpers/type_name.h"
 
+#include <diagnostic.h> // debug
+
 namespace gcc_helpers {
    template<typename T>
    bool type_node_matches_template_param(tree type) {
       if (type == NULL_TREE)
-         return false;
+         return false; 
       if (TYPE_READONLY(type) != std::is_const_v<T>)
          return false;
       
@@ -33,7 +35,12 @@ namespace gcc_helpers {
          return type == void_type_node;
       }
       
-      return lu::name_of_type<bare_type>() == type_name(type);
+      const auto bare_name = lu::name_of_type<bare_type>();
+      if (bare_name == type_name(type))
+         return true;
+      if (bare_name == type_name(TYPE_CANONICAL(type)))
+         return true;
+      return false;
    }
 
    template<typename FunctionPtrType>
@@ -53,8 +60,9 @@ namespace gcc_helpers {
             if (return_type != void_type_node)
                return false; // wrong return type (void expected)
          } else {
-            if (!type_node_matches_template_param<typename fn_traits::return_type>(return_type))
+            if (!type_node_matches_template_param<typename fn_traits::return_type>(return_type)) { 
                return false; // wrong return type
+            }
          }
       }
       
