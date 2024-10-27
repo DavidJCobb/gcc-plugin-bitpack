@@ -1,35 +1,64 @@
 #include "gcc_wrappers/decl/base.h"
+#include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 
-#include <c-family/c-common.h> // c_build_qualified_type; various predefined type nodes
-
 namespace gcc_wrappers::decl {
-   /*static*/ bool base::tree_is(tree node) {
-      return DECL_P(node);
-   }
+   WRAPPED_TREE_NODE_BOILERPLATE(base)
    
-   void base::mark_artificial() {
-      assert(!empty());
-      TREE_ARTIFICIAL(this->_node) = 1;
-   }
-   void base::mark_used() {
-      assert(!empty());
-      TREE_USED(this->_node) = 1;
-   }
-   
-   type base::get_value_type() const {
+   std::string_view base::name() const {
       if (empty())
-         return type{};
-      
-      type t;
-      t.set_from_untyped(TREE_TYPE(this->_node));
-      return t;
+         return {};
+      return std::string_view(IDENTIFIER_POINTER(DECL_NAME(this->_node)));
    }
    
-   void base::set_from_untyped(tree src) {
-      if (src != NULL_TREE) {
-         assert(tree_is(src) && "decl::base::set_from_untyped must be given a decl");
-      }
-      this->_node = src;
+   std::string_view base::source_file() const {
+      if (empty())
+         return {};
+      return std::string_view(DECL_SOURCE_FILE(this->_node));
+   }
+   int base::source_line() const {
+      if (empty())
+         return 0;
+      return DECL_SOURCE_LINE(this->_node);
+   }
+   
+   bool base::is_artificial() const {
+      return DECL_ARTIFICIAL(this->_node) != 0;
+   }
+   void base::make_artificial() {
+      set_is_artificial(true);
+   }
+   void base::set_is_artificial(bool v) {
+      assert(!empty());
+      DECL_ARTIFICIAL(this->_node) = v;
+   }
+            
+   bool base::is_sym_debugger_ignored() const {
+      return DECL_IGNORED_P(this->_node) != 0;
+   }
+   void base::make_sym_debugger_ignored() {
+      set_is_sym_debugger_ignored(true);
+   }
+   void base::set_is_sym_debugger_ignored(bool v) {
+      assert(!empty());
+      DECL_IGNORED_P(this->_node) = v;
+   }
+   
+   bool base::is_used() const {
+      return TREE_USED(this->_node) != 0;
+   }
+   void base::make_used() {
+      set_is_used(true);
+   }
+   void base::set_is_used(bool v) {
+      assert(!empty());
+      TREE_USED(this->_node) = v;
+   }
+   
+   // TODO: what types can this be?
+   _wrapped_tree_node base::context() const {
+      _wrapped_tree_node w;
+      w.set_from_untyped(DECL_CONTEXT(this->_node));
+      return w;
    }
 }

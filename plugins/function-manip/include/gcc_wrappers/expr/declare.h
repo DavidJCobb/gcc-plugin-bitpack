@@ -1,23 +1,24 @@
 #pragma once
 #include "gcc_wrappers/expr/base.h"
+#include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace decl {
       class variable;
    }
-   class type;
+   namespace expr {
+      class declare : public base {
+         public:
+            static bool node_is(tree t) {
+               return TREE_CODE(t) == DECL_EXPR;
+            }
+            WRAPPED_TREE_NODE_BOILERPLATE(declare)
+         
+         public:
+            declare(decl::variable&, location_t source_location = UNKNOWN_LOCATION);
+      };
+      static_assert(sizeof(declare) == sizeof(value)); // no new fields
+   }
 }
 
-namespace gcc_wrappers::expr {
-   class declare : public base {
-      public:
-         static bool tree_is(tree);
-         
-         void set_from_untyped(tree);
-         
-         static declare create(
-            decl::variable&,
-            location_t source_location = UNKNOWN_LOCATION
-         );
-   };
-}
+#include "gcc_wrappers/_boilerplate.undef.h"

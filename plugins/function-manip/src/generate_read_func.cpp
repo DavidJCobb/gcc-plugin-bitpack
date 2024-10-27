@@ -3,21 +3,25 @@
 // GCC plug-ins:
 #include <gcc-plugin.h>
 #include <tree.h>
-#include <cp/cp-tree.h> // build_array_ref; etc.
-#include <tree-iterator.h> // alloc_stmt_list; append_to_statement_list; etc.
 #include <c-family/c-common.h> // lookup_name; c_build_qualified_type; various predefined type nodes
 #include <c-family/c-pragma.h>
 #include <stringpool.h> // get_identifier
 
 #include "gcc_helpers/compare_to_template_param.h"
-#include "gcc_helpers/make_indexed_unbroken_for_loop.h"
-#include "gcc_helpers/make_member_access_expr.h"
 
+#include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/decl/result.h"
 #include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/expr/assign.h"
+#include "gcc_wrappers/expr/call.h"
 #include "gcc_wrappers/expr/declare.h"
-#include "gcc_wrappers/expr/member_access.h"
+#include "gcc_wrappers/expr/integer_constant.h"
+#include "gcc_wrappers/expr/local_block.h"
+#include "gcc_wrappers/expr/return_result.h"
+#include "gcc_wrappers/flow/simple_for_loop.h"
 #include "gcc_wrappers/statement_list.h"
 #include "gcc_wrappers/type.h"
+#include "gcc_wrappers/value.h"
 namespace {
    namespace gw {
       using namespace gcc_wrappers;
@@ -49,42 +53,44 @@ void generate_read_func(const generate_request& request) {
       return;
    }
    
-   tree func_decl = NULL_TREE;
+   struct {
+      gw::type t_int     = gw::type::from_untyped(integer_type_node);
+      gw::type t_void    = gw::type::from_untyped(void_type_node);
+      gw::type t_uint8_t = gw::type::from_untyped(uint8_type_node);
+   } types;
+   
+   gw::decl::function func_decl;
    {
       const char* name = request.generated_function_identifier.c_str();
       
-      func_decl = lookup_name(get_identifier(name));
-      if (func_decl == NULL_TREE) {
-         warning(OPT_Wpragmas, "to-be-generated bitpack-read function with name %<%s%> has not been declared in this scope; generating an implicit declaration", name);
-         
-         gw buffer_type;
-         gw.set_from_untyped(uint8_type_node);
-         gw = gw.add_pointer().add_const_qualifier();
-         
-         auto func_type = build_function_type_list(
-            void_type_node,
-            // start of args
-            gw.as_untyped(),
-            integer_type_node, // sector_id
-            // end of args
-            NULL_TREE
-         );
-         func_decl = build_fn_decl(name, func_type);
-      } else {
-         if (TREE_CODE(func_decl) != FUNCTION_DECL) {
+      auto decl = lookup_name(get_identifier(name));
+      if (decl != NULL_TREE) {
+         if (TREE_CODE(decl) != FUNCTION_DECL) {
             error("cannot generate bitpack-read function with name %<%s%>, as something else already exists with that name", name);
             return;
          }
-         if (DECL_SAVED_TREE(func_decl) != NULL_TREE) {
+         if (DECL_SAVED_TREE(decl) != NULL_TREE) {
             error("bitpack-read function with name %<%s%> is already defined i.e. already has a body; cannot generate a body", name);
             return;
          }
-         if (!gcc_helpers::function_decl_matches_template_param<void(*)(const uint8_t*, int)>(func_decl)) {
+         if (!gcc_helpers::function_decl_matches_template_param<void(*)(const uint8_t*, int)>(decl)) {
             error("bitpack-read function with name %<%s%> was already declared but with a signature other than expected; cannot generate a body", name);
             return;
          }
+         func_decl.set_from_untyped(decl);
+      } else {
+         warning(OPT_Wpragmas, "to-be-generated bitpack-read function with name %<%s%> has not been declared in this scope; generating an implicit declaration", name);
+         
+         auto func_type = gw::type::make_function_type(
+            types.t_void,
+            // args:
+            types.t_uint8_t.add_pointer().add_const(), // src
+            types.t_int                                // sector_id
+         );
+         func_decl = gw::decl::function(name, func_type);
       }
    }
+   auto func_dst = func_decl.as_modifiable();
    
    //
    // Codegen below based in part on:
@@ -92,18 +98,13 @@ void generate_read_func(const generate_request& request) {
    //
    
    // Declare return variable.
-   tree retn_decl = build_decl(UNKNOWN_LOCATION, RESULT_DECL, NULL_TREE, void_type_node);
-   DECL_ARTIFICIAL(retn_decl) = 1;
-   DECL_IGNORED_P(retn_decl) = 1;
-   DECL_RESULT(func_decl) = retn_decl;
+   gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
+   func_dst.set_result_decl(retn_decl);
    
-   tree               statements = alloc_stmt_list();
-   tree_stmt_iterator stmt_iter  = tsi_start(statements);
+   gw::expr::local_block root_block;
+   auto statements = root_block.statements();
    
-   tree root_block     = make_node(BLOCK);
-   tree root_bind_expr = build3(BIND_EXPR, void_type_node, NULL, statements, root_block);
-   
-   tree state_type = NULL_TREE;
+   gw::type state_type;
    {
       auto node = identifier_global_tag(get_identifier("lu_BitstreamState"));
       if (node == NULL_TREE) {
@@ -112,134 +113,116 @@ void generate_read_func(const generate_request& request) {
       }
       switch (TREE_CODE(node)) {
          case TYPE_DECL:
-            state_type = TREE_TYPE(node);
+            state_type.set_from_untyped(TREE_TYPE(node));
             break;
          case RECORD_TYPE:
-            state_type = node;
+            state_type.set_from_untyped(node);
             break;
          default:
-            error("failed to find bitstream state type (found declaration was not a type declaration)");
+            error("failed to find bitstream state type (found declaration was not a struct type declaration)");
             return;
       }
    }
    
-   auto state_decl = gw::variable::create("__lu_bitstream_state", state_type);
-   state_decl.mark_artificial();
-   state_decl.mark_used();
-   {
-      auto declare = state_decl.make_declare_expr();
-      tsi_link_after(&stmt_iter, declare.as_untyped(), TSI_CONTINUE_LINKING);
+   auto state_decl = gw::decl::variable("__lu_bitstream_state", state_type);
+   state_decl.make_artificial();
+   state_decl.make_used();
+   //
+   statements.append(state_decl.make_declare_expr());
+   
+   {  // lu_BitstreamInitialize(&state, src);
+      auto src_arg = func_decl.nth_parameter(0).as_value();
+      {
+         auto pointer_type = src_arg.value_type();
+         auto value_type   = pointer_type.remove_pointer();
+         if (value_type.is_const()) {
+            src_arg = src_arg.conversion_sans_bytecode(value_type.remove_const().add_pointer());
+         }
+      }
+      statements.append(
+         gw::expr::call(
+            gw::decl::function::from_untyped(needed_functions.bitstream_initialize.decl),
+            // args:
+            state_decl.as_value().address_of(), // &state
+            src_arg // src
+         )
+      );
    }
    
-   {  // for (int i = 0; i < 9; ++i) { ... }
-      auto loop_index = gw::variable::create("__i", uint8_type_node);
-      loop_index.mark_artificial();
-      loop_index.mark_used();
-   
-      tree loop_body = alloc_stmt_list();
-      {  // body statement: sStructA.a[i] = lu_BitstreamRead_u8(&state, 6);
-      
-         // sStructA.a[i]
-         gw::decl::variable object_decl;
-         object_decl.set_from_untyped(lookup_name(get_identifier("sStructA")));
+   {  // for (int i = 0; i <= 8; ++i) { ... }
+      gw::flow::simple_for_loop loop(types.t_int);
+      gw::statement_list        loop_body;
+      loop.counter_bounds.start     = 0;
+      loop.counter_bounds.last      = 8;
+      loop.counter_bounds.increment = 1;
+      {
+         // sStructA
+         auto object_decl = gw::decl::variable::from_untyped(lookup_name(get_identifier("sStructA")));
          
-         auto member_access = object_decl.access_member("a");
-         auto array_access  = build_array_ref(
-            UNKNOWN_LOCATION,
-            member_access.as_untyped(),
-            loop_index.as_untyped()
-         );
-         
-         // lu_BitstreamRead_u8(&state, 6)
-         tree read_call = build_call_expr(
-            needed_functions.bitstream_read_u8.decl,
-            2, // argcount
-            build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl.as_untyped(), 0),
-            build_int_cst(uint8_type_node, 6) // arg: bitcount
-         );
-         
-         auto assign = build2(
-            MODIFY_EXPR,
-            void_type_node,
-            array_access, // dst
-            read_call     // src
-         );
-         append_to_statement_list(loop_body, &assign);
+         loop_body.append(gw::expr::assign(
+            // sStruct.a[i]
+            object_decl.as_value().access_member("a").access_array_element(loop.counter.as_value()),
+            // =
+            // lu_BitstreamRead_u8(&state, 6)
+            gw::expr::call(
+               gw::decl::function::from_untyped(needed_functions.bitstream_read_u8.decl),
+               // args:
+               state_decl.as_value().address_of(),            // &state
+               gw::expr::integer_constant(types.t_uint8_t, 6) // bitcount
+            )
+         ));
       }
-      auto for_loop = gcc_helpers::make_indexed_unbroken_for_loop(
-         func_decl,
-         loop_index.as_untyped(),
-         0,
-         8,
-         1,
-         loop_body
-      );
-      //append_to_statement_list(statements, for_loop);
-      tsi_link_after(&stmt_iter, for_loop, TSI_CONTINUE_LINKING);
+      loop.bake(std::move(loop_body));
+      statements.append(loop.enclosing);
    }
    
    // sStructA.b = lu_BitstreamRead_u8(&state, 5);
    {
-      // sStructA.b
-      auto object_decl   = lookup_name(get_identifier("sStructA"));
-      auto member_access = gcc_helpers::make_member_access_expr(
-         object_decl,
-         get_identifier("b")
-      );
+      // sStructA
+      auto object_decl = gw::decl::variable::from_untyped(lookup_name(get_identifier("sStructA")));
       
-      // lu_BitstreamRead_u8(&state, 5)
-      tree read_call = build_call_expr(
-         needed_functions.bitstream_read_u8.decl,
-         2, // argcount
-         build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl.as_untyped(), 0),
-         build_int_cst(uint8_type_node, 5) // arg: bitcount
+      statements.append(
+         gw::expr::assign(
+            // sStructA[b]
+            object_decl.as_value().access_member("b"),
+            // =
+            // lu_BitstreamRead_u8(&state, 5)
+            gw::expr::call(
+               gw::decl::function::from_untyped(needed_functions.bitstream_read_u8.decl),
+               // args:
+               state_decl.as_value().address_of(),            // &state
+               gw::expr::integer_constant(types.t_uint8_t, 5) // bitcount
+            )
+         )
       );
-      
-      auto assign = build2(
-         MODIFY_EXPR,
-         void_type_node,
-         member_access, // dst
-         read_call      // src
-      );
-      //append_to_statement_list(statements, assign);
-      tsi_link_after(&stmt_iter, assign, TSI_CONTINUE_LINKING);
    }
    
    // lu_BitstreamRead_string(&state, sStructB.a, 5);
    {
-      // sStructB.a
-      auto object_decl   = lookup_name(get_identifier("sStructB"));
-      auto member_access = gcc_helpers::make_member_access_expr(
-         object_decl,
-         get_identifier("a")
-      );
+      // sStructB
+      auto object_decl = gw::decl::variable::from_untyped(lookup_name(get_identifier("sStructB")));
       
-      tree read_call = build_call_expr(
-         needed_functions.bitstream_read_string_wt.decl,
-         3, // argcount
-         build_unary_op(UNKNOWN_LOCATION, ADDR_EXPR, state_decl.as_untyped(), 0),
-         member_access,
-         build_int_cst(uint8_type_node, 5) // arg: max length
+      statements.append(
+         gw::expr::call(
+            gw::decl::function::from_untyped(needed_functions.bitstream_read_string_wt.decl),
+            // args:
+            state_decl.as_value().address_of(),            // &state
+            object_decl.as_value().access_member("a").convert_array_to_pointer(), // sStructB.a
+            gw::expr::integer_constant(types.t_uint8_t, 5) // max length
+         )
       );
-      //append_to_statement_list(statements, read_call);
-      tsi_link_after(&stmt_iter, read_call, TSI_CONTINUE_LINKING);
    }
    
-   /*//
-   tree modify_retval = build2(MODIFY_EXPR,
-      integer_type_node,
-      retn_decl,
-      build_int_cst(integer_type_node, 42)
+   /*// for reference: how to `return 42`
+   statements.append(
+      gw::expr::return_result(
+         gw::expr::assign(
+            retn_decl,
+            gw::expr::integer_constant(integer_type_node, 42)
+         )
+      )
    );
-   tree retn_stmt = build1(RETURN_EXPR, integer_type_node, modify_retval);
-   //append_to_statement_list(statements, retn_stmt);
-   tsi_link_after(&stmt_iter, read_call, TSI_CONTINUE_LINKING);
    //*/
-
-   DECL_INITIAL(func_decl) = root_block;
-   BLOCK_SUPERCONTEXT(root_block) = func_decl;
-   DECL_SAVED_TREE(func_decl) = root_bind_expr;
-
-   // Ensure that locals appear in the debuginfo.
-   BLOCK_VARS(root_block) = BIND_EXPR_VARS(root_bind_expr);
+   
+   func_dst.set_root_block(root_block);
 }
