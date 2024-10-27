@@ -1,0 +1,59 @@
+
+namespace gcc_wrappers {
+   // mixin, to be applied to VAR_DECL, PARM_DECL, similar decls, and all EXPRs.
+   // holds methods applicable to all values.
+   class _value_all {
+      public:
+         // returns a POINTER_TYPE
+         expr::base address_of();
+   };
+   
+   // mixin, to be applied to VAR_DECL, PARM_DECL, similar decls, and most EXPRs.
+   // holds methods applicable to any values that must be integers.
+   class _value_integer {
+      public:
+         // build a PLUS_EXPR.
+         expr::arithmetic2 add(_value_integer&);
+         
+         // build a MINUS_EXPR with `this` as LHS
+         expr::arithmetic2 sub(_value_integer&);
+         
+         // build a MULT_EXPR
+         expr::arithmetic2 sub(_value_integer&);
+         
+         expr::arith_cmp2 is_less_than(_value_integer&);
+         // and etc. for LT_EXPR through NE_EXPR
+         
+         // build a FLOAT_EXPR
+         _value_real to_real();
+   };
+   
+   // mixin, to be applied to VAR_DECL, PARM_DECL, similar decls, and most EXPRs.
+   // holds methods applicable to any values that must be reals.
+   class _value_real {
+      public:
+         // build a PLUS_EXPR.
+         expr::arithmetic2 add(_value_real&);
+         
+         // build a MINUS_EXPR with `this` as LHS
+         expr::arithmetic2 sub(_value_real&);
+         
+         // build a MULT_EXPR
+         expr::arithmetic2 sub(_value_real&);
+         
+         // build a FIX_TRUNC_EXPR
+         _value_integer to_integer();
+   };
+   
+   // mixin, to be applied to VAR_DECL, PARM_DECL, similar decls, and most EXPRs.
+   // holds methods applicable to any values whose types can't be known statically.
+   class _value_any {
+      public:
+         // must be invoked on an array
+         expr::array_access access_array_element(_maybe_value&);
+         
+         // must be invoked on a class, struct, or union
+         expr::member_access access_member(const char*);
+   };
+   
+}

@@ -28,7 +28,7 @@ namespace gw {
 gw::statement_list statements;
 
 // Declare a variable `__lu_bitstream_state` of type `state_type`
-auto state_decl = gw::variable::create("__lu_bitstream_state", state_type);
+auto state_decl = gw::decl::variable("__lu_bitstream_state", state_type);
 state_decl.mark_artificial();
 state_decl.mark_used();
 
@@ -53,6 +53,13 @@ statements.append(
 ```
 
 This requires designing a common interface: anything that an `ARRAY_REF` node can point to should offer the `access_array_element` accessor, for example.
+
+A lot of the checks can only be done at run-time due to how `*_EXPR`s work, so I think in practice, what I'll have to do is...
+
+* Common `_wrapped_tree_node` class from which everything inherits, to offer the `as_untyped()` and `empty()` accessors and store the `protected` tree pointer.
+* `_maybe_value` base class for all operations that are valid on a value.
+  * Operations assert that they're being run on a node whose `TREE_CODE(TREE_TYPE(node))` is correct.
+* All `*_DECL`s and `*_EXPR`s that represent values would inherit from `_maybe_value`.
 
 #### Research
 
