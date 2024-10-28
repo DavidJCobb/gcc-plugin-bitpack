@@ -28,10 +28,12 @@ SOURCES=\
         src/gcc_wrappers/expr/return_result.cpp \
         src/gcc_wrappers/expr/ternary.cpp \
         src/gcc_wrappers/flow/simple_for_loop.cpp \
+        src/gcc_wrappers/builtin_types.cpp \
         src/gcc_wrappers/list_node.cpp \
         src/gcc_wrappers/statement_list.cpp \
         src/gcc_wrappers/type.cpp \
         src/gcc_wrappers/value.cpp \
+        src/lu/strings/printf_string.cpp \
         src/lu/strings/trim.cpp \
         src/bitpacking/global_bitpack_options.cpp \
         src/handle_kv_string.cpp \

@@ -1,5 +1,6 @@
 #include "bitpacking/sector_functions_generator.h"
 #include "gcc_wrappers/flow/simple_for_loop.h"
+#include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/statement_list.h"
 namespace {
    namespace gw {
@@ -15,86 +16,6 @@ namespace codegen {
    {}
    
    //
-   
-   gw::expr::base sector_functions_generator::in_progress_func_pair::_read_expr_non_struct(
-      owner_type& owner,
-      gcc_wrappers::value dst,
-      const structure_member& dst_info
-   ) {
-      const bool is_buffer = dst_info.serialization_type == member_serialization_type::buffer;
-      const bool is_string = dst_info.serialization_type == member_serialization_type::string;
-      
-      auto bitstream_read = gw::decl::function::from_untyped(NULL_TREE);
-      if (is_buffer || is_string) {
-         if (is_buffer) {
-            bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_buffer.decl);
-         } else if (is_string) {
-            if (dst_info.options.computed.string.null_terminated) {
-               bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_string_wt.decl);
-            } else {
-               bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_string.decl);
-            }
-         }
-         assert(!bitstream_read.empty());
-         
-         return gw::expr::call(
-            bitstream_read,
-            // args:
-            this->read.nth_parameter(0).as_value(), // state_ptr
-            dst.convert_array_to_pointer(),
-            gw::expr::integer_constant(
-               gw::type::from_untyped(uint16_type_node),
-               dst_info.options.computed.string.length
-            )
-         );
-      }
-      
-      if (dst_info.serialization_type == member_serialization_type::boolean) {
-         if (dst_info.options.computed.integral.bitcount == 1) {
-            bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_bool.decl);
-            assert(!bitstream_read.empty());
-            
-            return gw::expr::assign(
-               dst,
-               // =
-               gw::expr::call(
-                  bitstream_read,
-                  // args:
-                  this->read.nth_parameter(0).as_value() // state_ptr
-               )
-            );
-         }
-      }
-      
-      assert(dst_info.serialization_type != member_serialization_type::substructure);
-      
-      auto dst_type = dst.value_type();
-      if (dst_type.canonical() == gw::type::from_untyped(uint8_type_node)) {
-         bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_u8.decl);
-      } else if (dst_type.canonical() == gw::type::from_untyped(uint16_type_node)) {
-         bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_u16.decl);
-      } else if (dst_type.canonical() == gw::type::from_untyped(uint32_type_node)) {
-         bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_u32.decl);
-      } else if (dst_type.canonical() == gw::type::from_untyped(int8_type_node)) {
-         bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_s8.decl);
-      } else if (dst_type.canonical() == gw::type::from_untyped(int16_type_node)) {
-         bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_s16.decl);
-      } else if (dst_type.canonical() == gw::type::from_untyped(int32_type_node)) {
-         bitstream_read = gw::decl::function::from_untyped(owner.funcs.bitstream_read_s32.decl);
-      }
-      assert(!bitstream_read.empty());
-      
-      return gw::expr::assign(
-         dst,
-         // =
-         gw::expr::call(
-            bitstream_read,
-            // args:
-            this->read.nth_parameter(0).as_value(),               // state_ptr
-            gw::expr::integer_constant(types.t_uint8_t, bitcount) // bitcount
-         )
-      );
-   }
 
    void sector_functions_generator::in_progress_func_pair::serialize_array_slice(
       sector_functions_generator& gen,
@@ -103,8 +24,9 @@ namespace codegen {
       size_t at,
       size_t count
    ) {
+      const auto& ty = gw::builtin_types::get_fast();
       {  // read
-         gw::flow::simple_for_loop loop(gw::type::from_untyped(integer_type_node));
+         gw::flow::simple_for_loop loop(ty.basic_int);
          loop.counter_bounds = {
             .start     = at,
             .last      = at + count - 1,
@@ -112,8 +34,34 @@ namespace codegen {
          };
          gw::statement_list loop_body;
          
+         stream_function_set::expression_options expr_opt;
+         switch (info.serialization_type) {
+            case member_serialization_type::buffer:
+               expr_opt.buffer = {
+                  .bytecount = info.options.computed.buffer.bytecount,
+               };
+               break;
+            case member_serialization_type::integral:
+               expr_opt.integral = {
+                  .bitcount = info.options.computed.integral.bitcount,
+                  .min      = info.options.computed.integral.min,
+               };
+               break;
+            case member_serialization_type::string:
+               expr_opt.string = {
+                  .max_length       = info.options.computed.string.length,
+                  .needs_terminator = info.options.computed.string.null_terminator,
+               };
+               break;
+         }
+         
          static_assert(false, "TODO: different handling needed if array");
          static_assert(false, "TODO: different handling needed if struct");
+         loop_body.append(gen.funcs.make_read_expression_for(
+            this->read.nth_parameter(0).as_value(),
+            object.for_read,
+            expr_opt
+         ));
          loop_body.append(_read_expr_non_struct(
             gen,
             target.for_read.access_array_element(loop.counter.as_value()),
@@ -124,7 +72,7 @@ namespace codegen {
          this->functions.read_root.statements().append(loop.enclosing);
       }
       {  // write
-         gw::flow::simple_for_loop loop(gw::type::from_untyped(integer_type_node));
+         gw::flow::simple_for_loop loop(ty.basic_int);
          loop.counter_bounds = {
             .start     = at,
             .last      = at + count - 1,
@@ -177,18 +125,13 @@ namespace codegen {
       };
    }
    sector_functions_generator::target sector_functions_generator::target::access_nth(size_t n) {
+      const auto& ty = gw::builtin_types::get_fast();
       return target{
          .for_read = this->for_read.access_array_element(
-            gw::expr::integer_constant(
-               gw::type::from_untyped(integer_type_node),
-               n
-            )
+            gw::expr::integer_constant(ty.basic_int, n)
          ),
          .for_save = this->for_save.access_array_element(
-            gw::expr::integer_constant(
-               gw::type::from_untyped(integer_type_node),
-               n
-            )
+            gw::expr::integer_constant(ty.basic_int, n)
          ),
       };
    }
@@ -211,6 +154,270 @@ namespace codegen {
             delete pair.second;
          list.clear();
       }
+   }
+   
+   sector_functions_generator::expr_pair sector_functions_generator::_serialize_whole_struct(
+      const      structure& info,
+      value_pair state_ptr,
+      value_pair object
+   ) {
+      assert(info.type.is_record());
+      
+      auto& pair = gen;get_or_create_whole_struct_functions(info);
+      return expr_pair{
+         .read = gw::expr::call(
+            pair.read,
+            // args:
+            state_ptr.for_read,
+            object.for_read.address_of()
+         ),
+         .save = gw::expr::call(
+            pair.save,
+            // args:
+            state_ptr.for_save,
+            object.for_save.address_of()
+         )
+      };
+   }
+   
+   sector_functions_generator::expr_pair sector_functions_generator::_serialize_primitive(
+      const      structure_member&,
+      value_pair state_ptr,
+      value_pair object
+   ) {
+      expr_pair out;
+      
+      stream_function_set::expression_options expr_opt;
+      switch (info.serialization_type) {
+         case member_serialization_type::buffer:
+            expr_opt.buffer = {
+               .bytecount = info.options.computed.buffer.bytecount,
+            };
+            break;
+         case member_serialization_type::integral:
+            expr_opt.integral = {
+               .bitcount = info.options.computed.integral.bitcount,
+               .min      = info.options.computed.integral.min,
+            };
+            break;
+         case member_serialization_type::string:
+            expr_opt.string = {
+               .max_length       = info.options.computed.string.length,
+               .needs_terminator = info.options.computed.string.null_terminator,
+            };
+            break;
+         default:
+            assert(false && "unreachable");
+      }
+      
+      out.read = this->funcs.make_read_expression_for(
+         state_ptr.for_read,
+         object.for_read,
+         expr_opt
+      );
+      out.save = this->funcs.make_read_expression_for(
+         state_ptr.for_save,
+         object.for_save,
+         expr_opt
+      );
+      return out;
+   }
+   
+   sector_functions_generator::expr_pair sector_functions_generator::_serialize_array(
+      const      structure_member&,
+      value_pair state_ptr,
+      value_pair object
+      size_t     start,
+      size_t     count
+   ) {
+      const auto& ty = gw::builtin_types::get_fast();
+      
+      gw::flow::simple_for_loop read_loop(ty.basic_int);
+      read_loop.counter_bounds = {
+         .start     = start,
+         .last      = start + count - 1,
+         .increment = 1,
+      };
+      
+      gw::flow::simple_for_loop save_loop(ty.basic_int);
+      save_loop.counter_bounds = read_loop.counter_bounds;
+      
+      gw::statement_list read_loop_body;
+      gw::statement_list save_loop_body;
+      
+      std::pair<
+         gcc_wrappers::expr::base, // read
+         gcc_wrappers::expr::base  // save
+      > to_append;
+      {
+         auto element = target.access_nth(
+            read_loop.counter.as_value(),
+            save_loop.counter.as_value()
+         );
+         if (info.type.is_array()) {
+            auto extent = info.type.array_extent();
+            assert(extent.has_value() && "we don't support VLAs!");
+            
+            static_assert(false, "TODO: We need to pass the `info` of the nested array instead.");
+            to_append = _serialize_array(gen, info, element, 0, *extent);
+         } else if (info.type.is_record()) {
+            auto* s = gen.discover_struct(info.type);
+            assert(s != nullptr);
+            to_append = _serialize_whole_struct(gen, *s, element);
+         } else {
+            to_append = _serialize_primitive(gen, info, element);
+         }
+      }
+      read_loop_body.append(to_append.first);
+      save_loop_body.append(to_append.second);
+      
+      read_loop.bake(std::move(read_loop_body));
+      save_loop.bake(std::move(save_loop_body));
+      
+      return expr_pair{
+         .read = read_loop.enclosing,
+         .save = save_loop.enclosing
+      };
+   }
+   
+   sector_functions_generator::expr_pair sector_functions_generator::_serialize_object(
+      value_pair state_ptr,
+      value_pair object
+   ) {
+      const auto& ty = gw::builtin_types::get_fast();
+      
+      gw::flow::simple_for_loop read_loop(ty.basic_int);
+      read_loop.counter_bounds = {
+         .start     = start,
+         .last      = start + count - 1,
+         .increment = 1,
+      };
+      
+      gw::flow::simple_for_loop save_loop(ty.basic_int);
+      save_loop.counter_bounds = read_loop.counter_bounds;
+      
+      gw::statement_list read_loop_body;
+      gw::statement_list save_loop_body;
+      
+      std::pair<
+         gcc_wrappers::expr::base, // read
+         gcc_wrappers::expr::base  // save
+      > to_append;
+      {
+         auto element = target.access_nth(
+            read_loop.counter.as_value(),
+            save_loop.counter.as_value()
+         );
+         if (info.type.is_array()) {
+            auto extent = info.type.array_extent();
+            assert(extent.has_value() && "we don't support VLAs!");
+            
+            static_assert(false, "TODO: We need to pass the `info` of the nested array instead.");
+            to_append = _serialize_array(gen, info, element, 0, *extent);
+         } else if (info.type.is_record()) {
+            auto* s = gen.discover_struct(info.type);
+            assert(s != nullptr);
+            to_append = _serialize_whole_struct(gen, *s, element);
+         } else {
+            to_append = _serialize_primitive(gen, info, element);
+         }
+      }
+      read_loop_body.append(to_append.first);
+      save_loop_body.append(to_append.second);
+      
+      read_loop.bake(std::move(read_loop_body));
+      save_loop.bake(std::move(save_loop_body));
+      
+      return expr_pair{
+         .read = read_loop.enclosing,
+         .save = save_loop.enclosing
+      };
+   }
+   
+   
+   sector_functions_generator::func_pair sector_functions_generator::get_or_create_whole_struct_functions(const structure& info) {
+      auto& pair = this->whole_struct_functions[info.type.as_untyped()];
+      if (!pair.first.empty()) {
+         assert(!pair.second.empty() && "Should've generated both functions together!");
+         return pair;
+      }
+      assert(pair.second.empty() && "Should've generated both functions together!");
+      
+      const auto& ty = gw::builtin_types::get_fast();
+      
+      {  // Make the function types and decls first.
+         {  // Read
+            auto name = std::string("__lu_bitpack_read_") + object_type.name();
+            auto type = gw::type::make_function_type(
+               types.t_void,
+               // args:
+               gen.types.stream_state.add_pointer(), // state
+               object_type.add_pointer()             // dst
+            );
+            pair.read = gw::decl::function(name, type);
+         }
+         {  // Save
+            auto name = std::string("__lu_bitpack_write_") + object_type.name();
+            auto type = gw::type::make_function_type(
+               types.t_void,
+               // args:
+               gen.types.stream_state.add_pointer(),  // state
+               object_type.add_const().add_pointer()  // src
+            );
+            pair.read = gw::decl::function(name, type);
+         }
+      }
+      auto dst_read = pair.read.as_modifiable();
+      auto dst_save = pair.save.as_modifiable();
+      dst_read.set_result_decl(gw::decl::result(type.basic_void));
+      dst_save.set_result_decl(gw::decl::result(type.basic_void));
+      
+      gw::expr::local_block root_read;
+      gw::expr::local_block root_save;
+      
+      value_pair state_ptr = {
+         .for_read = dst_read.nth_parameter(0).as_value().deference(),
+         .for_save = dst_save.nth_parameter(0).as_value().deference(),
+      };
+      value_pair object = {
+         .for_read = dst_read.nth_parameter(1).as_value().deference(),
+         .for_save = dst_save.nth_parameter(1).as_value().deference(),
+      };
+      
+      for(auto& m : info.members) {
+         auto m_target = object.access_member(m.decl.name());
+         auto m_type   = m.type;
+         
+         std::pair<
+            gcc_wrappers::expr::base, // read
+            gcc_wrappers::expr::base  // save
+         > exprs;
+         
+         if (m_type.is_array()) {
+            auto extent = info.type.array_extent();
+            assert(extent.has_value() && "we don't support VLAs!");
+            
+            static_assert(false, "TODO: We need to pass the `info` of the nested array instead.");
+            to_append = _serialize_array(m, state_ptr, m_target, 0, *extent);
+         } else if (m_type.is_record()) {
+            auto* s = gen.discover_struct(info.type);
+            assert(s != nullptr);
+            exprs = _serialize_whole_struct(*s, state_ptr, m_target);
+         } else {
+            assert(!m_type.is_union() && "unions not yet implemented");
+            to_append = _serialize_primitive(m, state_ptr, m_target);
+         }
+         
+         assert(!exprs.first.empty());
+         assert(!exprs.second.empty());
+         root_read.statements().append(exprs.first);
+         root_save.statements().append(exprs.second);
+      }
+      
+      dst_read.set_root_block(root_read);
+      dst_save.set_root_block(root_save);
+      
+      return pair;
    }
    
    sector_functions_generator::target_info sector_functions_generator::_info_for_target(target& tgt) {

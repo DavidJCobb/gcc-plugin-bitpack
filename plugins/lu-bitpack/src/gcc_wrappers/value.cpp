@@ -67,6 +67,19 @@ namespace gcc_wrappers {
       return out;
    }
    
+   value value::dereference() {
+      auto vt = this->value_type();
+      assert(vt.is_pointer()); // TODO: allow reference types too
+      
+      value out;
+      out.set_from_untyped(build1(
+         INDIRECT_REF,
+         this->value_type().remove_pointer().as_untyped(),
+         this->_node
+      ));
+      return out;
+   }
+   
    bool value::is_lvalue() const {
       return lvalue_p(this->_node); // c-family/c-common.h, c/c-typeck.cc
    }

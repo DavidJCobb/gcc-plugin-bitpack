@@ -31,7 +31,8 @@ namespace codegen {
                size_t bytecount = 0;
             } buffer;
             struct {
-               size_t bitcount = 0;
+               size_t   bitcount = 0;
+               intmax_t min = 0;
             } integral;
             struct {
                size_t length;

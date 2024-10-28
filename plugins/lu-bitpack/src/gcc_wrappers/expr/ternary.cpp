@@ -21,10 +21,10 @@ namespace gcc_wrappers::expr {
    
    void ternary::set_true_branch(expr::base e) {
       assert(!empty());
-      TREE_OPERATOR(this->_node, 1) = e.as_untyped();
+      TREE_OPERAND(this->_node, 1) = e.as_untyped();
    }
    void ternary::set_false_branch(expr::base e) {
       assert(!empty());
-      TREE_OPERATOR(this->_node, 2) = e.as_untyped();
+      TREE_OPERAND(this->_node, 2) = e.as_untyped();
    }
 }

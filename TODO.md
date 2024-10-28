@@ -64,7 +64,6 @@ Probably the easiest thing to start with would be the case of serializing a whol
 
 After that, we'll need to figure out the "array slice" case. This needs to behave very similarly: it gets called when we know to a certainty that that slice of the array will fit into the current sector. Honestly, if we do the "whole value" case per the bulleted note above, then we could have the "array slice" case just generate and append the outermost for-loop as appropriate.
 
-* In general we should be caching the `gw::type` wrappers around built-in types like `uint8_type_node`, since `gw::type::from_untyped` verifies the `TREE_CODE` and we shouldn't be redundantly doing that a million times per function we generate. In fact, it'd probably be best to have a singleton that just holds `gw::type`s for built-ins.
 * There's no way to communicate global bitpacking options (e.g. sector size, sector count, sector layouts) to the `sector_functions_generator`.
 * We need code to generate whole-struct bitstream-read and bitstream-write functions. They should be generated on first use.
 * When dealing with an array of arrays, `sector_functions_generator::in_progress_func_pair::serialize_array_slice` needs to be able to run recursively.

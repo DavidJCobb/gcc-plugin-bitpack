@@ -23,6 +23,7 @@ static plugin_info _my_plugin_info = {
 
 #include "handle_struct_type.h"
 
+#include "gcc_wrappers/builtin_types.h"
 #include "bitpacking/global_bitpack_options.h"
 
 static global_bitpack_options s_bitpack_options;
@@ -287,6 +288,10 @@ int plugin_init (
    );
    
    std::cerr << "Loaded plug-in: " << plugin_info->base_name << ".\n";
+   
+   // force-create the singleton now, so other code can safely use `get_fast` 
+   // to access it.
+   gcc_wrappers::builtin_types::get();
    
    /*register_callback(
       plugin_info->base_name,

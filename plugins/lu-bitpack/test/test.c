@@ -141,3 +141,14 @@ extern void test_if_else(int sector_id) {
    }
 }
 #pragma lu_bitpack debug_dump_function test_if_else
+   
+struct TestPtrAccess {
+   int a;
+};
+extern int test_ptr_access_func(struct TestPtrAccess* mut, const struct TestPtrAccess* immut) {
+   mut->a = 5;
+   
+   int c = immut->a;
+   return c + 3;
+}
+#pragma lu_bitpack debug_dump_function test_ptr_access_func

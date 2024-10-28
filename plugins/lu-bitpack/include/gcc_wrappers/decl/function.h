@@ -31,6 +31,7 @@ namespace gcc_wrappers {
          public:
             // Creates an empty wrapper.
             function() {}
+            function(std::nullptr_t) {}
          
             // Creates a new FUNCTION_DECL. To wrap an existing one, 
             // use the static `from_untyped` member function.

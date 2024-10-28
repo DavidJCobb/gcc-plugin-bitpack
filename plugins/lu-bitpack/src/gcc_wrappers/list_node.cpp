@@ -2,6 +2,42 @@
 #include <stdexcept>
 
 namespace gcc_wrappers {
+   
+   //
+   // list_node::iterator
+   //
+   
+   list_node::iterator::iterator(tree n) : _node(n) {}
+   
+   std::pair<tree, tree> list_node::iterator::operator*() {
+      return std::pair(TREE_PURPOSE(this->_node), TREE_VALUE(this->_node));
+   }
+
+   list_node::iterator& list_node::iterator::operator++() {
+      assert(this->_node != NULL_TREE);
+      this->_node = TREE_CHAIN(this->_node);
+      return *this;
+   }
+   list_node::iterator list_node::iterator::operator++(int) const {
+      auto it = *this;
+      ++it;
+      return it;
+   }
+   
+   //
+   // list_node
+   //
+   
+   list_node::iterator list_node::begin() {
+      return iterator(this->_node);
+   }
+   list_node::iterator list_node::end() {
+      return iterator(NULL_TREE);
+   }
+   list_node::iterator list_node::at(size_t n) {
+      return iterator(this->untyped_nth_kv_pair(n));
+   }
+   
    size_t list_node::size() const {
       size_t i = 0;
       for(auto item = this->_node; item != NULL_TREE; item = TREE_CHAIN(item))

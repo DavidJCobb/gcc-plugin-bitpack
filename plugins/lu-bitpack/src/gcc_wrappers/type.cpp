@@ -6,6 +6,104 @@
 namespace gcc_wrappers {
    WRAPPED_TREE_NODE_BOILERPLATE(type)
    
+   std::string type::pretty_print() const {
+      if (empty())
+         return "<empty>";
+      
+      std::string out;
+      
+      //
+      // Try printing function types and function pointer types.
+      //
+      {
+         bool is_const_pointer    = false;
+         bool is_function_pointer = false;
+         type ft;
+         if (is_function()) {
+            ft = *this;
+         } else if (is_pointer()) {
+            auto pt = remove_pointer();
+            if (pt.is_function()) {
+               ft = pt;
+               is_function_pointer = true;
+               is_const_pointer    = ft.is_const();
+            }
+         }
+         if (!ft.empty()) {
+            out = ft.function_return_type().pretty_print();
+            if (is_function_pointer) {
+               out += "(*";
+               if (is_const_pointer) {
+                  out += " const";
+               }
+               out += ')';
+            } else {
+               out += "(&)"; // not sure if this is correct
+            }
+            out += '(';
+            if (!ft.is_unprototyped_function()) {
+               bool first   = true;
+               bool varargs = true;
+               auto args    = ft.function_arguments();
+               args.for_each_value([&first, &out, &varargs](tree raw) {
+                  if (raw == void_type_node) {
+                     varargs = false;
+                     return;
+                  }
+                  type t = type::from_untyped(raw);
+                  if (first) {
+                     first = false;
+                  } else {
+                     out += ", ";
+                  }
+                  out += t.pretty_print();
+               });
+            }
+            out += ')';
+            return out;
+         }
+      }
+      
+      //
+      // Try printing array types.
+      //
+      if (is_array()) {
+         out = array_value_type().pretty_print();
+         out += '[';
+         if (auto extent = array_extent(); extent.has_value())
+            out += *extent; // TODO: stringify number
+         out += ']';
+         return out;
+      }
+      
+      //
+      // Try printing pointer types.
+      //
+      if (is_pointer()) {
+         out += remove_pointer().pretty_print();
+         out += '*';
+         if (is_const())
+            out += " const";
+         return out;
+      }
+      
+      //
+      // Base case.
+      //
+      
+      if (is_const())
+         out = "const ";
+      
+      auto id = TYPE_NAME(this->_node);
+      if (TREE_CODE(id) != IDENTIFIER_NODE) {
+         out += "<unnamed>";
+      } else {
+         out += IDENTIFIER_POINTER(id);
+      }
+      
+      return out;
+   }
+   
    list_node type::attributes() const {
       return list_node(TYPE_ATTRIBUTES(this->_node));
    }
@@ -118,6 +216,17 @@ namespace gcc_wrappers {
    }
    bool type::is_pointer() const {
       return TREE_CODE(this->_node) == POINTER_TYPE;
+   }
+   
+   type type::make_signed() const {
+      type out;
+      out.set_from_untyped(signed_type_for(this->_node)); // tree.h
+      return out;
+   }
+   type type::make_unsigned() const {
+      type out;
+      out.set_from_untyped(unsigned_type_for(this->_node)); // tree.h
+      return out;
    }
    
    type type::add_array_extent(size_t n) const {

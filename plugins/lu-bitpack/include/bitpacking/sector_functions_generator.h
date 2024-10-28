@@ -9,11 +9,16 @@
 #include "gcc_wrappers/type.h"
 #include "gcc_wrappers/value.h"
 
-#include "bp_func_decl_set.h"
+#include "bitpacking/stream_function_set.h"
 
 namespace codegen {
    class sector_functions_generator {
       public:
+         struct expr_pair {
+            gcc_wrappers::expr::base read;
+            gcc_wrappers::expr::base save;
+         };
+      
          struct func_pair {
             func_pair();
             
@@ -21,15 +26,53 @@ namespace codegen {
             gcc_wrappers::decl::function save; // void _(state*);
          };
          
+         struct value_pair {
+            gcc_wrappers::value for_read;
+            gcc_wrappers::value for_save;
+            
+            target access_member(std::string_view);
+            target access_nth(size_t); // if the target is an array
+            target access_nth(gw::value read_i, gw::value save_i);
+         };
+         
       public:
          ~sector_functions_generator();
          
-         bp_func_decl_set funcs;
+         stream_function_set funcs;
       
-         std::unordered_map<tree, func_pair*> whole_struct_functions;
+         std::unordered_map<tree, func_pair>  whole_struct_functions;
          std::unordered_map<tree, structure*> types_to_structures;
          
          std::vector<func_pair> sector_functions;
+         
+      protected:
+         expr_pair _serialize_whole_struct(
+            const      structure&,
+            value_pair state_ptr,
+            value_pair object
+         );
+         
+         expr_pair _serialize_primitive(
+            const      structure_member&,
+            value_pair state_ptr,
+            value_pair object
+         );
+         
+         expr_pair _serialize_array(
+            const      structure_member&,
+            value_pair state_ptr,
+            value_pair object
+            size_t     start,
+            size_t     count
+         );
+         
+         expr_pair _serialize_object(
+            value_pair state_ptr,
+            value_pair object
+         );
+         
+      public:
+         func_pair get_or_create_whole_struct_functions(const structure&);
          
       protected:
          struct target;
@@ -42,32 +85,8 @@ namespace codegen {
                gcc_wrappers::expr::local_block read_root;
                gcc_wrappers::expr::local_block save_root;
                
-            protected:
-               gcc_wrappers::expr::base _read_expr_non_struct(
-                  owner_type&,
-                  gcc_wrappers::value,
-                  const structure_member&
-               );
-            
             public:
-               void serialize_array_slice(
-                  owner_type&,
-                  const structure_member&,
-                  target&,
-                  size_t at,
-                  size_t count
-               );
-               void serialize_entire(
-                  owner_type&,
-                  const structure&,
-                  target&
-               );
-               void serialize_entire(
-                  owner_type&,
-                  const structure_member&,
-                  target&
-               );
-               
+               void append(expr_pair);
                void commit();
          };
       
@@ -86,6 +105,7 @@ namespace codegen {
             
             target access_member(std::string_view);
             target access_nth(size_t); // if the target is an array
+            target access_nth(gw::value read_i, gw::value save_i);
          };
          struct target_info {
             const structure*        struct_info = nullptr; // filled if `member_info` is a struct

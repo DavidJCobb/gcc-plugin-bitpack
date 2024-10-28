@@ -1,4 +1,5 @@
 #pragma once
+#include <utility> // std:pair
 #include "gcc_wrappers/_wrapped_tree_node.h"
 
 namespace gcc_wrappers {
@@ -7,12 +8,33 @@ namespace gcc_wrappers {
          tree _node = NULL_TREE;
          
       public:
+         class iterator {
+            friend list_node;
+            protected:
+               iterator(tree);
+               
+               tree _node = NULL_TREE;
+               
+            public:
+               std::pair<tree, tree> operator*(); // k, v
+            
+               iterator& operator++();
+               iterator  operator++(int) const;
+               
+               bool operator==(const iterator&) const = default;
+         };
+         
+      public:
          list_node() {}
          list_node(tree t) : _node(t) {}
       
          inline bool empty() const {
             return this->_node == NULL_TREE;
          }
+         
+         iterator begin();
+         iterator end();
+         iterator at(size_t n);
          
          constexpr const tree& as_untyped() const {
             return this->_node;

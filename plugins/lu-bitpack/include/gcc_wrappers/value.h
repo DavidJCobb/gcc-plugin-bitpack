@@ -62,6 +62,10 @@ namespace gcc_wrappers {
          // Returns a value of a POINTER_TYPE.
          value address_of();
          
+         // `a->b` is `a.deference().access_member("b")`
+         // This value must be a POINTER_TYPE or REFERENCE_TYPE.
+         value dereference();
+         
          bool is_lvalue() const;
          
          //#pragma region Constant integer checks

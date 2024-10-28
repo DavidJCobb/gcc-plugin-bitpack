@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <string_view>
 #include <optional>
 #include <vector>
@@ -54,6 +55,8 @@ namespace gcc_wrappers {
             return t;
          };
          
+         std::string pretty_print() const;
+         
          list_node attributes() const;
          
          type canonical() const;
@@ -88,6 +91,9 @@ namespace gcc_wrappers {
          type add_pointer() const;
          type remove_pointer() const;
          bool is_pointer() const;
+         
+         type make_signed() const;
+         type make_unsigned() const;
          
          type add_array_extent(size_t) const;
          
@@ -127,6 +133,7 @@ namespace gcc_wrappers {
             
             // assert(is_function());
             // Returns a list_node of raw arguments; the values are the argument types.
+            // If this is not a varargs function, then the last element is the void type.
             list_node function_arguments() const;
             
             // assert(is_function());

@@ -24,13 +24,17 @@ namespace codegen {
          case member_serialization_type::integer:
             if (src.integral.bitcount.has_value()) {
                dst.integral.bitcount = *src.integral.bitcount;
+               if (src.integral.min.has_value()) {
+                  dst.integral.min = *src.integral.min;
+               }
                break;
             }
             if (!src.integral.min.has_value() && !src.integral.max.has_value()) {
                if (this->serialization_type == member_serialization_type::boolean) {
                   return 1;
                }
-               return this->decl.size_in_bits();
+               dst.integral.bitcount = this->decl.size_in_bits();
+               break;
             }
             {
                auto integral_info = this->type.get_integral_info();
@@ -48,7 +52,8 @@ namespace codegen {
                   max = integral_info.max;
                }
                
-               return std::bit_width((std::uintmax_t)(max - min));
+               dst.integral.min = min;
+               dst.integral.bitcount = std::bit_width((std::uintmax_t)(max - min));
             }
             break;
          case member_serialization_type::pointer:
