@@ -284,54 +284,7 @@ namespace codegen {
       value_pair state_ptr,
       value_pair object
    ) {
-      const auto& ty = gw::builtin_types::get_fast();
-      
-      gw::flow::simple_for_loop read_loop(ty.basic_int);
-      read_loop.counter_bounds = {
-         .start     = start,
-         .last      = start + count - 1,
-         .increment = 1,
-      };
-      
-      gw::flow::simple_for_loop save_loop(ty.basic_int);
-      save_loop.counter_bounds = read_loop.counter_bounds;
-      
-      gw::statement_list read_loop_body;
-      gw::statement_list save_loop_body;
-      
-      std::pair<
-         gcc_wrappers::expr::base, // read
-         gcc_wrappers::expr::base  // save
-      > to_append;
-      {
-         auto element = target.access_nth(
-            read_loop.counter.as_value(),
-            save_loop.counter.as_value()
-         );
-         if (info.type.is_array()) {
-            auto extent = info.type.array_extent();
-            assert(extent.has_value() && "we don't support VLAs!");
-            
-            static_assert(false, "TODO: We need to pass the `info` of the nested array instead.");
-            to_append = _serialize_array(gen, info, element, 0, *extent);
-         } else if (info.type.is_record()) {
-            auto* s = gen.discover_struct(info.type);
-            assert(s != nullptr);
-            to_append = _serialize_whole_struct(gen, *s, element);
-         } else {
-            to_append = _serialize_primitive(gen, info, element);
-         }
-      }
-      read_loop_body.append(to_append.first);
-      save_loop_body.append(to_append.second);
-      
-      read_loop.bake(std::move(read_loop_body));
-      save_loop.bake(std::move(save_loop_body));
-      
-      return expr_pair{
-         .read = read_loop.enclosing,
-         .save = save_loop.enclosing
-      };
+      static_assert(false, "TODO");
    }
    
    
@@ -485,6 +438,9 @@ namespace codegen {
             auto&  info = *info_set.struct_info;
             size_t size = info.compute_packed_bitcount();
             if (size <= bits_remaining) {
+               
+static_assert(false, "TDOO: should be call to _serialize_object");
+               
                sector.functions.serialize_entire(*this, info, object);
                bits_remaining -= size;
                return;
@@ -501,6 +457,9 @@ namespace codegen {
             auto&  info = *info_set.member_info;
             size_t size = info.compute_total_packed_bitcount();
             if (size <= bits_remaining) {
+               
+static_assert(false, "TDOO: should be call to _serialize_object");
+
                sector.functions.serialize_entire(*this, info, object);
                bits_remaining -= size;
                return;

@@ -3,6 +3,100 @@
 
 ## `lu-bitpack`
 
+### BLUF
+
+* Rename the `lu-bitpack` folder to `lu-bitpack-failed`.
+* Copy everything salvageable out of `lu-bitpack-failed` into a new `lu-bitpack` folder:
+  * The GCC wrapper functions.
+  * The GCC helper functions.
+    * Any helper functions whose functionality is available through the wrapper classes should be removed.
+  * My personal library (`lu/*`).
+  * The main plug-in file.
+* Strip most of the functionality out of the main plug-in file entirely.
+* Rebuild the functionality for handling attributes and pragmas.
+  * Pragmas should take effect (setting global bitpacking options; generating bitpacking functions; etc.) as they're encountered.
+    * User-specified global bitpacking options should be specified somewhere; and then we also need a struct that can store the "compile-time" values. That is: if the user is specifying things like the identifiers of bitstream functions and the sector layout, then the former struct would store the identifiers as strings, and the latter would store `gw::decl::function`s for them.
+      * In the failed draft, `global_bitpack_options` had the former role.
+      * In the failed draft, `stream_function_set` has taken on the latter role. Despite its name, it also ended up holding the various `gw::type`s that the user can (and sometimes must) specify, too.
+  * Attributes are used to specify bitpacking options on individual members of a struct, but shouldn't (necessarily) have an immediate effect. Rather, when we actually generate the bitpacking functions, we'll want to pay attention to attribute data as it's encountered. Accordingly,...
+    * We want a function which, given a `gw::decl::field`, will extract and validate the bitpacking options specified for that field. If errors or warnings need to be issued, we'd do that here. Not sure if we can access the source location for the attributes, but we can probably access it for the `FIELD_DECL`s they annotate.
+    * We want a function which, given a `gw::decl::field` and the set of extracted bitpacking options, will generate "computed" options. For example, if an integral field specifies a min and max, we only need to know the bitcount and the minimum in order to pack it; if an integral field specifies no options at all, but is a C bitfield, then the bitfield width becomes the bitcount; et cetera, et cetera.
+    * We want a "description" class which represents a to-be-serialized struct type, and a "description" class which represents a to-be-serialized data member. In the failed draft, these are `codegen::structure` and `codegen::structure_member`.
+      * It should be possible to create a description of a to-be-serialized struct type given a `gw::type`. This should also recursively create the descriptions of the struct's members. You should never need to manually create a description for a member; just feed a type in and you're golden.
+      * Descriptions for to-be-serialized struct types need to be able to report the type's total packed bitcount, based on the bitcounts of its to-be-serialized members.
+      * Descriptions for to-be-serialized members need to be able to report the member's packed bitcount. If the member is an array, then we also need to be able to report the bitcount of the element type.
+        * (We want to know `sizeof(element)` so that if an array has to be split across sectors, we can serialize the first *n* elements that can fit using a single for loop; split the next element; serialize the next *n* elements that can fit using a single for loop; and so on.)
+        * (This does not need to recursively descend: given a description for `int foo[4][3][2]`, we need to know `sizeof(int[4][3][2])` for the array, and `sizeof(int[3][2])` for the elements, but we don't need to know `sizeof(int[2])` or `sizeof(int)`.)
+      * It needs to be easy for a recursive algorithm to consume the class for to-be-serialized members. This means that array members must be stored recursively, i.e. the description for `int foo[4][3][2]` must contain a description for `int foo[3][2]`, which must contain a description for `int[2]`.
+        * Another option is to abstract this by creating some sort of "description view" object that tracks what array rank we've descended into, but right now I just want to do things in the simplest, dumbest way possible. For the last couple of days, I've been getting lost in partial rewrites and I want to reset to something straightforward and stupid before I aim for robustness.
+    * Once we have all of this functionality, it becomes possible for `sector_functions_generator` to keep track of everything it needs in order to generate code.
+* Recreate the top-level functionality of `sector_functions_generator` as a skeleton in the new project. Here are the elements we want to keep, in some form, from the failed draft:
+  * The `expr_pair`, `func_pair`, and `value_pair` types. We want to generate the read and save functions alongside each other, rather than having to recursively traverse all data twice in order to generate the functions separately.
+    * Accordingly, code-generation options should always run in tandem, producing or operating on these `*_pair` types. They should also offer tandem operations, e.g. `value_pair::access_member` returning another value pair.
+    * Might be helpful to move these pair types to their own files, so there's less clutter in the `sector_functions_generator` files.
+  * A dictionary which maps `gw::types` to struct type descriptions (`codegen::structure` in the failed draft). We should never generate a description for a to-be-serialized struct type more than once; when we find ourselves wanting to serialize a struct-type `gw::value`, we should check the dictionary and create a description only if the value does not exist.
+  * The recursive loop in the `sector_functions_generator::run` function. This is what handles traversing over objects, deciding whether they can fit (in whole or in part) in the current sector, packing them or their subobjects into the current sector, splitting to the next sector, et cetera. The logic here is fine; I'm confident that it will work.
+  * `sector_functions_generator::get_or_create_whole_struct_functions`, the function to generate whole-struct read/save functions on-demand given a `structure&`, though we may replace `structure&` with something else later (i.e. the redesigned "struct type description" class described above.
+* What we need for `sector_functions_generator` next is:
+  * The ability to recursively traverse objects and subobjects. In particular, it must be possible to recursively traverse an array and at all times know the array extent. I've already elaborated on this requirement above.
+  * Three functions to generate an `expr_pair` for some object that we've already determined will fit in the current sector. These functions will be used both in sector generation (`...generator::run`) and when generating the whole-struct functions. These functions need to be given the `value_pair` for the bitstream pointer, the `value_pair` for the to-be-serialized object, and the "member description" for the to-be-serialized object.
+    * One for by generating calls to the serialize-whole-struct functions (and triggering creation of the functions themselves if they do not exist).
+    * One for serializing a non-struct non-array (a "primitive").
+    * One for serializing an array (or a slice thereof; this function will also be used for when we know an array slice will fit).
+      * If it's an array of arrays, the function should recurse.
+      * If it's an array of structs, the function should, for each element, call the function to generate a "serialize whole struct" `expr_pair`.
+      * Otherwise, the function should, for each element, call the function to generate a "serialize primitive" `expr_pair`.
+
+#### details
+
+Reading fields' serialization options:
+
+* Move parsing and handling of field attributes from `data_member.(h|cpp)` to `bitpacking/data_options.(h|cpp)`.
+* Delete `struct.(h|cpp)` and `data_member.(h|cpp)`.
+* Update `bitpacking::data_options::computed` to pay attention to the `bitpacking::data_options::requested::as_string` member.
+* Add a field attribute indicating that a field should be serialized as an opaque buffer.
+  * Update `bitpacking::data_options::requested` to check for and react to the attribute.
+* Finish `bitpacking::data_options::requested` generally.
+  * `lu_bitpack_funcs`
+  * `lu_bitpack_inherit`
+  * `lu_bitpack_string`
+  * Throw `std::runtime_error` on invalid. If possible, use a custom exception and find a way to report source info.
+* Finish `bitpacking::data_options::computed` generally.
+* Delete `bitpack_options.(h|cpp)`, as we'll be using `bitpacking::data_options::requested` in its place.
+
+Dealing with serializable objects:
+
+* Currently, our `sector_functions_generator` is responsible for generating all per-sector serialization functions *and* all whole-struct serialization functions.
+  * Finish replacing `sector_functions_generator::target` with `sector_functions_generator::value_pair`.
+  * Implement member functions of `sector_functions_generator::value_pair`.
+
+`sector_functions_generator` relies on `codegen::structure` and `codegen::structure_member`. We want to refine both of these classes.
+
+Currently, there are multiple places where `sector_functions_generator` needs to be able to take an arbitrary `gw::value` and produce the appropriate serialization call: whole-struct, whole-primitive, or array-slice (including whole-array). These include but are not limited to:
+
+* When generating whole-struct functions, i.e. when generating code to serialize whole structs. These functions are generated by `sector_functions_generator::get_or_create_whole_struct_functions`.
+* When generating code to serialize an array slice. This is done in `sector_functions_generator::_serialize_object`.
+* Certain parts of the overall serialization loop in `sector_functions_generator::run`.
+
+I want to be able to define a function `sector_functions_generator::_serialize_object` that "just works:" give it the `gw::value`s of the bitstream-state-pointer and the to-be-serialized object, and it'll call out to the appropriate other functions to serialize a struct, array, or primitive. This is mostly achievable...
+
+...except for a defect in `_serialize_array`. The `_serialize_*` functions rely on an info pointer -- either a `codegen::structure&` or `codegen::structure_member&` -- to know what to serialize. The problem is that we don't create nested `codegen::structure_member`s for nested arrays; they're stored "flat," which means that when we recurse to generate for-loops for nested arrays, we don't know the right array extent to use (we can't get it off of `codegen::structure_member::decl`). This gives us two options:
+
+* Rummage through the data for the `gw::value`s we're working with.
+  * If they're a `FIELD_DECL`, then pull the array extent directly from its type.
+  * If instead they're an `ARRAY_REF`, then track how many array extents we're serializing until we reach a `FIELD_DECL` or a non-`ARRAY_REF`.
+    * But what if we hit something like `foo[3].bar[4][5]`?
+      * And also, I'm not sure whether `sector_functions_generator::_info_for_target` can even properly retrieve the appropriate `structure*` or `structure_member*` for nested array values or anything liek that.
+* Recursively generate nested `codegen::structure_member`s for nested arrays.
+
+Like, basically, the entire codebase is halfway between three different rewrites. I should probably copy everything *not* related to serialization, bitpacking, the attributes, the pragmas, etc., into a new folder hierarchy and then start from scratch, using those salvageable parts of the old work to guide the new.
+
+---
+
+I attempted to design a replacement for both `codegen::structure` and `codegen::structure_member`, `codegen::serializable_object`, motivated by the fact that we should handle arrays and structs more-or-less uniformly: both should be treated as containers that we need to iterate over in some fashion. However, using `codegen::serializable_object` to represent both a struct type (regardless of context) and a struct member basically erases the distinction between a `RECORD_TYPE` and a `FIELD_DECL`, and this is causing more problems (organizational, logistical, mental model) than it's solving. Whatever improvement I make needs to maintain that distinction; we should delete `serializable_object`.
+
+### general
+
 Currently writing the bitpack logic in `bitpacking/sctor_functions_generator.(h|cpp)`.
 
 **Old bitpacking approach:**
