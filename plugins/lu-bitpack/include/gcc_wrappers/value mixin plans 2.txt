@@ -1,0 +1,504 @@
+#pragma once
+#include <concepts>
+#include <optional>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+// GCC:
+#include <gcc-plugin.h>
+#include <tree.h>
+
+namespace gcc_wrappers {
+   namespace impl {
+      template<typename Wrapper>
+      concept has_typecheck = requires (tree t) {
+         { Wrapper::node_is(t) } -> std::same_as<bool>;
+      };
+   }
+   
+   class _wrapped_tree_node {
+      protected:
+         tree _node = NULL_TREE;
+      
+      public:
+         inline bool empty() const {
+            return this->_node == NULL_TREE;
+         }
+         
+         int code() const {
+            return TREE_CODE(this->_node); // TODO: do we need to null check here?
+         }
+         
+         constexpr const tree& as_untyped() const {
+            return this->_type;
+         }
+         constexpr tree& as_untyped() {
+            return this->_type;
+         }
+         
+         template<typename Self>
+         void set_from_untyped(this Self&& self, tree t) {
+            if (t != NULL_TREE) {
+               if constexpr (has_typecheck<Self>) {
+                  assert(Self::node_is(t));
+               }
+            }
+            this->_node = t;
+         }
+   };
+   
+   class list_node {
+      protected:
+         tree _node = NULL_TREE;
+         
+      public:
+         inline bool empty() const {
+            return this->_node == NULL_TREE;
+         }
+         
+         // run the functor for each item's TREE_PURPOSE
+         template<typename Functor>
+         void for_each_key(Functor&&);
+         
+         // run the functor for each item's TREE_VALUE
+         template<typename Functor>
+         void for_each_value(Functor&&);
+         
+         // run the functor for each item's TREE_PURPOSE and TREE_VALUE
+         template<typename Functor>
+         void for_each_kv_pair(Functor&&);
+   };
+   
+   class type : public _wrapped_tree_node {
+      public:
+         static bool node_is(const tree) {
+            return TYPE_P(tree);
+         }
+         
+      public:
+         struct enum_member {
+            std::string_view name;
+            intmax_t         value = 0;
+         };
+         struct fixed_point_info {
+            struct {
+               size_t fractional = 0; // TYPE_FBIT
+               size_t integral   = 0; // TYPE_IBIT
+               size_t total      = 0; // TYPE_PRECISION
+            } bitcounts;
+            bool      is_saturating = false;
+            bool      is_signed     = false;
+            intmax_t  min = 0; // TYPE_MIN_VALUE
+            uintmax_t max = 0; // TYPE_MAX_VALUE
+         };
+         struct floating_point_info {
+            size_t bitcount = 0;
+         };
+         struct integral_info {
+            size_t    bitcount  = 0; // TYPE_PRECISION
+            bool      is_signed = false; // for enums, only true if any member is negative
+            intmax_t  min = 0; // for enums, lowest member; for integers, lowest representable value
+            uintmax_t max = 0; // for enums, highest member; for integers, highest representable value
+         };
+         
+      public:
+         type() {}
+         
+         list_node attributes() const;
+         
+         type canonical() const;
+         type main_variant() const;
+         
+         bool is_arithmetic() const; // INTEGER_TYPE or REAL_TYPE
+         bool is_array() const;
+         bool is_boolean() const;
+         bool is_enum() const; // ENUMERAL_TYPE
+         bool is_fixed_point() const;
+         bool is_floating_point() const; // REAL_TYPE
+         bool is_function() const; // FUNCTION_TYPE or METHOD_TYPE
+         bool is_integer() const; // does not include enums or bools
+         bool is_method() const; // METHOD_TYPE
+         bool is_record() const; // class or struct
+         bool is_union() const;
+         bool is_void() const;
+         
+         bool is_signed() const;
+         bool is_unsigned() const;
+         bool is_saturating() const;
+         
+         type add_const() const;
+         type remove_const() const;
+         bool is_const() const;
+         
+         type add_pointer() const;
+         type remove_pointer() const;
+         bool is_pointer() const;
+         
+         // assert(is_fixed_point());
+         fixed_point_info get_fixed_point_info() const;
+         
+         // assert(is_floating_point());
+         floating_point_info get_floating_point_info() const;
+         
+         // assert(is_integer() || is_enum() || is_fixed_point());
+         integral_info get_integral_info() const;
+         
+         #pragma region Arrays
+            bool is_variable_length_array() const;
+            
+            // assert(is_array());
+            // returns empty if a variable-length array.
+            std::optional<size_t> array_extent() const;
+            
+            // returns 0 if not an array; 1 for foo[n]; 2 for foo[m][n]; etc.
+            size_t array_rank() const;
+            
+            // assert(is_array());
+            type array_value_type() const;
+         #pragma endregion
+         
+         #pragma region Enums
+            [[nodiscard]] std::vector<enum_member> all_enum_members() const;
+         
+            template<typename Functor>
+            void for_each_enum_member(Functor&& functor) {
+               assert(is_enum());
+               for(auto item = TYPE_VALUES(_node); item != NULL_TREE; item = TREE_CHAIN(item)) {
+                  const auto member = enum_member{
+                     .name  = std::string_view(IDENTIFIER_POINTER(TREE_PURPOSE(item))),
+                     .value = TREE_INST_CST_LOW(TREE_VALUE(item)),
+                  };
+                  if constexpr (std::is_invocable_r_v<bool, Functor, const enum_member&>) {
+                     if (!functor(member))
+                        break;
+                  } else {
+                     functor(member);
+                  }
+               }
+            }
+         #pragma endregion
+         
+         #pragma region Functions
+            // assert(is_function());
+            type function_return_type() const;
+            
+            // assert(is_method());
+            type is_method_of() const;
+            
+            bool is_varargs_function() const;
+            
+            // weird C-only jank: `void f()` takes a variable number of arguments
+            // (but isn't varargs??)
+            bool is_unprototyped_function() const;
+            
+            // assert(is_function());
+            template<typename Functor>
+            void for_each_function_argument_type();
+         #pragma endregion
+         
+         #pragma region Structs and unions
+            // assert(is_record() || is_union());
+            list_node all_members() const; // returns TREE_FIELDS(_node)
+         
+            template<typename Functor>
+            void for_each_field() const;
+            
+            template<typename Functor>
+            void for_each_static_data_member() const;
+         #pragma endregion
+   };
+   
+   // Base class for `*_EXPR`, `VAR_DECL`, etc.
+   class value : public _wrapped_tree_node {
+      public:
+         template<typename T> requires std::is_base_of_v<expr::base, T>
+         T as_expr() const {
+            assert(T::node_is(this->_node));
+            T out;
+            out._node = this->_node;
+            return out;
+         }
+      
+      public:
+         // Value/result ype.
+         type value_type() const;
+         
+         // Creates a COMPONENT_REF.
+         // This value must be of a RECORD_TYPE or UNION_TYPE.
+         value access_member(const char*);
+         
+         // Creates a ARRAY_REF.
+         // This value must be of an ARRAY_TYPE. Index must be an INTEGER_TYPE.
+         value access_array_element(value index);
+         
+         // Creates a ARRAY_RANGE_REF.
+         // This value must be of an ARRAY_TYPE.
+         value access_array_range(value start, value length);
+         
+         // Returns a value of a POINTER_TYPE.
+         value address_of();
+         
+         //
+         // Functions below create expressions, treating `this` as a unary 
+         // operand or the lefthand operand (as appropriate). The functions 
+         // assert that type requirements are met.
+         //
+         
+         #pragma region Conversions
+            value convert_int_to_real(type real_type); // FLOAT_EXPR
+            value convert_real_to_int(type int_type);  // FIX_TRUNC_EXPR
+            
+            value convert_general(type desired); // CONVERT_EXPR
+            value convert_sans_bytecode(type); // NOP_EXPR
+         #pragma endregion
+         
+         #pragma region Comparison operators
+            value cmp_is_less(value);             // LT_EXPR
+            value cmp_is_less_or_equal(value);    // LE_EXPR
+            value cmp_is_greater(value);          // GT_EXPR
+            value cmp_is_greater_or_equal(value); // GE_EXPR
+            value cmp_is_equal(value);            // EQ_EXPR
+            value cmp_is_not_equal(value);        // NE_EXPR
+         #pragma endregion
+         
+         // TODO: Overloads taking an integer constant.
+         #pragma region Arithmetic operators
+            value arith_abs(); // ABS_EXPR
+            value arith_neg(); // NEGATE_EXPR
+            
+            value decrement_pre(value by);  // PREDECREMENT_EXPR
+            value decrement_post(value by); // POSTDECREMENT_EXPR
+            value increment_pre(value by);  // PREINCREMENT_EXPR
+            value increment_post(value by); // POSTINCREMENT_EXPR
+            
+            value add(value);
+            value sub(value);
+            value mul(value);
+            value mod(value); // TRUNC_MOD_EXPR
+            
+            value div(value); // TRUNC_DIV_EXPR or RDIV_EXPR, depending on this type and other type
+         #pragma endregion
+         
+         #pragma region Bitwise operators, available only on integers
+            value bitwise_and(); // BIT_AND_EXPR
+            value bitwise_not(); // BIT_NOT_EXPR
+            value bitwise_or();  // BIT_IOR_EXPR
+            value bitwise_xor(); // BIT_XOR_EXPR
+            value shift_left(value bitcount); // LSHIFT_EXPR
+            value shift_right(value bitcount); // RSHIFT_EXPR
+         #pragma endregion
+         
+         #pragma region Logical operators
+            value logical_not(); // TRUTH_NOT_EXPR
+            value logical_and(value, bool short_circuit = true); // TRUTH_ANDIF_EXPR or TRUTH_AND_EXPR
+            value logical_or(value, bool short_circuit = true); // TRUTH_ORIF_EXPR or TRUTH_OR_EXPR
+            value logical_xor(value); // TRUTH_XOR_EXPR. never short-circuits
+         #pragma endregion
+   };
+   
+   class integer_constant : public value {
+      public:
+         static bool node_is(const tree) {
+            return TREE_CODE(tree) == INTEGER_CST;
+         }
+         
+      public:
+         explicit integer_constant(int n);
+         
+         template<typename Integral>
+         Integral constant_value() const {
+            return (Integral) TREE_INT_CST_LOW(this->_node);
+         }
+   };
+   
+   namespace decl {
+      class label;
+      class variable;
+   }
+   
+   namespace expr {
+      class base : public value {
+         public:
+            static bool node_is(const tree) {
+               return DECL_P(tree);
+            }
+      };
+      static_assert(sizeof(base) == sizeof(value)); // no new fields
+      
+      class assign : public base {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == MODIFY_EXPR;
+            }
+         
+         public:
+            assign() {}
+            assign(const value& dst, const value& src);
+            
+            value src() const;
+            value dst() const;
+            
+            assign& set_src(const value&);
+            assign& set_dst(const value&);
+      };
+      static_assert(sizeof(assign) == sizeof(value)); // no new fields
+      
+      class go_to_label : public base {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == GOTO_EXPR;
+            }
+            
+         public:
+            go_to_label() {}
+            go_to_label(decl::label&);
+      };
+      
+      class call : public base {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == CALL_EXPR;
+            }
+            
+         public:
+            call() {}
+            
+            template<typename... Args> requires (std::is_same_v<Args, value> && ...)
+            call(decl::function&, type& return_type, Args&&... args) {
+               // assert that there are enough `args` to set all function arguments that 
+               // don't have default values (we'll copy any defaults that'd be used)
+               
+               // TODO
+            }
+            
+            template<typename... Args> requires (std::is_same_v<Args, value> && ...)
+            call(decl::function&, Args&&... args) {
+               // assert that there are enough `args` to set all function arguments that 
+               // don't have default values (we'll copy any defaults that'd be used)
+               
+               // TODO
+            }
+            
+            type  argument_type(size_t) const;
+            value argument_value(size_t) const;
+            type  return_type() const;
+      };
+      static_assert(sizeof(call) == sizeof(value)); // no new fields
+      
+      class declare : public base {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == DECLARE_EXPR;
+            }
+            
+         public:
+            declare() {}
+            declare(decl::variable&, location_t source_location = UNKNOWN_LOCATION);
+      };
+      static_assert(sizeof(declare) == sizeof(value)); // no new fields
+      
+      class label : public base {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == DECLARE_EXPR;
+            }
+            
+         public:
+            label() {}
+            label(decl::label&);
+      };
+      static_assert(sizeof(label) == sizeof(value)); // no new fields
+      
+      class init : public assign {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == INIT_EXPR;
+            }
+         
+         public:
+            init() {}
+            init(const value& dst, const value& src);
+      };
+      static_assert(sizeof(init) == sizeof(value)); // no new fields
+      
+      class ternary : public base {
+         public:
+            static bool node_is(const tree) {
+               return TREE_CODE(tree) == COND_EXPR;
+            }
+         
+         public:
+            ternary() {}
+            ternary(value cond, base if_true, base if_false);
+      };
+   }
+   
+   class statement_list : public _wrapped_tree_node {
+      protected:
+         tree_stmt_iterator _iterator;
+         
+      public:
+         void append(expr::base&);
+         void append(statement_list&&);
+   };
+   
+   // Not all decls are values, but some are (and thus can be treated as) values.
+   namespace decl {
+      class base : public _wrapped_tree_node {
+         public:
+            std::string_view name() const;
+            
+            std::string_view source_file() const;
+            int source_line() const;
+            
+            bool is_artificial() const;
+            void make_artificial();
+            void set_is_artificial(bool);
+            
+            bool is_used() const;
+            void make_used();
+            void set_is_used(bool);
+            
+            // TODO: what types can this be?
+            _wrapped_tree_node context() const;
+      };
+      
+      class field : public base {
+         public:
+            list_node attributes() const
+            type      member_of() const; // RECORD_TYPE or UNION_TYPE
+            type      value_type() const;
+      };
+      
+      class label : public base {
+         public:
+      };
+      
+      class type_def : public base {
+         public:
+            type declared_type() const;
+            type is_synonym_for() const; // given B in typedef A B, returns A
+            
+            static type_def declaration_of(const type&);
+      };
+      
+      class variable : public base {
+         public:
+            value as_value() const {
+               value v;
+               v._node = this->_node;
+               return v;
+            }
+            
+         public:
+            variable() {}
+            variable(
+               const char* identifier_name,
+               const type& value_type,
+               location_t  source_location = UNKNOWN_LOCATION
+            );
+            
+            type value_type() const;
+      };
+   }
+}
