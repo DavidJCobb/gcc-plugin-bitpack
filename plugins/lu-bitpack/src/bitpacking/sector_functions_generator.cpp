@@ -16,7 +16,7 @@ namespace codegen {
    
    //
    
-   gw::expr::base sector_functions_generator::_read_expr_non_struct(
+   gw::expr::base sector_functions_generator::in_progress_func_pair::_read_expr_non_struct(
       owner_type& owner,
       gcc_wrappers::value dst,
       const structure_member& dst_info
@@ -96,7 +96,7 @@ namespace codegen {
       );
    }
 
-   void sector_functions_generator::serialize_array_slice(
+   void sector_functions_generator::in_progress_func_pair::serialize_array_slice(
       sector_functions_generator& gen,
       const structure_member& info,
       target& object,
@@ -112,8 +112,8 @@ namespace codegen {
          };
          gw::statement_list loop_body;
          
-         static_assert(false, "TODO: different handling needed if array of arrays");
-         static_assert(false, "TODO: different handling needed if array of structs");
+         static_assert(false, "TODO: different handling needed if array");
+         static_assert(false, "TODO: different handling needed if struct");
          loop_body.append(_read_expr_non_struct(
             gen,
             target.for_read.access_array_element(loop.counter.as_value()),
@@ -148,7 +148,7 @@ namespace codegen {
          this->functions.write_root.statements().append(loop.enclosing);
       }
    }
-   void sector_functions_generator::serialize_entire(sector_functions_generator& gen, target& object) {
+   void sector_functions_generator::in_progress_func_pair::serialize_entire(sector_functions_generator& gen, target& object) {
       static_assert(false, "TODO");
    }
    
@@ -160,6 +160,7 @@ namespace codegen {
    //
    
    void sector_functions_generator::in_progress_sector::next() {
+      this->commit();
       this->owner.sector_functions.push_back(this->functions);
       ++this->id;
       this->bits_remaining = sector_size;
@@ -269,7 +270,7 @@ namespace codegen {
       in_progress_sector sector(*this);
       
       // returns true if serialized anything, or false if moved to next sector
-      auto _generate = [this, &sector](target object) -> bool {
+      auto _generate = [this, &sector](target object) -> void {
          auto info_set = this->_info_for_target(object);
          
          // struct:
@@ -279,19 +280,13 @@ namespace codegen {
             if (size <= bits_remaining) {
                sector.functions.serialize_entire(*this, info, object);
                bits_remaining -= size;
-               return true;
+               return;
             }
             for(auto& m : info.members) {
                auto v = object.access_member(m.decl.name());
-               if (!_generate(v)) {
-                  //
-                  // We had to move to the next sector. Try again.
-                  //
-                  bool result = _generate(member);
-                  assert(result && "deepest-nested field larger than an entire sector?!");
-               }
+               _generate(v);
             }
-            return true;
+            return;
          }
          
          // non-struct or array of structs:
@@ -301,7 +296,7 @@ namespace codegen {
             if (size <= bits_remaining) {
                sector.functions.serialize_entire(*this, info, object);
                bits_remaining -= size;
-               return true;
+               return;
             }
             if (!info.is_array()) {
                //
@@ -309,7 +304,12 @@ namespace codegen {
                // advance to a sector boundary.
                //
                sector.next();
-               return false;
+               //
+               // Retry.
+               //
+               bool result = _generate(object);
+               assert(result && "deepest-nested field larger than an entire sector?!");
+               return;
             }
             
             size_t elem_size = info.compute_single_element_packed_bitcount();
@@ -334,11 +334,11 @@ namespace codegen {
                // Repeat this process until the whole array makes it in.
                //
             }
-            return true;
+            return;
          }
          
          assert(false && "unreachable");
-         return true;
+         return;
       };
 
       for(target object : objects_to_serialize) {
