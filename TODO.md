@@ -54,6 +54,16 @@ The process is managed by a `sector_functions_generator` object. The object gene
 
 ### To-do
 
+In short: the overall "traversal" algorithm for `sector_functions_generator` as documented above, I think, is fine; but the functions that it calls to actually generate bitstream read/write code (for whole values and for array slices) are yet to be defined. I need to figure those out.
+
+Probably the easiest thing to start with would be the case of serializing a whole struct of type `T`: we need to lookup (or generate and cache, if they've not yet been created) functions that serialize an entire `T` (i.e. `void __read(lu_BitstreamState*, T*)` and `void __save(lu_BitstreamState*, const T*)`) and invoke them. Then comes the case of non-struct non-array values, wherein we use a variety of different functions depending on the type (bool type, specific integral types, strings). Lastly would be the case of serializing an entire array; this one's tricky because we have to be able to recursively construct for-loops to handle the case of arrays-of-arrays.
+
+* Probably it'd be best to design the "whole struct" and "primitive" cases so that they just return an `expr`, and where we insert that is our business. Then, we can have the "whole array" case return an `expr` as well. Then, we can have the top-level caller -- the "serialize whole value" function -- actually insert the expr somewhere; and at the same time that we do that, we can make the "whole array" case recursive.
+  
+  Of course, we'll need both "read" and "save" functions (i.e. "generate read-whole-struct call" and "generate save-whole-struct-call" helpers; and "generate read-whole-array call" and "generate read-primitive call" and so on).
+
+After that, we'll need to figure out the "array slice" case. This needs to behave very similarly: it gets called when we know to a certainty that that slice of the array will fit into the current sector. Honestly, if we do the "whole value" case per the bulleted note above, then we could have the "array slice" case just generate and append the outermost for-loop as appropriate.
+
 * In general we should be caching the `gw::type` wrappers around built-in types like `uint8_type_node`, since `gw::type::from_untyped` verifies the `TREE_CODE` and we shouldn't be redundantly doing that a million times per function we generate. In fact, it'd probably be best to have a singleton that just holds `gw::type`s for built-ins.
 * There's no way to communicate global bitpacking options (e.g. sector size, sector count, sector layouts) to the `sector_functions_generator`.
 * We need code to generate whole-struct bitstream-read and bitstream-write functions. They should be generated on first use.
