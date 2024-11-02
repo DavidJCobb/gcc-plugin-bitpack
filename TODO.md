@@ -5,30 +5,9 @@
 
 ### BLUF
 
-* Rename the `lu-bitpack` folder to `lu-bitpack-failed`.
-* Copy everything salvageable out of `lu-bitpack-failed` into a new `lu-bitpack` folder:
-  * The GCC wrapper functions.
-  * The GCC helper functions.
-    * Any helper functions whose functionality is available through the wrapper classes should be removed.
-  * My personal library (`lu/*`).
-  * The main plug-in file.
-* Strip most of the functionality out of the main plug-in file entirely.
 * Rebuild the functionality for handling attributes and pragmas.
   * Pragmas should take effect (setting global bitpacking options; generating bitpacking functions; etc.) as they're encountered.
-    * User-specified global bitpacking options should be specified somewhere; and then we also need a struct that can store the "compile-time" values. That is: if the user is specifying things like the identifiers of bitstream functions and the sector layout, then the former struct would store the identifiers as strings, and the latter would store `gw::decl::function`s for them.
-      * In the failed draft, `global_bitpack_options` had the former role.
-      * In the failed draft, `stream_function_set` has taken on the latter role. Despite its name, it also ended up holding the various `gw::type`s that the user can (and sometimes must) specify, too.
   * Attributes are used to specify bitpacking options on individual members of a struct, but shouldn't (necessarily) have an immediate effect. Rather, when we actually generate the bitpacking functions, we'll want to pay attention to attribute data as it's encountered. Accordingly,...
-    * We want a function which, given a `gw::decl::field`, will extract and validate the bitpacking options specified for that field. If errors or warnings need to be issued, we'd do that here. Not sure if we can access the source location for the attributes, but we can probably access it for the `FIELD_DECL`s they annotate.
-    * We want a function which, given a `gw::decl::field` and the set of extracted bitpacking options, will generate "computed" options. For example, if an integral field specifies a min and max, we only need to know the bitcount and the minimum in order to pack it; if an integral field specifies no options at all, but is a C bitfield, then the bitfield width becomes the bitcount; et cetera, et cetera.
-    * We want a "description" class which represents a to-be-serialized struct type, and a "description" class which represents a to-be-serialized data member. In the failed draft, these are `codegen::structure` and `codegen::structure_member`.
-      * It should be possible to create a description of a to-be-serialized struct type given a `gw::type`. This should also recursively create the descriptions of the struct's members. You should never need to manually create a description for a member; just feed a type in and you're golden.
-      * Descriptions for to-be-serialized struct types need to be able to report the type's total packed bitcount, based on the bitcounts of its to-be-serialized members.
-      * Descriptions for to-be-serialized members need to be able to report the member's packed bitcount. If the member is an array, then we also need to be able to report the bitcount of the element type.
-        * (We want to know `sizeof(element)` so that if an array has to be split across sectors, we can serialize the first *n* elements that can fit using a single for loop; split the next element; serialize the next *n* elements that can fit using a single for loop; and so on.)
-        * (This does not need to recursively descend: given a description for `int foo[4][3][2]`, we need to know `sizeof(int[4][3][2])` for the array, and `sizeof(int[3][2])` for the elements, but we don't need to know `sizeof(int[2])` or `sizeof(int)`.)
-      * It needs to be easy for a recursive algorithm to consume the class for to-be-serialized members. This means that array members must be stored recursively, i.e. the description for `int foo[4][3][2]` must contain a description for `int foo[3][2]`, which must contain a description for `int[2]`.
-        * Another option is to abstract this by creating some sort of "description view" object that tracks what array rank we've descended into, but right now I just want to do things in the simplest, dumbest way possible. For the last couple of days, I've been getting lost in partial rewrites and I want to reset to something straightforward and stupid before I aim for robustness.
     * Once we have all of this functionality, it becomes possible for `sector_functions_generator` to keep track of everything it needs in order to generate code.
 * Recreate the top-level functionality of `sector_functions_generator` as a skeleton in the new project. Here are the elements we want to keep, in some form, from the failed draft:
   * The `expr_pair`, `func_pair`, and `value_pair` types. We want to generate the read and save functions alongside each other, rather than having to recursively traverse all data twice in order to generate the functions separately.

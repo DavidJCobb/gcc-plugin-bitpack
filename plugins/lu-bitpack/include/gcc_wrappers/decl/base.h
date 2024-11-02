@@ -16,6 +16,11 @@ namespace gcc_wrappers {
          public:
             std::string_view name() const;
             
+            // If the declaration appears in multiple places (e.g. a 
+            // forward-declared entity that is later defined), this 
+            // refers to the definition.
+            location_t source_location() const;
+            
             std::string_view source_file() const;
             int source_line() const;
             

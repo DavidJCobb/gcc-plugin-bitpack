@@ -33,4 +33,14 @@ namespace gcc_wrappers {
       this->size    = type::from_untyped(size_type_node);
       this->ssize   = type::from_untyped(signed_size_type_node);
    }
+   
+   type builtin_types::smallest_integral_for(size_t bitcount, bool is_signed) const {
+      if (bitcount > 32)
+         return is_signed ? int64 : uint64;
+      if (bitcount > 16)
+         return is_signed ? int32 : uint32;
+      if (bitcount > 8)
+         return is_signed ? int16 : uint16;
+      return is_signed ? int8 : uint8;
+   }
 }

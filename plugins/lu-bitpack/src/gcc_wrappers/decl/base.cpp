@@ -11,6 +11,10 @@ namespace gcc_wrappers::decl {
       return std::string_view(IDENTIFIER_POINTER(DECL_NAME(this->_node)));
    }
    
+   location_t base::source_location() const {
+      return DECL_SOURCE_LOCATION(this->_node);
+   }
+   
    std::string_view base::source_file() const {
       if (empty())
          return {};

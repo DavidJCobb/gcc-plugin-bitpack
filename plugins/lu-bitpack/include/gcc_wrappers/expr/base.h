@@ -11,6 +11,8 @@ namespace gcc_wrappers {
             }
          
          public:
+            location_t source_location() const;
+         
             type get_result_type() const;
             
             bool suppresses_unused_warnings();

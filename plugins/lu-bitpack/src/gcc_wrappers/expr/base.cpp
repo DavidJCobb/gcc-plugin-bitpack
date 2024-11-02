@@ -2,6 +2,10 @@
 #include <cassert>
 
 namespace gcc_wrappers::expr {
+   location_t base::source_location() const {
+      return EXPR_LOCATION(this->_node);
+   }
+   
    bool base::suppresses_unused_warnings() {
       return TREE_USED(this->_node) != 0;
    }

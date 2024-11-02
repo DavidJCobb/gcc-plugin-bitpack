@@ -36,5 +36,8 @@ namespace gcc_wrappers {
          type ptrdiff;
          type size;   // size_t
          type ssize;  // ssize_t (signed size_t)
+         
+      public:
+         type smallest_integral_for(size_t bitcount, bool is_signed = false) const;
    };
 }
