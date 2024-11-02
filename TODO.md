@@ -5,26 +5,9 @@
 
 ### BLUF
 
-* Rebuild the functionality for handling attributes and pragmas.
-  * Pragmas should take effect (setting global bitpacking options; generating bitpacking functions; etc.) as they're encountered.
-  * Attributes are used to specify bitpacking options on individual members of a struct, but shouldn't (necessarily) have an immediate effect. Rather, when we actually generate the bitpacking functions, we'll want to pay attention to attribute data as it's encountered. Accordingly,...
-    * Once we have all of this functionality, it becomes possible for `sector_functions_generator` to keep track of everything it needs in order to generate code.
-* Recreate the top-level functionality of `sector_functions_generator` as a skeleton in the new project. Here are the elements we want to keep, in some form, from the failed draft:
-  * The `expr_pair`, `func_pair`, and `value_pair` types. We want to generate the read and save functions alongside each other, rather than having to recursively traverse all data twice in order to generate the functions separately.
-    * Accordingly, code-generation options should always run in tandem, producing or operating on these `*_pair` types. They should also offer tandem operations, e.g. `value_pair::access_member` returning another value pair.
-    * Might be helpful to move these pair types to their own files, so there's less clutter in the `sector_functions_generator` files.
-  * A dictionary which maps `gw::types` to struct type descriptions (`codegen::structure` in the failed draft). We should never generate a description for a to-be-serialized struct type more than once; when we find ourselves wanting to serialize a struct-type `gw::value`, we should check the dictionary and create a description only if the value does not exist.
-  * The recursive loop in the `sector_functions_generator::run` function. This is what handles traversing over objects, deciding whether they can fit (in whole or in part) in the current sector, packing them or their subobjects into the current sector, splitting to the next sector, et cetera. The logic here is fine; I'm confident that it will work.
-  * `sector_functions_generator::get_or_create_whole_struct_functions`, the function to generate whole-struct read/save functions on-demand given a `structure&`, though we may replace `structure&` with something else later (i.e. the redesigned "struct type description" class described above.
-* What we need for `sector_functions_generator` next is:
-  * The ability to recursively traverse objects and subobjects. In particular, it must be possible to recursively traverse an array and at all times know the array extent. I've already elaborated on this requirement above.
-  * Three functions to generate an `expr_pair` for some object that we've already determined will fit in the current sector. These functions will be used both in sector generation (`...generator::run`) and when generating the whole-struct functions. These functions need to be given the `value_pair` for the bitstream pointer, the `value_pair` for the to-be-serialized object, and the "member description" for the to-be-serialized object.
-    * One for by generating calls to the serialize-whole-struct functions (and triggering creation of the functions themselves if they do not exist).
-    * One for serializing a non-struct non-array (a "primitive").
-    * One for serializing an array (or a slice thereof; this function will also be used for when we know an array slice will fit).
-      * If it's an array of arrays, the function should recurse.
-      * If it's an array of structs, the function should, for each element, call the function to generate a "serialize whole struct" `expr_pair`.
-      * Otherwise, the function should, for each element, call the function to generate a "serialize primitive" `expr_pair`.
+* `sector_functions_generator` needs to know what data values to serialize; it needs to be able to pull them (or pointers to them) out of translation unit scope. This is relevant to the top-level for-loop at the bottom of `sector_functions_generator::run`.
+* The plug-in needs code to handle the attributes and pragmas. We've built most of our stuff; we just need to hook it up now.
+
 
 #### details
 
