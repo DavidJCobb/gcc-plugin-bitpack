@@ -12,12 +12,25 @@ int plugin_is_GPL_compatible;
 #include <c-family/c-common.h> // lookup_name
 #include <c-family/c-pragma.h>
 #include <stringpool.h> // get_identifier
+#include "gcc_helpers/dump_function.h"
+#include "gcc_helpers/extract_pragma_kv_args.h"
 
 // not allowed to be const
 static plugin_info _my_plugin_info = {
    .version = "(unversioned)",
    .help    = "there is no help",
 };
+
+#include "handle_struct_type.h"
+
+#include "gcc_wrappers/builtin_types.h"
+#include "bitpacking/global_bitpack_options.h"
+
+static global_bitpack_options s_bitpack_options;
+
+#include "parse_generate_request.h" // for generate pragmas
+//#include "generate_read_code.h"
+#include "generate_read_func.h"
 
 static tree handle_user_attribute(tree* node, tree name, tree args, int flags, bool* no_add_attrs) {
    //
@@ -150,7 +163,6 @@ namespace _pragmas {
    static void set_options(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack set_options";
       
-      /*//
       const auto kv = gcc_helpers::extract_pragma_kv_args(
          this_pragma_name,
          reader
@@ -161,12 +173,10 @@ namespace _pragmas {
          std::cerr << "incorrect data in " << this_pragma_name << "\n";
          std::cerr << e.what();
       }
-      //*/
    }
    static void generate_read(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_read";
       
-      /*//
       auto request_opt = parse_generate_request(reader);
       if (request_opt.has_value()) {
          
@@ -184,7 +194,6 @@ namespace _pragmas {
          generate_read_func(request_opt.value());
       std::cerr << "generated.\n";
       }
-      //*/
    }
    static void generate_pack(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_pack";
@@ -195,7 +204,6 @@ namespace _pragmas {
    static void debug_dump_function(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack debug_dump_function";
       
-      /*//
       location_t loc;
       tree       data;
       auto token_type = pragma_lex(&data, &loc);
@@ -215,7 +223,6 @@ namespace _pragmas {
          return;
       }
       gcc_helpers::dump_function(decl);
-      //*/
    }
 }
 
@@ -242,6 +249,26 @@ static void register_pragmas(void* event_data, void* data) {
    );
 }
 
+/*static void plugin_finish_type(void *event_data, void *user_data) {
+   tree type = (tree)event_data;
+   if (!COMPLETE_TYPE_P(type)) {
+      //
+      // Not a complete type. Skip.
+      //
+      return;
+   }
+   if (TREE_CODE(type) == RECORD_TYPE) {
+      handle_struct_type(type);
+      return;
+   }
+   if (TREE_CODE(type) == UNION_TYPE) {
+      //
+      // TODO
+      //
+      return;
+   }
+}*/
+
 int plugin_init (
    struct plugin_name_args *plugin_info,
    struct plugin_gcc_version *version
@@ -266,6 +293,12 @@ int plugin_init (
    // to access it.
    gcc_wrappers::builtin_types::get();
    
+   /*register_callback(
+      plugin_info->base_name,
+      PLUGIN_FINISH_TYPE,
+      plugin_finish_type,
+      NULL
+   );*/
    register_callback(
       plugin_info->base_name,
       PLUGIN_ATTRIBUTES,

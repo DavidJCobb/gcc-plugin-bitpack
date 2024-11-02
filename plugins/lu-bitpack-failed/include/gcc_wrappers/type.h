@@ -7,10 +7,6 @@
 #include "gcc_wrappers/list_node.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
-namespace gcc_wrappers::decl {
-   class type_def;
-}
-
 namespace gcc_wrappers {
    class type : public _wrapped_tree_node {
       public:
@@ -59,17 +55,12 @@ namespace gcc_wrappers {
             return t;
          };
          
-         std::string name() const;
          std::string pretty_print() const;
          
          list_node attributes() const;
          
          type canonical() const;
          type main_variant() const;
-         
-         // Make sure to include the header for `type_def` yourself before calling. 
-         // Can't include it for you or we'll get a circular dependency.
-         decl::type_def declaration() const;
          
          bool is_complete() const;
          

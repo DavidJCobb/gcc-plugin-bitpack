@@ -1,6 +1,6 @@
 #pragma once
 #include <gcc-plugin.h>
-#include "gcc_headers/plugin-version.h" // the original header isn't pragma-once'd
+#include "gcc_headers/plugin-version.h"
 
 // IS_BITINT_TYPE_DEFINED
 #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 1

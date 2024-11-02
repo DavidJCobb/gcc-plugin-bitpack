@@ -1,5 +1,4 @@
 #include "gcc_wrappers/type.h"
-#include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 #include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to
@@ -7,20 +6,6 @@
 namespace gcc_wrappers {
    WRAPPED_TREE_NODE_BOILERPLATE(type)
    
-   std::string type::name() const {
-      tree name_tree = TYPE_NAME(this->_node);
-      if (!name_tree) {
-         return {}; // unnamed struct
-      }
-      if (TREE_CODE(name_tree) == IDENTIFIER_NODE)
-         return IDENTIFIER_POINTER(name_tree);
-      if (TREE_CODE(name_tree) == TYPE_DECL && DECL_NAME(name_tree))
-         return IDENTIFIER_POINTER(DECL_NAME(name_tree));
-      //
-      // Name irretrievable?
-      //
-      return {};
-   }
    std::string type::pretty_print() const {
       if (empty())
          return "<empty>";
@@ -132,15 +117,6 @@ namespace gcc_wrappers {
       type out;
       out.set_from_untyped(TYPE_MAIN_VARIANT(this->_node));
       return out;
-   }
-   
-   decl::type_def type::declaration() const {
-      auto dn = TYPE_NAME(this->_node);
-      if (dn != NULL_TREE) {
-         if (TREE_CODE(dn) != TYPE_DECL)
-            dn = NULL_TREE;
-      }
-      return decl::type_def::from_untyped(dn);
    }
    
    bool type::is_complete() const {
