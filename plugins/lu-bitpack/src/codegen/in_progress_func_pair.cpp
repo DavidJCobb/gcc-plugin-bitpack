@@ -18,9 +18,7 @@ namespace codegen {
       // emit to the object file. In practice, however, we just crash instead.
       //this->read.set_is_defined_elsewhere(false);
       //this->save.set_is_defined_elsewhere(false);
-      // It's something to do with the relationship between the top-level functions and 
-      // the per-sector functions, but I just don't understand GCC's internals enough 
-      // to figure out what's going on right now.
+      // It's due to something inside of these functions, but hell if I know what.
       
       this->read.as_modifiable().set_root_block(this->read_root);
       this->save.as_modifiable().set_root_block(this->save_root);
