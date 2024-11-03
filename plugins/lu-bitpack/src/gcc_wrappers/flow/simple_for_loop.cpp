@@ -41,14 +41,8 @@ namespace gcc_wrappers::flow {
       
       this->counter.make_used();
       statements.append(this->counter.make_declare_expr());
-      if (this->counter_bounds.start != 0) {
-         statements.append(
-            gw::expr::assign(
-               this->counter.as_value(),
-               gw::expr::integer_constant(counter_type, this->counter_bounds.start)
-            )
-         );
-      }
+      this->counter.set_initial_value(gw::expr::integer_constant(counter_type, this->counter_bounds.start));
+      
       gw::decl::label l_body;
       
       statements.append(gw::expr::go_to_label(this->label_continue));

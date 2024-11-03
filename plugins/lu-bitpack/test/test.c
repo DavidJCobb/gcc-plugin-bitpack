@@ -158,10 +158,10 @@ extern void save_sectored(u8* dst, int sector_id) {
 //#pragma lu_bitpack debug_dump_function save_sector_1
 //#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_1
 
-#pragma lu_bitpack debug_dump_function _save_a
-#pragma lu_bitpack debug_dump_function _save_b
-#pragma lu_bitpack debug_dump_function __lu_bitpack_write_StructA
-#pragma lu_bitpack debug_dump_function __lu_bitpack_write_StructB
+//#pragma lu_bitpack debug_dump_function _save_a
+//#pragma lu_bitpack debug_dump_function _save_b
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_write_StructA
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_write_StructB
 
 
 void reset_data() {
@@ -190,8 +190,11 @@ void clear_data(int sector_id) {
 }
 
 void print_buffer(const u8* buffer, int size) {
-   printf("Buffer: ");
+   printf("Buffer:\n   ");
    for(int i = 0; i < size; ++i) {
+      if (i && i % 8 == 0) {
+         printf("\n   ");
+      }
       printf("%02X ", buffer[i]);
    }
    printf("\n");
@@ -236,9 +239,18 @@ int main() {
    u8 sector_1_buffer[64] = { 0 };
    u8 test_buffer[64] = { 0 };
    
-   printf("Testing pre-written functions...\n\n");
+   const char* divider = "=========================================================\n";
+   
+   printf(divider);
+   printf("Test data to save:\n");
+   printf(divider);
    reset_data();
    print_data();
+   printf("\n");
+   
+   printf(divider);
+   printf("Testing pre-written functions...\n");
+   printf(divider);
    printf("Sector 0 saved:\n");
    save_sectored(sector_0_buffer, 0);
    print_buffer(sector_0_buffer, sizeof(sector_0_buffer));
@@ -260,9 +272,11 @@ int main() {
    memset(sector_0_buffer, 0, sizeof(sector_0_buffer));
    memset(sector_1_buffer, 0, sizeof(sector_1_buffer));
    
-   printf("Testing generated functions...\n\n");
+   printf("\n");
+   printf(divider);
+   printf("Testing generated functions...\n");
+   printf(divider);
    reset_data();
-   print_data();
    printf("Sector 0 saved:\n");
    generated_save(sector_0_buffer, 0);
    print_buffer(sector_0_buffer, sizeof(sector_0_buffer));

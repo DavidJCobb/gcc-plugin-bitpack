@@ -31,6 +31,9 @@ namespace gcc_wrappers {
             
             type value_type() const;
             
+            value initial_value() const;
+            void set_initial_value(value);
+            
             bool is_defined_elsewhere() const;
             void set_is_defined_elsewhere(bool);
             

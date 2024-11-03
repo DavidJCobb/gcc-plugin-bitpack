@@ -32,6 +32,18 @@ namespace gcc_wrappers::decl {
       return t;
    }
    
+   value variable::initial_value() const {
+      assert(!empty());
+      auto node = DECL_INITIAL(this->_node);
+      value v;
+      v.set_from_untyped(node);
+      return v;
+   }
+   void variable::set_initial_value(value v) {
+      assert(!empty());
+      DECL_INITIAL(this->_node) = v.as_untyped();
+   }
+   
    bool variable::is_defined_elsewhere() const {
       if (empty())
          return false;
