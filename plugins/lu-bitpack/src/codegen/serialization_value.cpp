@@ -41,19 +41,19 @@ namespace codegen {
       if (this->is_top_level_struct())
          return this->as_top_level_struct().size_in_bits();
       const auto& view = this->as_member();
-      return view.type().size_in_bits();
+      return view.size_in_bits();
    }
    bool serialization_value::is_array() const {
       if (this->is_top_level_struct())
          return false;
       const auto& view = this->as_member();
-      return view.type().is_array();
+      return view.is_array();
    }
    bool serialization_value::is_struct() const {
       if (this->is_top_level_struct())
          return true;
       const auto& view = this->as_member();
-      return view.type().is_record();
+      return !view.is_array() && view.type().is_record();
    }
    
    size_t serialization_value::array_extent() const {

@@ -8,8 +8,11 @@
 #include <stringpool.h> // get_identifier
 #include <output.h> // assemble_external
 #include <toplev.h>
-#include <c-family/c-common.h>
+#include <c-family/c-common.h> // lookup_name, pushdecl, etc.
 #include <cgraph.h>
+
+// This is in `c/c-tree.h`, which isn't included among the plug-in headers.
+extern tree pushdecl(tree);
 
 // function
 namespace gcc_wrappers::decl {
@@ -179,6 +182,13 @@ namespace gcc_wrappers::decl {
       }
       return function_with_modifiable_body(this->_node);
    }
+   
+   void function::introduce_to_current_scope() {
+      auto prior = lookup_name(DECL_NAME(this->as_untyped()));
+      if (prior == NULL_TREE) {
+         pushdecl(this->as_untyped());
+      }
+   }
 }
 
 // Avoid warnings on later includes:
@@ -239,6 +249,8 @@ namespace gcc_wrappers::decl {
       BLOCK_SUPERCONTEXT(root_block) = this->_node;
       DECL_INITIAL(this->_node) = root_block;
       
+      DECL_CONTEXT(DECL_RESULT(this->_node)) = this->_node;
+      
       auto _traverse = [this](expr::local_block& lb, tree block) -> void {
          auto _impl = [this](expr::local_block& lb, tree block, auto& recurse) mutable -> void {
             tree prev_decl  = NULL_TREE;
@@ -258,6 +270,8 @@ namespace gcc_wrappers::decl {
                if (TREE_CODE(node) == DECL_EXPR) {
                   node = DECL_EXPR_DECL(node);
                   if (TREE_CODE(node) == VAR_DECL) {
+                     DECL_CONTEXT(node) = this->_node; // also required
+                     
                      assert(TREE_CHAIN(node) == NULL_TREE);
                      if (prev_decl) {
                         TREE_CHAIN(prev_decl) = node;
@@ -267,6 +281,12 @@ namespace gcc_wrappers::decl {
                      }
                      prev_decl = node;
                   }
+                  continue;
+               }
+               
+               if (TREE_CODE(node) == LABEL_EXPR) {
+                  auto label_decl = LABEL_EXPR_LABEL(node);
+                  DECL_CONTEXT(label_decl) = this->_node;
                   continue;
                }
                
@@ -284,6 +304,7 @@ namespace gcc_wrappers::decl {
                      BLOCK_SUBBLOCKS(block) = child;
                   }
                   prev_child = child;
+                  continue;
                }
             }
             
@@ -300,6 +321,15 @@ namespace gcc_wrappers::decl {
          _impl(lb, block, _impl);
       };
       _traverse(lb, root_block);
+      
+      //
+      // Update contexts. In the case of us taking a forward-declared 
+      // function and generating a definition for it, the PARM_DECLs 
+      // may exist but lack the appropriate DECL_CONTEXT.
+      //
+      for(auto args = DECL_ARGUMENTS(this->_node); args != NULL_TREE; args = TREE_CHAIN(args)) {
+         DECL_CONTEXT(args) = this->_node;
+      }
       
       //
       // Actions below are needed in order to emit the function to the object file, 

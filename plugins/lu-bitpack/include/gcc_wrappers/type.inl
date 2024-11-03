@@ -40,14 +40,13 @@ namespace gcc_wrappers {
          if (!is_record() && !is_union())
             return;
          for(auto item = TYPE_FIELDS(_node); item != NULL_TREE; item = TREE_CHAIN(item)) {
-            auto field = TREE_VALUE(item);
-            if (TREE_CODE(field) != FIELD_DECL)
+            if (TREE_CODE(item) != FIELD_DECL)
                continue;
             if constexpr (std::is_invocable_r_v<bool, Functor, tree>) {
-               if (!functor(field))
+               if (!functor(item))
                   break;
             } else {
-               functor(field);
+               functor(item);
             }
          }
       }
@@ -57,14 +56,13 @@ namespace gcc_wrappers {
          if (!is_record() && !is_union())
             return;
          for(auto item = TYPE_FIELDS(_node); item != NULL_TREE; item = TREE_CHAIN(item)) {
-            auto field = TREE_VALUE(item);
-            if (TREE_CODE(field) != VAR_DECL)
+            if (TREE_CODE(item) != VAR_DECL)
                continue;
             if constexpr (std::is_invocable_r_v<bool, Functor, tree>) {
-               if (!functor(field))
+               if (!functor(item))
                   break;
             } else {
-               functor(field);
+               functor(item);
             }
          }
       }

@@ -333,10 +333,15 @@ namespace gcc_wrappers {
       assert(vt_t.is_arithmetic());
       assert(vt_b.is_arithmetic());
       
+      auto result_type = boolean_type_node;
+      if (vt_t == vt_b && vt_t == type::from_untyped(integer_type_node)) {
+         result_type = integer_type_node;
+      }
+      
       value out;
       out.set_from_untyped(build2(
          expr_type,
-         boolean_type_node,
+         result_type,
          this->_node,
          other._node
       ));

@@ -1,11 +1,5 @@
 #include "codegen/in_progress_func_pair.h"
 
-#include <c-family/c-common.h> // lookup_name
-// TEST
-extern tree pushdecl (tree);
-extern void c_bind (location_t loc, tree decl, bool is_global);
-extern tree c_simulate_builtin_function_decl (tree decl);
-
 namespace codegen {
    void in_progress_func_pair::append(expr_pair expr) {
       this->read_root.statements().append(expr.read);
@@ -28,19 +22,7 @@ namespace codegen {
       // so that if we're generating a definition for a function that was already 
       // forward-declared in source, we don't conflict with the declaration.
       //
-      {
-         auto decl  = this->read;
-         auto prior = lookup_name(DECL_NAME(decl.as_untyped()));
-         if (prior == NULL_TREE) {
-            pushdecl(decl.as_untyped());
-         }
-      }
-      {
-         auto decl  = this->save;
-         auto prior = lookup_name(DECL_NAME(decl.as_untyped()));
-         if (prior == NULL_TREE) {
-            pushdecl(decl.as_untyped());
-         }
-      }
+      this->read.introduce_to_current_scope();
+      this->save.introduce_to_current_scope();
    }
 }

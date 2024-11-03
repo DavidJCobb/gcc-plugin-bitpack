@@ -1,3 +1,4 @@
+#include <iostream> // debug
 #include "codegen/descriptors.h"
 #include "bitpacking/global_options.h"
 
@@ -23,6 +24,9 @@ namespace codegen {
    
    member_descriptor_view::member_descriptor_view(const member_descriptor& desc) {
       this->target = &desc;
+      if (!desc.array_extents.empty()) {
+         this->_state.array_extent = desc.array_extents[0];
+      }
    }
    
    bitpacking::member_kind member_descriptor_view::kind() const {
@@ -61,9 +65,7 @@ namespace codegen {
       auto& ranks = this->target->array_extents;
       if (ranks.empty())
          return false;
-      if (this->_state.array_rank == ranks.size() - 1)
-         return false;
-      return true;
+      return this->_state.array_rank < ranks.size();
    }
    size_t member_descriptor_view::array_extent() const {
       return this->_state.array_extent;
@@ -72,10 +74,14 @@ namespace codegen {
    member_descriptor_view& member_descriptor_view::descend_into_array() {
       auto& ranks = this->target->array_extents;
       assert(is_array());
-      assert(this->_state.array_rank + 1 < ranks.size());
+      assert(this->_state.array_rank < ranks.size());
       
       ++this->_state.array_rank;
-      this->_state.array_extent = ranks[this->_state.array_rank];
+      if (this->_state.array_rank >= ranks.size()) {
+         this->_state.array_extent = 1;
+      } else {
+         this->_state.array_extent = ranks[this->_state.array_rank];
+      }
       
       return *this;
    }
@@ -98,16 +104,20 @@ namespace codegen {
          
          bitpacking::member_options::requested options;
          options.from_field(decl);
-         if (options.omit_from_bitpacking)
+         if (options.omit_from_bitpacking) {
+std::cerr << "skipping struct member descriptor: " << decl.name() << "\n";
             return;
+         }
+std::cerr << "loading struct member descriptor: " << decl.name() << "\n";
          
          bitpacking::member_options::computed computed;
          computed.resolve(global, options, decl.value_type());
          
          auto& member = this->members.emplace_back();
-         member.kind = computed.kind;
-         member.type = decl.value_type();
-         member.decl = decl;
+         member.kind       = computed.kind;
+         member.type       = decl.value_type();
+         member.decl       = decl;
+         member.value_type = member.type;
          if (member.type.is_array()) {
             auto array_type = member.type;
             auto value_type = array_type.array_value_type();
@@ -130,6 +140,7 @@ namespace codegen {
                array_type = value_type;
                value_type = array_type.array_value_type();
             } while (true);
+            member.value_type = value_type;
          }
          member.bitpacking_options = computed;
       });

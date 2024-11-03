@@ -41,7 +41,11 @@ namespace codegen {
       protected:
          const member_descriptor* target = nullptr;
          struct {
-            size_t array_rank   = 0; // given int foo[4][3][2], rank 0 has extent 4, rank 1 has extent 3, etc.
+            // given int foo[4][3][2], rank 0 has extent 4, rank 1 has extent 3, 
+            // rank 2 has extent 2, and "rank 3" indicates that we're dealing with 
+            // individual ints.
+            size_t array_rank   = 0;
+            
             size_t array_extent = 1;
          } _state;
          

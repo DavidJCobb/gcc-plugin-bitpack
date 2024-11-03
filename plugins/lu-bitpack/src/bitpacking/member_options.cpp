@@ -69,6 +69,8 @@ namespace bitpacking::member_options {
       };
       
       for(const auto pair : list) {
+         auto args = gw::list_node(pair.second);
+         
          std::string_view key;
          {
             if (pair.first == NULL_TREE)
@@ -87,28 +89,39 @@ namespace bitpacking::member_options {
             continue;
          }
          if (key == "lu_bitpack_bitcount") {
-            auto opt = gw::expr::integer_constant::from_untyped(pair.second).try_value_signed();
-            if (!opt.has_value()) {
-               _report_error(
-                  "\"lu_bitpack_bitcount\" attribute must have an integer constant parameter "
-                  "indicating the number of bits to pack the field into."
-               );
-               continue;
+            int v;
+            {
+               auto arg = args.untyped_nth_value(0);
+               if (arg == NULL_TREE || !gw::expr::integer_constant::node_is(arg)) {
+                  _report_error(
+                     "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter "
+                     "indicating the number of bits to pack the field into."
+                  );
+                  continue;
+               }
+               auto opt = gw::expr::integer_constant::from_untyped(arg).try_value_signed();
+               if (!opt.has_value()) {
+                  _report_error(
+                     "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter "
+                     "indicating the number of bits to pack the field into."
+                  );
+                  continue;
+               }
+               v = (int) *opt;
             }
-            auto v = *opt;
             if (v <= 0) {
                _report_error(
-                  "\"lu_bitpack_bitcount\" attribute must specifyh a positive non-zero "
+                  "%<lu_bitpack_bitcount%> attribute must specifyh a positive non-zero "
                   "bitcount (seen: %d)",
                   (int)v
                );
                continue;
             }
-            if (v > sizeof(size_t) * 8) {
+            if (v > (int)sizeof(size_t) * 8) {
                warning_at(
                   decl.source_location(),
                   1,
-                  "unusual bitpacking options for field %<%s%>: \"lu_bitpack_bitcount\" attribute "
+                  "unusual bitpacking options for field %<%s%>: %<lu_bitpack_bitcount%> attribute "
                   "specifies an unusually large bitcount; is this intentional? (seen: %<%d%>)",
                   decl.name().data(),
                   (int)v
@@ -120,8 +133,17 @@ namespace bitpacking::member_options {
          if (key == "lu_bitpack_funcs") {
             std::string pre_pack;
             std::string post_unpack;
-            if (TREE_CODE(pair.second) == STRING_CST) {
-               auto data = gw::expr::string_constant::from_untyped(pair.second).value();
+            
+            if (!args.empty()) {
+               auto arg = args.untyped_nth_value(0);
+               if (TREE_CODE(arg) != STRING_CST) {
+                  _report_error(
+                     "%<lu_bitpack_funcs%> attribute argument must be a string literal of "
+                     "the form \"pre_pack=identifier,post_unpack=identifier\""
+                  );
+                  continue;
+               }
+               auto data = gw::expr::string_constant::from_untyped(arg).value();
                try {
                   lu::strings::handle_kv_string(data, std::array{
                      lu::strings::kv_string_param{
@@ -141,7 +163,7 @@ namespace bitpacking::member_options {
                   });
                } catch (std::runtime_error& ex) {
                   _report_error(
-                     "\"lu_bitpack_funcs\" attribute failed to parse: %s",
+                     "%<lu_bitpack_funcs%> attribute failed to parse: %s",
                      ex.what()
                   );
                   continue;
@@ -152,18 +174,22 @@ namespace bitpacking::member_options {
             continue;
          }
          if (key == "lu_bitpack_inherit") {
-            std::string from;
-            if (TREE_CODE(pair.second) == STRING_CST) {
-               from = gw::expr::string_constant::from_untyped(pair.second).value();
+            if (args.empty()) {
+               _report_error("%<lu_bitpack_inherit%> attribute: string literal argument required");
+               continue;
             }
-            this->inherit_from = from;
+            auto arg = args.untyped_nth_value(0);
+            if (TREE_CODE(arg) != STRING_CST) {
+               _report_error("%<lu_bitpack_inherit%> attribute: string literal argument required");
+               continue;
+            }
+            this->inherit_from = gw::expr::string_constant::from_untyped(arg).value();
             continue;
          }
          if (key == "lu_bitpack_range") {
-            gw::list_node args(pair.second);
             if (args.empty()) {
                _report_error(
-                  "\"lu_bitpack_range\" attribute must specify two arguments (the minimum "
+                  "%<lu_bitpack_range%> attribute must specify two arguments (the minimum "
                   "and maximum possible values of the field); no arguments given"
                );
                continue;
@@ -171,7 +197,7 @@ namespace bitpacking::member_options {
                auto size = args.size();
                if (size < 2) {
                   _report_error(
-                     "\"lu_bitpack_range\" attribute must specify two arguments (the minimum "
+                     "%<lu_bitpack_range%> attribute must specify two arguments (the minimum "
                      "and maximum possible values of the field); only one argument given"
                   );
                   continue;
@@ -179,7 +205,7 @@ namespace bitpacking::member_options {
                   warning_at(
                      decl.source_location(),
                      1,
-                     "unusual bitpacking options for field %s: \"lu_bitpack_range\" attribute "
+                     "unusual bitpacking options for field %s: %<lu_bitpack_range%> attribute "
                      "specifies more (%u) arguments than expected (2)",
                      decl.name().data(),
                      (int)size
@@ -193,7 +219,7 @@ namespace bitpacking::member_options {
                auto opt = gw::expr::integer_constant::from_untyped(arg_a).try_value_signed();
                if (!opt.has_value()) {
                   _report_error(
-                     "\"lu_bitpack_range\" first argument doesn't appear to be an integer "
+                     "%<lu_bitpack_range%> first argument doesn't appear to be an integer "
                      "constant"
                   );
                   continue;
@@ -204,7 +230,7 @@ namespace bitpacking::member_options {
                auto opt = gw::expr::integer_constant::from_untyped(arg_b).try_value_signed();
                if (!opt.has_value()) {
                   _report_error(
-                     "\"lu_bitpack_range\" second argument doesn't appear to be an integer "
+                     "%<lu_bitpack_range%> second argument doesn't appear to be an integer "
                      "constant"
                   );
                   continue;
@@ -217,7 +243,7 @@ namespace bitpacking::member_options {
             auto type = decl.value_type();
             if (!type.is_array()) {
                _report_error(
-                  "\"lu_bitpack_string\" used on a field that isn't a string (array of char)"
+                  "%<lu_bitpack_string%> used on a field that isn't a string (array of char)"
                );
                continue;
             }
@@ -226,8 +252,13 @@ namespace bitpacking::member_options {
             // the global bitpacking options from here.
             //
             this->is_explicit_string = true;
-            if (TREE_CODE(pair.second) == STRING_CST) {
-               auto data = gw::expr::string_constant::from_untyped(pair.second).value();
+            if (!args.empty()) {
+               auto arg = args.untyped_nth_value(0);
+               if (arg == NULL_TREE || TREE_CODE(arg) != STRING_CST) {
+                  _report_error("%<lu_bitpack_string%> attribute argument must be a string literal");
+                  continue;
+               }
+               auto data = gw::expr::string_constant::from_untyped(arg).value();
                try {
                   std::optional<int> length;
                   bool null_terminated = false;
@@ -253,7 +284,7 @@ namespace bitpacking::member_options {
                      auto v = *length;
                      if (v <= 0) {
                         _report_error(
-                           "\"lu_bitpack_string\" attribute must specify a positive non-zero "
+                           "%<lu_bitpack_string%> attribute must specify a positive non-zero "
                            "string length (seen: %d)",
                            (int)v
                         );
@@ -264,7 +295,7 @@ namespace bitpacking::member_options {
                   this->string.with_terminator = null_terminated;
                } catch (std::runtime_error& ex) {
                   _report_error(
-                     "\"lu_bitpack_string\" attribute failed to parse: %s",
+                     "%<lu_bitpack_string%> attribute failed to parse: %s",
                      ex.what()
                   );
                   continue;
@@ -362,15 +393,18 @@ namespace bitpacking::member_options {
       //
       // Recurse through arrays.
       //
-      auto array_type = member_type;
-      auto value_type = array_type.array_value_type();
-      do {
-         if (!value_type.is_array()) {
-            break;
-         }
-         array_type = value_type;
+      auto value_type = member_type;
+      if (member_type.is_array()) {
+         auto array_type = member_type;
          value_type = array_type.array_value_type();
-      } while (true);
+         do {
+            if (!value_type.is_array()) {
+               break;
+            }
+            array_type = value_type;
+            value_type = array_type.array_value_type();
+         } while (true);
+      }
       if (value_type.empty()) {
          throw std::runtime_error("failed to access member type??");
       }

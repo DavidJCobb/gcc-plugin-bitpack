@@ -1,4 +1,5 @@
 #include "codegen/sector_functions_generator.h"
+#include <iostream>
 #include <c-family/c-common.h> // lookup_name
 #include <stringpool.h> // get_identifier
 #include "bitpacking/global_options.h"
@@ -121,6 +122,8 @@ namespace codegen {
       
       gw::expr::local_block root_read;
       gw::expr::local_block root_save;
+      auto read_statements = root_read.statements();
+      auto save_statements = root_save.statements();
       
       value_pair state_ptr = {
          .read = dst_read.nth_parameter(0).as_value().dereference(),
@@ -132,20 +135,31 @@ namespace codegen {
       object.save = dst_save.nth_parameter(1).as_value().dereference();
       object.descriptor = &info;
       
+std::cerr << "serializing whole-struct: " << info.type.pretty_print() << "\n";
       for(auto& m_descriptor : info.members) {
+std::cerr << "serializing whole-struct member: " << m_descriptor.decl.name() << "\n";
+std::cerr << "array rank: " << m_descriptor.array_extents.size() << "\n";
          auto m_value = object.access_member(m_descriptor);
+std::cerr << "is array: " << m_value.as_member().is_array() << "\n";
          auto expr    = _serialize(state_ptr, m_value);
          
          assert(!expr.read.empty());
          assert(!expr.save.empty());
-         root_read.statements().append(expr.read);
-         root_save.statements().append(expr.save);
+         read_statements.append(expr.read);
+         save_statements.append(expr.save);
       }
       
       dst_read.set_is_defined_elsewhere(false);
       dst_save.set_is_defined_elsewhere(false);
       dst_read.set_root_block(root_read);
       dst_save.set_root_block(root_save);
+      
+std::cerr << "exposing whole-struct func: " << dst_read.name().data() << "\n";
+      // expose these identifiers so we can inspect them with our debug-dump pragmas.
+      // (in release builds we'll likely want to remove this, so user code can't call 
+      // these functions or otherwise access them directly.)
+      dst_read.introduce_to_current_scope();
+      dst_save.introduce_to_current_scope();
       
       return pair;
    }
@@ -734,6 +748,7 @@ namespace codegen {
             value.save = decl.as_value();
             value.descriptor = descriptor;
             
+std::cerr << "serializing object: " << name.c_str() << "\n";
             this->_serialize_value_to_sector(sector, value);
          }
       }

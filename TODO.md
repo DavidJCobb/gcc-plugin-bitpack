@@ -5,7 +5,7 @@
 
 ### BLUF
 
-* Generated functions don't make it into object files and so are invisible to the linker.
+* Currently failing apparently due to `DECL_CONTEXT` on... something... inside a per-sector bitpacking function not being set properly. The assertion failure isn't giving me much to go on...
 
 
 #### details
