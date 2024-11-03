@@ -59,6 +59,8 @@ namespace gcc_wrappers {
             return t;
          };
          
+         bool operator==(const type) const;
+         
          std::string name() const;
          std::string pretty_print() const;
          

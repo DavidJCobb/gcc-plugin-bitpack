@@ -1,4 +1,9 @@
 #include "codegen/serialization_value.h"
+namespace {
+   namespace gw {
+      using namespace gcc_wrappers;
+   }
+}
 
 namespace codegen {
    serialization_value serialization_value::access_member(const member_descriptor& desc) {
@@ -22,6 +27,13 @@ namespace codegen {
       
       return out;
    }
+   serialization_value serialization_value::access_nth(size_t n) {
+      const auto& ty = gw::builtin_types::get();
+      return access_nth(value_pair{
+         .read = gw::expr::integer_constant(ty.basic_int, n),
+         .save = gw::expr::integer_constant(ty.basic_int, n),
+      });
+   }
    
    size_t serialization_value::bitcount() const {
       if (this->is_top_level_struct())
@@ -40,5 +52,10 @@ namespace codegen {
          return true;
       const auto& view = this->as_member();
       return view.type.is_struct();
+   }
+   
+   size_t serialization_value::array_extent() const {
+      assert(is_array());
+      return this->as_member().array_extent();
    }
 }

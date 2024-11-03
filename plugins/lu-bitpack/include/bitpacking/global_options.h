@@ -1,4 +1,5 @@
 #pragma once
+#include <limits>
 #include <string>
 #include "gcc_helpers/extract_pragma_kv_args.h"
 #include "gcc_wrappers/decl/function.h"

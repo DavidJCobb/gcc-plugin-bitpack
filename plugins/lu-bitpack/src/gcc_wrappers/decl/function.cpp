@@ -10,6 +10,9 @@ namespace gcc_wrappers::decl {
    function::function(const char* name, const type& function_type) {
       this->_node = build_fn_decl(name, function_type.as_untyped());
    }
+   function::function(const std::string& name, const type& function_type) {
+      this->_node = build_fn_decl(name.c_str(), function_type.as_untyped());
+   }
    
    type function::function_type() const {
       if (empty())

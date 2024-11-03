@@ -1,12 +1,7 @@
 #pragma once
 #include <variant>
+#include "codegen/descriptors.h"
 #include "codegen/value_pair.h"
-
-namespace codegen {
-   struct struct_descriptor;
-   struct member_descriptor;
-   struct member_descriptor_view;
-}
 
 namespace codegen {
    struct serialization_value : public value_pair {
@@ -18,10 +13,14 @@ namespace codegen {
             
       serialization_value access_member(const member_descriptor&);
       serialization_value access_nth(value_pair n);
+      serialization_value access_nth(size_t n);
       
       size_t bitcount() const;
       bool is_array() const;
       bool is_struct() const;
+      
+      // assert(is_array());
+      size_t array_extent() const;
       
       constexpr bool is_top_level_struct() const noexcept {
          return std::holds_alternative<const struct_descriptor*>(this->descriptor);
@@ -35,10 +34,10 @@ namespace codegen {
          return std::holds_alternative<member_descriptor_view>(this->descriptor);
       }
       constexpr member_descriptor_view& as_member() {
-         return std::get<struct_descriptor>(this->descriptor);
+         return std::get<member_descriptor_view>(this->descriptor);
       }
       constexpr const member_descriptor_view& as_member() const noexcept {
-         return std::get<struct_descriptor>(this->descriptor);
+         return std::get<member_descriptor_view>(this->descriptor);
       }
    };
 }

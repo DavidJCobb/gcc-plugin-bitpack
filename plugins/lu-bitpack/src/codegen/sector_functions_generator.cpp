@@ -1,4 +1,12 @@
 #include "codegen/sector_functions_generator.h"
+#include <c-family/c-common.h> // lookup_name
+#include <stringpool.h> // get_identifier
+#include "bitpacking/global_options.h"
+#include "gcc_wrappers/decl/result.h"
+#include "gcc_wrappers/expr/assign.h"
+#include "gcc_wrappers/expr/call.h"
+#include "gcc_wrappers/expr/integer_constant.h"
+#include "gcc_wrappers/expr/ternary.h"
 #include "gcc_wrappers/flow/simple_for_loop.h"
 #include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/statement_list.h"
@@ -26,9 +34,10 @@ namespace codegen {
       return false;
    }
    void sector_functions_generator::in_progress_sector::make_functions() {
+      const auto& ty = gw::builtin_types::get_fast();
       if (this->function_type.empty()) {
          this->function_type = gw::type::make_function_type(
-            types.t_void,
+            ty.basic_void,
             // args:
             this->owner.global_options.types.bitstream_state_ptr
          );
@@ -44,7 +53,7 @@ namespace codegen {
       }
    }
    void sector_functions_generator::in_progress_sector::next() {
-      this->commit();
+      this->functions.commit();
       this->owner.sector_functions.push_back(this->functions);
       ++this->id;
       this->bits_remaining = this->owner.global_options.sectors.size_per;
@@ -63,10 +72,10 @@ namespace codegen {
    }
    
    func_pair sector_functions_generator::get_or_create_whole_struct_functions(const struct_descriptor& info) {
-      auto stored = this->_struct_info[info.type];
+      auto& stored = this->_struct_info[info.type];
       assert(stored.descriptor != nullptr);
       
-      auto& pair = stored.whole_struct_functions[info.type.as_untyped()];
+      auto pair = stored.whole_struct_functions[info.type];
       if (!pair.first.empty()) {
          assert(!pair.second.empty() && "Should've generated both functions together!");
          return pair;
@@ -77,30 +86,30 @@ namespace codegen {
       
       {  // Make the function types and decls first.
          {  // Read
-            auto name = std::string("__lu_bitpack_read_") + object_type.name();
+            auto name = std::string("__lu_bitpack_read_") + info.type.name();
             auto type = gw::type::make_function_type(
-               types.t_void,
+               ty.basic_void,
                // args:
-               gen.types.stream_state.add_pointer(), // state
-               object_type.add_pointer()             // dst
+               this->global_options.types.bitstream_state_ptr, // state
+               info.type.add_pointer() // dst
             );
             pair.read = gw::decl::function(name, type);
          }
          {  // Save
-            auto name = std::string("__lu_bitpack_write_") + object_type.name();
+            auto name = std::string("__lu_bitpack_write_") + info.type.name();
             auto type = gw::type::make_function_type(
-               types.t_void,
+               ty.basic_void,
                // args:
-               gen.types.stream_state.add_pointer(),  // state
-               object_type.add_const().add_pointer()  // src
+               this->global_options.types.bitstream_state_ptr, // state
+               info.type.add_const().add_pointer()  // src
             );
             pair.save = gw::decl::function(name, type);
          }
       }
       auto dst_read = pair.read.as_modifiable();
       auto dst_save = pair.save.as_modifiable();
-      dst_read.set_result_decl(gw::decl::result(type.basic_void));
-      dst_save.set_result_decl(gw::decl::result(type.basic_void));
+      dst_read.set_result_decl(gw::decl::result(ty.basic_void));
+      dst_save.set_result_decl(gw::decl::result(ty.basic_void));
       
       gw::expr::local_block root_read;
       gw::expr::local_block root_save;
@@ -132,7 +141,7 @@ namespace codegen {
    }
      
    sector_functions_generator::struct_info& sector_functions_generator::info_for_struct(gcc_wrappers::type t) {
-      auto stored = this->_struct_info[info.type];
+      auto& stored = this->_struct_info[t];
       if (stored.descriptor != nullptr)
          return stored;
       
@@ -146,25 +155,25 @@ namespace codegen {
       if (value.is_top_level_struct()) {
          return &value.as_top_level_struct();
       }
-      return this->info_for_struct(object.as_member().type()).descriptor.get();
+      return this->info_for_struct(value.as_member().type()).descriptor.get();
    }
    
    expr_pair sector_functions_generator::_serialize_whole_struct(value_pair state_ptr, serialization_value& value) {
       const auto* descriptor = _descriptor_for_struct(value);
       assert(descriptor != nullptr);
-      auto& pair = this->get_or_create_whole_struct_functions(*descriptor);
+      auto pair = this->get_or_create_whole_struct_functions(*descriptor);
       return expr_pair{
          .read = gw::expr::call(
             pair.read,
             // args:
             state_ptr.read,
-            object.read.address_of()
+            value.read.address_of()
          ),
          .save = gw::expr::call(
             pair.save,
             // args:
             state_ptr.save,
-            object.save.address_of()
+            value.save.address_of()
          )
       };
    }
@@ -174,8 +183,8 @@ namespace codegen {
       
       gw::flow::simple_for_loop read_loop(ty.basic_int);
       read_loop.counter_bounds = {
-         .start     = start,
-         .last      = start + count - 1,
+         .start     = (intmax_t)start,
+         .last      = (intmax_t)(start + count - 1),
          .increment = 1,
       };
       
@@ -187,11 +196,11 @@ namespace codegen {
       
       expr_pair to_append;
       {
-         auto element = value.access_nth(
-            read_loop.counter.as_value(),
-            save_loop.counter.as_value()
-         );
-         to_append = _serialize(element);
+         auto element = value.access_nth(value_pair{
+            .read = read_loop.counter.as_value(),
+            .save = save_loop.counter.as_value()
+         });
+         to_append = _serialize(state_ptr, element);
       }
       read_loop_body.append(to_append.read);
       save_loop_body.append(to_append.save);
@@ -334,23 +343,23 @@ namespace codegen {
          
          auto vt_canonical = type.canonical();
          if (vt_canonical == ty.uint8) {
-            read_func = this->read.u8;
-            save_func = this->save.u8;
+            read_func = this->global_options.functions.read.u8;
+            save_func = this->global_options.functions.save.u8;
          } else if (vt_canonical == ty.uint16) {
-            read_func = this->read.u16;
-            save_func = this->save.u16;
+            read_func = this->global_options.functions.read.u16;
+            save_func = this->global_options.functions.save.u16;
          } else if (vt_canonical == ty.uint32) {
-            read_func = this->read.u32;
-            save_func = this->save.u32;
+            read_func = this->global_options.functions.read.u32;
+            save_func = this->global_options.functions.save.u32;
          } else if (vt_canonical == ty.int8) {
-            read_func = this->read.s8;
-            save_func = this->save.s8;
+            read_func = this->global_options.functions.read.s8;
+            save_func = this->global_options.functions.save.s8;
          } else if (vt_canonical == ty.int16) {
-            read_func = this->read.s16;
-            save_func = this->save.s16;
+            read_func = this->global_options.functions.read.s16;
+            save_func = this->global_options.functions.save.s16;
          } else if (vt_canonical == ty.int32) {
-            read_func = this->read.s32;
-            save_func = this->save.s32;
+            read_func = this->global_options.functions.read.s32;
+            save_func = this->global_options.functions.save.s32;
          }
          assert(!read_func.empty());
          assert(!save_func.empty());
@@ -374,7 +383,7 @@ namespace codegen {
             // zero don't waste the low bits.
             //
             to_assign = to_assign.add(
-               gw::expr::integer_constant(vt, options.min)
+               gw::expr::integer_constant(type, options.min)
             );
          }
          out.read = gw::expr::assign(value.read, to_assign);
@@ -415,34 +424,30 @@ namespace codegen {
       
       in_progress_func_pair top_pair;
       
-      {  // void __lu_bitpack_read_by_sector(const buffer_byte_type* src, int sector_id);
-         auto name = lu::strings::printf_string("__lu_bitpack_read_by_sector", this->id);
-         top_pair.read = gw::decl::function(
-            name,
-            gw::type::make_function_type(
-               ty.t_void,
-               // args:
-               this->global_options.types.buffer_byte_ptr.add_const(),
-               ty.basic_int // int sectorID
-            )
-         );
-      }
-      {  // Save
-         auto name = lu::strings::printf_string("__lu_bitpack_save_by_sector", this->id);
-         top_pair.save = gw::decl::function(
-            name,
-            gw::type::make_function_type(
-               ty.t_void,
-               // args:
-               this->global_options.types.buffer_byte_ptr,
-               ty.basic_int // int sectorID
-            )
-         );
-      }
+      // void __lu_bitpack_read_by_sector(const buffer_byte_type* src, int sector_id);
+      top_pair.read = gw::decl::function(
+         "__lu_bitpack_read_by_sector",
+         gw::type::make_function_type(
+            ty.basic_void,
+            // args:
+            this->global_options.types.buffer_byte_ptr.add_const(),
+            ty.basic_int // int sectorID
+         )
+      );
+      // void __lu_bitpack_save_by_sector(buffer_byte_type* dst, int sector_id);
+      top_pair.save = gw::decl::function(
+         "__lu_bitpack_save_by_sector",
+         gw::type::make_function_type(
+            ty.basic_void,
+            // args:
+            this->global_options.types.buffer_byte_ptr,
+            ty.basic_int // int sectorID
+         )
+      );
       
       size_t size = this->sector_functions.size();
       {  // Read
-         auto statements = top_pair.read.read_root.statements();
+         auto statements = top_pair.read_root.statements();
          
          auto state_decl = gw::decl::variable("__lu_bitstream_state", this->global_options.types.bitstream_state);
          state_decl.make_artificial();
@@ -451,7 +456,7 @@ namespace codegen {
          statements.append(state_decl.make_declare_expr());
          
          {  // lu_BitstreamInitialize(&state, dst);
-            auto src_arg = func_decl.nth_parameter(0).as_value();
+            auto src_arg = top_pair.read.nth_parameter(0).as_value();
             {
                auto pointer_type = src_arg.value_type();
                auto value_type   = pointer_type.remove_pointer();
@@ -461,7 +466,7 @@ namespace codegen {
             }
             statements.append(
                gw::expr::call(
-                  gw::decl::function::from_untyped(needed_functions.bitstream_initialize.decl),
+                  this->global_options.functions.stream_state_init,
                   // args:
                   state_decl.as_value().address_of(), // &state
                   src_arg // dst
@@ -483,18 +488,18 @@ namespace codegen {
          auto prev_cond = gw::expr::ternary::from_untyped(NULL_TREE);
          for(size_t i = 0; i < calls.size(); ++i) {
             auto  cond = gw::expr::ternary(
-               types.t_void,
+               ty.basic_void,
                
                // condition:
-               func_decl.nth_parameter(1).as_value().cmp_is_equal(
-                  gw::expr::integer_constant(types.t_int, i)
+               top_pair.read.nth_parameter(1).as_value().cmp_is_equal(
+                  gw::expr::integer_constant(ty.basic_int, i)
                ),
                
                // branches:
                calls[i],
                gw::expr::base::from_untyped(NULL_TREE)
             );
-            if (prev_cond) {
+            if (!prev_cond.empty()) {
                prev_cond.set_false_branch(cond);
             } else {
                root_cond = cond;
@@ -506,7 +511,7 @@ namespace codegen {
          }
       }
       {  // Save
-         auto statements = top_pair.save.read_root.statements();
+         auto statements = top_pair.save_root.statements();
          
          auto state_decl = gw::decl::variable("__lu_bitstream_state", this->global_options.types.bitstream_state);
          state_decl.make_artificial();
@@ -515,13 +520,12 @@ namespace codegen {
          statements.append(state_decl.make_declare_expr());
          
          {  // lu_BitstreamInitialize(&state, src);
-            auto src_arg = func_decl.nth_parameter(0).as_value();
             statements.append(
                gw::expr::call(
-                  gw::decl::function::from_untyped(needed_functions.bitstream_initialize.decl),
+                  this->global_options.functions.stream_state_init,
                   // args:
                   state_decl.as_value().address_of(), // &state
-                  func_decl.nth_parameter(0).as_value() // src
+                  top_pair.save.nth_parameter(0).as_value() // src
                )
             );
          }
@@ -540,18 +544,18 @@ namespace codegen {
          auto prev_cond = gw::expr::ternary::from_untyped(NULL_TREE);
          for(size_t i = 0; i < calls.size(); ++i) {
             auto  cond = gw::expr::ternary(
-               types.t_void,
+               ty.basic_void,
                
                // condition:
-               func_decl.nth_parameter(1).as_value().cmp_is_equal(
-                  gw::expr::integer_constant(types.t_int, i)
+               top_pair.save.nth_parameter(1).as_value().cmp_is_equal(
+                  gw::expr::integer_constant(ty.basic_int, i)
                ),
                
                // branches:
                calls[i],
                gw::expr::base::from_untyped(NULL_TREE)
             );
-            if (prev_cond) {
+            if (!prev_cond.empty()) {
                prev_cond.set_false_branch(cond);
             } else {
                root_cond = cond;
@@ -566,13 +570,13 @@ namespace codegen {
       // Finalize functions:
       //
       {
-         auto& func_dst = top_pair.read.as_modifiable();
+         auto func_dst = top_pair.read.as_modifiable();
          
          gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
          func_dst.set_result_decl(retn_decl);
       }
       {
-         auto& func_dst = top_pair.save.as_modifiable();
+         auto func_dst = top_pair.save.as_modifiable();
          
          gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
          func_dst.set_result_decl(retn_decl);
@@ -583,17 +587,17 @@ namespace codegen {
    }
    
    void sector_functions_generator::_serialize_value_to_sector(
-      in_progress_sector&  sector,
-      serialization_value& object
+      in_progress_sector& sector,
+      serialization_value object
    ) {
-      value state_ptr;
+      value_pair state_ptr;
       state_ptr.read = sector.functions.read.nth_parameter(0).as_value();
       state_ptr.save = sector.functions.save.nth_parameter(0).as_value();
       
       size_t bitcount = object.bitcount();
       if (bitcount <= sector.bits_remaining) {
          sector.functions.append(this->_serialize(state_ptr, object));
-         bits_remaining -= size;
+         sector.bits_remaining -= bitcount;
          return;
       }
       
@@ -628,9 +632,12 @@ namespace codegen {
             //
             // Generate a loop to serialize as many elements as can fit.
             //
-            size_t can_fit = bits_remaining / elem_size;
+            size_t can_fit = sector.bits_remaining / elem_size;
             if (can_fit > 1) {
-               sector.functions._serialize_array_slice(this->_serialize(state_ptr, object, i, can_fit));
+               sector.functions.append(
+                  this->_serialize_array_slice(state_ptr, object, i, can_fit)
+               );
+               sector.bits_remaining -= can_fit * elem_size;
                i += can_fit;
                if (i >= extent)
                   break;

@@ -140,6 +140,9 @@ namespace {
             node = NULL_TREE;
          return gw::decl::function::from_untyped(node);
       }
+      gw::decl::function _get_func_decl(const std::string& identifier) {
+         return _get_func_decl(identifier.c_str());
+      }
       gw::type _get_type_decl(const char* identifier) {
          auto node = lookup_name(get_identifier(identifier));
          if (!gw::type::node_is(node))
@@ -184,7 +187,7 @@ namespace {
          throw std::runtime_error(lu::strings::printf_string(
             "the %%<%s%%> function (%%<%s%%>) is unprototyped; this is wrong",
             noun,
-            func_decl.name.data()
+            func_decl.name().data()
          ));
       }
       
@@ -226,12 +229,12 @@ namespace {
          gw::list_node::iterator arg_it,
          gw::type                desired_arg_type
       ) {
-         auto arg_type = gw::type::from_untyped(arg_it->second);
+         auto arg_type = gw::type::from_untyped((*arg_it).second);
          if (arg_type.empty()) {
             throw std::runtime_error(lu::strings::printf_string(
                "too few arguments for the %%<%s%%> function (%%<%s%%>) (only %u present)",
                noun,
-               name.data(),
+               func_decl.name().data(),
                arg_index
             ));
          }
@@ -254,7 +257,7 @@ namespace {
             "incorrect argument %u type for the %%<%s%%> function (%%<%s%%>) (%%<%s%%> expected; %%<%s%%> found)",
             arg_index,
             noun,
-            name.data(),
+            func_decl.name().data(),
             desired_arg_type.pretty_print().c_str(),
             arg_type.pretty_print().c_str()
          ));
@@ -265,36 +268,39 @@ namespace {
          gw::decl::function      func_decl,
          gw::list_node::iterator arg_it
       ) {
-         if (arg_it->second == ty.basic_void.as_untyped())
+         const auto& ty = gw::builtin_types::get_fast();
+         
+         auto raw_arg_type = (*arg_it).second;
+         if (raw_arg_type == ty.basic_void.as_untyped())
             return;
-         if (arg_it->second == NULL_TREE) {
-            auto arg_type = type::from_untyped(arg_it->second);
+         if (raw_arg_type == NULL_TREE) {
+            auto arg_type = gw::type::from_untyped(raw_arg_type);
             throw std::runtime_error(lu::strings::printf_string(
                "extra argument(s) found for the %%<%s%%> function (%%<%s%%>) (first extra argument type is %%<%s%%>)",
                noun,
-               name.data(),
+               func_decl.name().data(),
                arg_type.pretty_print().c_str()
             ));
          }
          throw std::runtime_error(lu::strings::printf_string(
             "the %%<%s%%> function (%%<%s%%>) is varargs; this is wrong",
             noun,
-            name.data()
+            func_decl.name().data()
          ));
       }
    }
 }
 
 namespace bitpacking::global_options {
-   computed::resolve(const requested& src) {
+   void computed::resolve(const requested& src) {
       const auto& ty = gw::builtin_types::get_fast();
       
       //
       // Resolve types:
       //
       
-      this->types.boolean     = type.boolean;
-      this->types.string_char = type.basic_char;
+      this->types.boolean     = ty.basic_bool;
+      this->types.string_char = ty.basic_char;
       if (!src.types.boolean.empty()) {
          if (src.types.boolean != "bool") {
             this->types.boolean = _get_type_decl(src.types.boolean.c_str());
@@ -345,13 +351,15 @@ namespace bitpacking::global_options {
          
          // bool lu_BitstreamRead_bool(struct lu_BitstreamState*)
          {
-            auto noun = lu::strings::printf_string("bitstream %s function for bool values", op_name);
+            auto noun_str = lu::strings::printf_string("bitstream %s function for bool values", op_name);
+            auto noun = noun_str.c_str();
+            
             set.boolean = _get_func_decl(src.functions.read.boolean);
             auto decl = set.boolean;
             _check_exists(noun, decl);
             auto type = decl.function_type();
             _check_prototyped  (noun, decl, type);
-            _check_return_type (noun, decl, type, boolean_type);
+            _check_return_type (noun, decl, type, this->types.boolean);
             
             auto   it = type.function_arguments().begin();
             size_t i  = 0;
@@ -365,7 +373,9 @@ namespace bitpacking::global_options {
             gw::decl::function decl,
             gw::type           result_type
          ) {
-            auto noun = lu::strings::printf_string("bitstream %s function for %s values", op_name, noun_type);
+            auto noun_str = lu::strings::printf_string("bitstream %s function for %s values", op_name, noun_type);
+            auto noun = noun_str.c_str();
+            
             _check_exists(noun, decl);
             auto type = decl.function_type();
             _check_prototyped  (noun, decl, type);
@@ -400,7 +410,9 @@ namespace bitpacking::global_options {
             gw::decl::function decl,
             gw::type           element_type
          ) {
-            auto noun = lu::strings::printf_string("bitstream %s function for %s", op_name, noun_type);
+            auto noun_str = lu::strings::printf_string("bitstream %s function for %s", op_name, noun_type);
+            auto noun = noun_str.c_str();
+            
             _check_exists(noun, decl);
             auto type = decl.function_type();
             _check_prototyped  (noun, decl, type);
@@ -418,19 +430,21 @@ namespace bitpacking::global_options {
          set.string_wt = _get_func_decl(src.functions.read.string_wt);
          set.buffer    = _get_func_decl(src.functions.read.buffer);
          
-         _check_span("strings with terminators", set.string_wt, string_char_type);
-         _check_span("strings with optional terminators", set.string_ut, string_char_type);
-         _check_span("buffers", set.buffer, buffer_byte_type);
+         _check_span("strings with terminators", set.string_wt, this->types.string_char);
+         _check_span("strings with optional terminators", set.string_ut, this->types.string_char);
+         _check_span("buffers", set.buffer, this->types.buffer_byte);
       }
       
       // bitstream write
       {
          constexpr const char* op_name = "write";
-         auto& set = this->save;
+         auto& set = this->functions.save;
          
          // void lu_BitstreamRead_bool(struct lu_BitstreamState*, bool)
          {
-            auto noun = lu::strings::printf_string("bitstream %s function for bool values", op_name);
+            auto noun_str = lu::strings::printf_string("bitstream %s function for bool values", op_name);
+            auto noun = noun_str.c_str();
+            
             auto decl = set.boolean;
             _check_exists(noun, decl);
             auto type = decl.function_type();
@@ -440,7 +454,7 @@ namespace bitpacking::global_options {
             auto   it = type.function_arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
-            _check_nth_argument    (noun, decl,   i,   it, boolean_type);
+            _check_nth_argument    (noun, decl,   i,   it, this->types.boolean);
             _check_argument_endcap (noun, decl, ++it);
          }
          
@@ -450,7 +464,9 @@ namespace bitpacking::global_options {
             gw::decl::function decl,
             gw::type           result_type
          ) {
-            auto noun = lu::strings::printf_string("bitstream %s function for %s values", op_name, noun_type);
+            auto noun_str = lu::strings::printf_string("bitstream %s function for %s values", op_name, noun_type);
+            auto noun = noun_str.c_str();
+            
             _check_exists(noun, decl);
             auto type = decl.function_type();
             _check_prototyped  (noun, decl, type);
@@ -486,7 +502,9 @@ namespace bitpacking::global_options {
             gw::decl::function decl,
             gw::type           element_type
          ) {
-            auto noun = lu::strings::printf_string("bitstream %s function for %s", op_name, noun_type);
+            auto noun_str = lu::strings::printf_string("bitstream %s function for %s", op_name, noun_type);
+            auto noun = noun_str.c_str();
+            
             _check_exists(noun, decl);
             auto type = decl.function_type();
             _check_prototyped  (noun, decl, type);
@@ -504,9 +522,9 @@ namespace bitpacking::global_options {
          set.string_wt = _get_func_decl(src.functions.write.string_wt);
          set.buffer    = _get_func_decl(src.functions.write.buffer);
          
-         _check_span("strings with terminators", set.string_wt, string_char_type);
-         _check_span("strings with optional terminators", set.string_ut, string_char_type);
-         _check_span("buffers", set.buffer, buffer_byte_type);
+         _check_span("strings with terminators", set.string_wt, this->types.string_char);
+         _check_span("strings with optional terminators", set.string_ut, this->types.string_char);
+         _check_span("buffers", set.buffer, this->types.buffer_byte);
       }
       
       // Done.

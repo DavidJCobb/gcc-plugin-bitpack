@@ -17,6 +17,8 @@ namespace gcc_wrappers {
             WRAPPED_TREE_NODE_BOILERPLATE(call)
          
          public:
+            call() {}
+         
             template<typename... Args> requires (std::is_base_of_v<value, Args> && ...)
             call(decl::function func_decl, Args... args) {
                auto func_type = func_decl.function_type();

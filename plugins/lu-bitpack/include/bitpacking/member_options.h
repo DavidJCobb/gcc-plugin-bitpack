@@ -66,13 +66,13 @@ namespace bitpacking::member_options {
          );
          
          constexpr bool is_buffer() const noexcept {
-            return std::holds_alternative<buffer_data>(this->_data);
+            return std::holds_alternative<buffer_data>(this->data);
          }
          constexpr bool is_integral() const noexcept {
-            return std::holds_alternative<integral_data>(this->_data);
+            return std::holds_alternative<integral_data>(this->data);
          }
          constexpr bool is_string() const noexcept {
-            return std::holds_alternative<string_data>(this->_data);
+            return std::holds_alternative<string_data>(this->data);
          }
          
          constexpr const buffer_data& buffer_options() const noexcept {
@@ -82,6 +82,18 @@ namespace bitpacking::member_options {
             return std::get<integral_data>(this->data);
          }
          constexpr const string_data& string_options() const noexcept {
+            return std::get<string_data>(this->data);
+         }
+         //
+         // non-const:
+         //
+         constexpr buffer_data& buffer_options() noexcept {
+            return std::get<buffer_data>(this->data);
+         }
+         constexpr integral_data& integral_options() noexcept {
+            return std::get<integral_data>(this->data);
+         }
+         constexpr string_data& string_options() noexcept {
             return std::get<string_data>(this->data);
          }
    };

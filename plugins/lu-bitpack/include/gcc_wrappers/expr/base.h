@@ -1,6 +1,7 @@
 #pragma once
 #include "gcc_wrappers/type.h"
 #include "gcc_wrappers/value.h"
+#include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace expr {
@@ -9,6 +10,7 @@ namespace gcc_wrappers {
             static bool node_is(tree t) {
                return EXPR_P(t);
             }
+            WRAPPED_TREE_NODE_BOILERPLATE(base)
          
          public:
             location_t source_location() const;
@@ -22,3 +24,5 @@ namespace gcc_wrappers {
       static_assert(sizeof(base) == sizeof(value)); // no new fields
    }
 }
+
+#include "gcc_wrappers/_boilerplate.undef.h"

@@ -1,7 +1,10 @@
 #include "gcc_wrappers/expr/base.h"
 #include <cassert>
+#include "gcc_wrappers/_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::expr {
+   WRAPPED_TREE_NODE_BOILERPLATE(base)
+   
    location_t base::source_location() const {
       return EXPR_LOCATION(this->_node);
    }

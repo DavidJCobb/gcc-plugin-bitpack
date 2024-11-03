@@ -65,3 +65,17 @@ namespace gcc_wrappers {
          }
    };
 }
+
+// std::hash isn't declared in any one header, so just pick and include a 
+// random header that's known to declare it:
+#include <memory>
+
+// allow wrapped nodes as keys in containers like `std::unordered_map`
+namespace std {
+   template<typename T> requires std::is_base_of_v<gcc_wrappers::_wrapped_tree_node, T>
+   struct hash<T> {
+      size_t operator()(const T& s) const noexcept {
+         return hash<void*>()((void*)s.as_untyped());
+      }
+   };
+}

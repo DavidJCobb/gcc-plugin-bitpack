@@ -4,8 +4,21 @@
 #include <cassert>
 #include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to
 
+// Defined in GCC source, `c-tree.h`; not included in the plug-in headers, bafflingly.
+// Do not confuse this with the C++ `comptypes`, which has a different signature and 
+// is unavailable when compiling C.
+extern int comptypes(tree, tree);
+
 namespace gcc_wrappers {
    WRAPPED_TREE_NODE_BOILERPLATE(type)
+   
+   bool type::operator==(const type other) const {
+      if (this->_node == other._node)
+         return true;
+      
+      assert(c_language == c_language_kind::clk_c);
+      return comptypes(this->_node, other._node) != 0;
+   }
    
    std::string type::name() const {
       tree name_tree = TYPE_NAME(this->_node);

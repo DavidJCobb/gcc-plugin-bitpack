@@ -81,7 +81,7 @@ namespace codegen {
             void next();
          };
          
-         void _serialize_value_to_sector(in_progress_sector&, serialization_value&);
+         void _serialize_value_to_sector(in_progress_sector&, serialization_value);
          void _make_top_level_functions();
          
       public:

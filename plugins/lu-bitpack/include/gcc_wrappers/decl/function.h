@@ -39,6 +39,10 @@ namespace gcc_wrappers {
                const char* identifier_name,
                const type& function_type
             );
+            function(
+               const std::string& identifier_name,
+               const type& function_type
+            );
             
             type function_type() const;
             param nth_parameter(size_t) const;
