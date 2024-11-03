@@ -29,7 +29,9 @@ namespace codegen {
          if (prior == NULL_TREE) {
             // c_bind doesn't do what we need it to do: it doesn't ensure that the 
             // per-sector functions make it into the compiled object file.
-            //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
+            //
+            // it *does* expose the function to `lookup_name` and friends, though.
+            c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
             
             // Anything that calls pushdecl crashes in combination with the above 
             // `set_is_defined_elsewhere(false)` calls.
@@ -43,7 +45,9 @@ namespace codegen {
          if (prior == NULL_TREE) {
             // c_bind doesn't do what we need it to do: it doesn't ensure that the 
             // per-sector functions make it into the compiled object file.
-            //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
+            //
+            // it *does* expose the function to `lookup_name` and friends, though.
+            c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
             
             // Anything that calls pushdecl crashes in combination with the above 
             // `set_is_defined_elsewhere(false)` calls.

@@ -240,9 +240,14 @@ namespace gcc_wrappers::decl {
             tree prev_decl  = NULL_TREE;
             tree prev_child = NULL_TREE;
             
-            auto statements = lb.statements();
+            bool side_effects = TREE_SIDE_EFFECTS(lb.as_untyped());
+            auto statements   = lb.statements();
             for(auto wrap : statements) {
                auto node = wrap.as_untyped();
+               
+               if (TREE_SIDE_EFFECTS(node)) {
+                  side_effects = true;
+               }
                
                // Find and link all decls to the block, forming a 
                // linked list.
@@ -286,6 +291,7 @@ namespace gcc_wrappers::decl {
             // [1] https://github.com/gcc-mirror/gcc/blob/ecf80e7daf7f27defe1ca724e265f723d10e7681/gcc/function-tests.cc#L220
             //
             lb.set_block_node(block);
+            TREE_SIDE_EFFECTS(lb.as_untyped()) = side_effects ? 1 : 0;
          };
          _impl(lb, block, _impl);
       };

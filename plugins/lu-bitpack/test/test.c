@@ -85,7 +85,27 @@ extern void generated_save(u8* dst, int sector_id);
    save_name = generated_save,              \
    data      = sStructA sStructB | sStructC \
 )
+#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_0
 
+
+extern void _read_a(struct lu_BitstreamState* state, struct StructA* dst) {
+   for(int i = 0; i < 9; ++i)
+      dst->a[i] = lu_BitstreamRead_u8(state, 6);
+   
+   dst->b = lu_BitstreamRead_u8(state, 5);
+}
+extern void _read_b(struct lu_BitstreamState* state, struct StructB* dst) {
+   lu_BitstreamRead_string(state, dst->a, 5);
+}
+extern void _read_c(struct lu_BitstreamState* state, struct StructC* dst) {
+   lu_BitstreamRead_string(state, dst->a, 23);
+}
+extern void _read_sector_0(struct lu_BitstreamState* state) {
+   _read_a(state, &sStructA);
+   _read_b(state, &sStructB);
+   _read_c(state, &sStructC);
+}
+#pragma lu_bitpack debug_dump_function _read_sector_0
 
 
 
