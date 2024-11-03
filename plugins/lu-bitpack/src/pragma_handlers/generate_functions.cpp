@@ -156,7 +156,7 @@ namespace pragma_handlers {
          };
          generator.run();
       } catch (std::runtime_error& ex) {
-         std::string message = "%<#pragma lu_bitpack generate_functions%>: a problem occurred: ";
+         std::string message = "%<#pragma lu_bitpack generate_functions%>: ";
          message += ex.what();
          
          error_at(start_loc, message.c_str());

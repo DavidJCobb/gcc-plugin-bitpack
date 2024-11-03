@@ -5,9 +5,26 @@
 
 ### BLUF
 
-* Our functions generate properly but don't do anything.
-  * We zero-fill the buffer before saving, so we can tell whether the save function did anything.
-  * We `memset` the state structs to 0x7E (`'~'`) one sector at a time, before reading each sector, so we can tell whether the read function did anything.
+* Devise a testcase wherein a struct is split across sector boundaries.
+* Devise a testcase wherein an array is split across sector boundaries.
+* Devise testcases for heritable options.
+  * Test valid uses of integer options
+  * Test valid uses of string options
+  * Test error case: applying string options to explicit opaque-buffer members
+  * Test error case: applying integer options to explicit string members
+* Implement pre-pack and post-unpack functions.
+  * We need to actually call them, and *how* we call them will depend on the type of the member to which they've been applied. These options should work on structs, arrays, and primitives.
+  * We need to devise testcases for each member kind to which these can be applied.
+* We don't currently enforce the max sector count. If we exceed the count upon starting a new sector, we should `throw` a `std::runtime_error` to fail.
+* Alongside the serialization functions, we should generate XML output describing the serialization format we're computing.
+* Implement externally-tagged union members.
+  * If a union appears as a member of a larger struct, then it should be possible to designate one of its sibling members to serve as a tag.
+    * How do we associate the sibling's values with the union's members? Require that the tag be an integarl type, require a `lu_bitpack_union_tag_id(n)` attribute on each union member with some integer value *n*, and error if any member lacks one or if any two members use the same value?
+      * Sounds good to me!
+    * Variable-length data is not one of our design goals. If any union member is (or serializes as) shorter than the others, then we need to zero-fill with bits until we've consumed the maximum possible number of bits that the union might ever consume.
+* Implement internally-tagged unions, as both members and top-level types.
+  * If all of the union's members are structs, and the first *n* fields of all such structs are identical, then any of those first *n* fields can be used as the union's tag.
+* When `codegen::struct_descriptor` grabs the bitpacking options for a member, it should wrap resolving the options in a try/catch. If a `std::runtime_error` is thrown, prepend detailed error information (i.e. `%<StructName::member_name%>`) to the error message and rethrow.
 
 
 #### details

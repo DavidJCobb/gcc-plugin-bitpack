@@ -52,10 +52,20 @@ include ../../Makefile.common
 test: $(PLUGIN)
 	$(CCPLUGIN) -c -o /dev/null test/test.c -Itest
 
-.PHONY: test_and_run
-test_and_run: $(PLUGIN)
-	- rm -f test/*.o
-	$(CCPLUGIN) -c test/bitstreams.c -o test/bitstreams.o -Itest
-	$(CCPLUGIN) -c test/test.c -o test/test.o -Itest
-	$(CCPLUGIN) test/bitstreams.o test/test.o -o test/test
-	test/test
+.PHONY: testcase_a
+testcase_a: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f testcases/a/*.o
+	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) -c testcases/a/test.c -o testcases/a/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o testcases/a/test.o -o testcases/a/test
+	testcases/a/test
+
+.PHONY: testcase_b
+testcase_b: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f testcases/b/*.o
+	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) -c testcases/b/test.c -o testcases/b/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o testcases/b/test.o -o testcases/b/test
+	testcases/b/test

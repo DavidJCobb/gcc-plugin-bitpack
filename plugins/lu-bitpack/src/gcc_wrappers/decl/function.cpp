@@ -335,6 +335,8 @@ namespace gcc_wrappers::decl {
       // Actions below are needed in order to emit the function to the object file, 
       // so the linker can see it and it's included in the program.
       //
+      // NOTE: You must also mark the function as non-extern, manually.
+      //
       
       if (!DECL_STRUCT_FUNCTION(this->_node)) {
          //

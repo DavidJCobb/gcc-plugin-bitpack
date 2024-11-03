@@ -755,19 +755,26 @@ namespace codegen {
          for(auto& name : list) {
             auto node = lookup_name(get_identifier(name.c_str()));
             if (node == NULL_TREE) {
-               // TODO: throw
-               continue;
+               throw std::runtime_error(lu::strings::printf_string(
+                  "failed to find variable %<%s%> to serialize",
+                  name.c_str()
+               ));
             }
             if (TREE_CODE(node) != VAR_DECL) {
-               // TODO: throw
-               continue;
+               throw std::runtime_error(lu::strings::printf_string(
+                  "identifier %<%s%> does not refer to a variable",
+                  name.c_str()
+               ));
             }
             
             auto decl = gw::decl::variable::from_untyped(node);
             auto type = decl.value_type();
             if (!type.is_record()) {
-               // TODO: throw
-               continue;
+               throw std::runtime_error(lu::strings::printf_string(
+                  "identifier %<%s%> is not an instance of a struct type (type is %<%s%>)",
+                  name.c_str(),
+                  type.pretty_print().c_str()
+               ));
             }
             
             const auto* descriptor = this->info_for_struct(type).descriptor.get();

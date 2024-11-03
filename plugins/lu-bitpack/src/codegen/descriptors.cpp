@@ -1,5 +1,5 @@
-#include <iostream> // debug
 #include "codegen/descriptors.h"
+#include "lu/strings/printf_string.h"
 #include "bitpacking/global_options.h"
 
 namespace {
@@ -127,7 +127,14 @@ namespace codegen {
                size_t extent;
                {
                   auto extent_opt = array_type.array_extent();
-                  assert(extent_opt.has_value() && "VLAs not supported here!");
+                  if (!extent_opt.has_value()) {
+                     throw std::runtime_error(lu::strings::printf_string(
+                        "struct data member %<%s::%s%> is a variable-length array; VLAs are not "
+                        "supported",
+                        this->type.pretty_print().c_str(),
+                        member.decl.name().data()
+                     ));
+                  }
                   extent = *extent_opt;
                }
                member.array_extents.push_back(extent);
@@ -141,6 +148,33 @@ namespace codegen {
             member.value_type = value_type;
          }
          member.bitpacking_options = computed;
+         
+         switch (member.kind) {
+            case bitpacking::member_kind::buffer:
+               if (computed.buffer_options().bytecount > global.sectors.size_per) {
+                  throw std::runtime_error(lu::strings::printf_string(
+                     "buffer member %<%s::%s%> is too large (%u bytes) to fit in a sector, and splitting "
+                     "buffers across sector boundaries is not implemented",
+                     this->type.pretty_print().c_str(),
+                     member.decl.name().data(),
+                     computed.buffer_options().bytecount
+                  ));
+               }
+               break;
+            case bitpacking::member_kind::string:
+               if (computed.string_options().length > global.sectors.size_per) {
+                  throw std::runtime_error(lu::strings::printf_string(
+                     "string member %<%s::%s%> is too large (%u bytes) to fit in a sector, and splitting "
+                     "strings across sector boundaries is not implemented",
+                     this->type.pretty_print().c_str(),
+                     member.decl.name().data(),
+                     computed.string_options().length
+                  ));
+               }
+               break;
+            default:
+               break;
+         }
       });
    }
    
