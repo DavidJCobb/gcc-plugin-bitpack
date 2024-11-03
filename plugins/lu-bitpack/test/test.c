@@ -143,8 +143,10 @@ extern void read_sectored(const u8* src, int sector_id) {
 
 //#pragma lu_bitpack debug_dump_function read_sectored
 //#pragma lu_bitpack debug_dump_function generated_read
-#pragma lu_bitpack debug_dump_function _read_a
-#pragma lu_bitpack debug_dump_function __lu_bitpack_read_StructC
+//#pragma lu_bitpack debug_dump_function _read_a
+//#pragma lu_bitpack debug_dump_function read_sector_1
+//#pragma lu_bitpack debug_dump_function save_sector_1
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_1
 
 
 void reset_data() {

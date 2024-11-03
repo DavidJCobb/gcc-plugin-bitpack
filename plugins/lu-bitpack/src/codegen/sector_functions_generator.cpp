@@ -135,12 +135,8 @@ namespace codegen {
       object.save = dst_save.nth_parameter(1).as_value().dereference();
       object.descriptor = &info;
       
-std::cerr << "serializing whole-struct: " << info.type.pretty_print() << "\n";
       for(auto& m_descriptor : info.members) {
-std::cerr << "serializing whole-struct member: " << m_descriptor.decl.name() << "\n";
-std::cerr << "array rank: " << m_descriptor.array_extents.size() << "\n";
          auto m_value = object.access_member(m_descriptor);
-std::cerr << "is array: " << m_value.as_member().is_array() << "\n";
          auto expr    = _serialize(state_ptr, m_value);
          
          assert(!expr.read.empty());
@@ -154,7 +150,6 @@ std::cerr << "is array: " << m_value.as_member().is_array() << "\n";
       dst_read.set_root_block(root_read);
       dst_save.set_root_block(root_save);
       
-std::cerr << "exposing whole-struct func: " << dst_read.name().data() << "\n";
       // expose these identifiers so we can inspect them with our debug-dump pragmas.
       // (in release builds we'll likely want to remove this, so user code can't call 
       // these functions or otherwise access them directly.)
@@ -183,6 +178,8 @@ std::cerr << "exposing whole-struct func: " << dst_read.name().data() << "\n";
    }
    
    expr_pair sector_functions_generator::_serialize_whole_struct(value_pair state_ptr, serialization_value& value) {
+      value.assert_valid();
+      
       const auto* descriptor = _descriptor_for_struct(value);
       assert(descriptor != nullptr);
       auto pair = this->get_or_create_whole_struct_functions(*descriptor);
@@ -203,6 +200,8 @@ std::cerr << "exposing whole-struct func: " << dst_read.name().data() << "\n";
    }
    
    expr_pair sector_functions_generator::_serialize_array_slice(value_pair state_ptr, serialization_value& value, size_t start, size_t count) {
+      value.assert_valid();
+      
       const auto& ty = gw::builtin_types::get_fast();
       
       gw::flow::simple_for_loop read_loop(ty.basic_int);
@@ -239,6 +238,7 @@ std::cerr << "exposing whole-struct func: " << dst_read.name().data() << "\n";
    }
    
    expr_pair sector_functions_generator::_serialize_primitive(value_pair state_ptr, serialization_value& value) {
+      value.assert_valid();
       assert(value.is_member());
       const auto& info = value.as_member();
       assert(!info.is_array());
@@ -699,6 +699,14 @@ std::cerr << "exposing whole-struct func: " << dst_read.name().data() << "\n";
             // Split the element that won't fit across a sector boundary.
             //
             this->_serialize_value_to_sector(sector, object.access_nth(i));
+            //
+            // Since we're in a new sector now, update the `state_ptr` to use 
+            // the args from the new function. If code in one function refers 
+            // to arguments in another function, GCC chokes and dies -- quite 
+            // understandably!
+            //
+            state_ptr.read = sector.functions.read.nth_parameter(0).as_value();
+            state_ptr.save = sector.functions.save.nth_parameter(0).as_value();
             //
             // Repeat this process until the whole array makes it in.
             //

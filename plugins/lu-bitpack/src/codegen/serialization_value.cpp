@@ -8,6 +8,14 @@ namespace {
 }
 
 namespace codegen {
+   void serialization_value::assert_valid() const {
+      assert(!this->read.empty());
+      assert(!this->save.empty());
+      
+      if (this->is_member())
+         assert(this->read.as_untyped() != this->save.as_untyped());
+   }
+   
    serialization_value serialization_value::access_member(const member_descriptor& desc) {
       assert(is_struct());
       
@@ -16,6 +24,7 @@ namespace codegen {
       out.save = this->save.access_member(desc.decl.name().data());
       out.descriptor = member_descriptor_view(desc);
       
+      out.assert_valid();
       return out;
    }
    serialization_value serialization_value::access_nth(value_pair n) {
@@ -27,6 +36,7 @@ namespace codegen {
       out.save = this->save.access_array_element(n.save);
       out.descriptor = this->as_member().descended_into_array();
       
+      out.assert_valid();
       return out;
    }
    serialization_value serialization_value::access_nth(size_t n) {

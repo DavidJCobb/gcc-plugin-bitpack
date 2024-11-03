@@ -10,7 +10,9 @@ namespace codegen {
          const struct_descriptor*,
          member_descriptor_view
       > descriptor;
-            
+      
+      void assert_valid() const;
+      
       serialization_value access_member(const member_descriptor&);
       serialization_value access_nth(value_pair n);
       serialization_value access_nth(size_t n);

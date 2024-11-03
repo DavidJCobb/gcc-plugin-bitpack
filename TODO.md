@@ -5,7 +5,9 @@
 
 ### BLUF
 
-* Currently failing apparently due to `DECL_CONTEXT` on... something... inside a per-sector bitpacking function not being set properly. The assertion failure isn't giving me much to go on...
+* Our functions generate properly but don't do anything.
+  * We zero-fill the buffer before saving, so we can tell whether the save function did anything.
+  * We `memset` the state structs to 0x7E (`'~'`) one sector at a time, before reading each sector, so we can tell whether the read function did anything.
 
 
 #### details
