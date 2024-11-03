@@ -11,8 +11,6 @@
 
 namespace pragma_handlers {
    extern void generate_functions(cpp_reader* reader) {
-      constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_functions";
-      
       std::string read_name;
       std::string save_name;
       std::vector<std::vector<std::string>> identifier_groups;
@@ -23,7 +21,7 @@ namespace pragma_handlers {
          location_t loc;
          tree       data;
          if (pragma_lex(&data, &loc) != CPP_OPEN_PAREN) {
-            error_at(loc, "#pragma lu_bitpack generate_functions: %<(%> expected");
+            error_at(loc, "%<#pragma lu_bitpack generate_functions%>: %<(%> expected");
             return;
          }
          start_loc = loc;
@@ -38,11 +36,11 @@ namespace pragma_handlers {
                   key = TREE_STRING_POINTER(data);
                   break;
                default:
-                  error_at(loc, "#pragma lu_bitpack generate_functions: expected key name for key/value pair");
+                  error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected key name for key/value pair");
                   return;
             }
             if (pragma_lex(&data, &loc) != CPP_EQ) {
-               error_at(loc, "#pragma lu_bitpack generate_functions: expected key/value separator %<=%> after key %<%s%>", key.data());
+               error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected key/value separator %<=%> after key %<%s%>", key.data());
                return;
             }
             
@@ -57,7 +55,7 @@ namespace pragma_handlers {
                      name = TREE_STRING_POINTER(data);
                      break;
                   default:
-                     error_at(loc, "#pragma lu_bitpack generate_functions: expected function name as value for key %<%s%>", key.data());
+                     error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected function name as value for key %<%s%>", key.data());
                      return;
                }
                if (key == "read_name") {
@@ -69,7 +67,7 @@ namespace pragma_handlers {
                token = pragma_lex(&data, &loc);
             } else if (key == "data") {
                
-               auto _store_name = [&data]() {
+               auto _store_name = [&data, &identifier_groups]() {
                   std::string id = IDENTIFIER_POINTER(data);
                   
                   if (identifier_groups.empty()) {
@@ -79,7 +77,7 @@ namespace pragma_handlers {
                };
                
                if (pragma_lex(&data, &loc) != CPP_NAME) {
-                  error_at(loc, "#pragma lu_bitpack generate_functions: identifier expected as part of value for key %<%s%>", key.data());
+                  error_at(loc, "%<#pragma lu_bitpack generate_functions%>: identifier expected as part of value for key %<%s%>", key.data());
                   return;
                }
                do {
@@ -97,7 +95,7 @@ namespace pragma_handlers {
                      //
                      token = pragma_lex(&data, &loc);
                      if (token != CPP_NAME) {
-                        error_at(loc, "#pragma lu_bitpack generate_functions: identifier expected after %<|%>, as part of value for key %<%s%>", key.data());
+                        error_at(loc, "%<#pragma lu_bitpack generate_functions%>: identifier expected after %<|%>, as part of value for key %<%s%>", key.data());
                         return;
                      }
                   }
@@ -109,7 +107,7 @@ namespace pragma_handlers {
                } while (true);
                
             } else {
-               error_at(loc, "#pragma lu_bitpack generate_functions: unrecognized key %<%s%>", key.data());
+               error_at(loc, "%<#pragma lu_bitpack generate_functions%>: unrecognized key %<%s%>", key.data());
                return;
             }
             //
@@ -121,33 +119,33 @@ namespace pragma_handlers {
             if (token == CPP_CLOSE_PAREN) {
                break;
             }
-            error_at(loc, "#pragma lu_bitpack generate_functions: expected %<,%> or %<)%> after value for key %<%s%>", key.data());
+            error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected %<,%> or %<)%> after value for key %<%s%>", key.data());
             return;
          } while (true);
       }
       
       if (read_name.empty()) {
-         error_at(start_loc, "#pragma lu_bitpack generate_functions: missing the %<read_name%> key (the identifier of a function to generate, with signature %<void f(const buffer_byte_type* src, int sector_id)%>)");
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: missing the %<read_name%> key (the identifier of a function to generate, with signature %<void f(const buffer_byte_type* src, int sector_id)%>)");
          return;
       }
       if (save_name.empty()) {
-         error_at(start_loc, "#pragma lu_bitpack generate_functions: missing the %<save_name%> key (the identifier of a function to generate, with signature %<void f(buffer_byte_type* dst, int sector_id)%>)");
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: missing the %<save_name%> key (the identifier of a function to generate, with signature %<void f(buffer_byte_type* dst, int sector_id)%>)");
          return;
       }
       
       if (identifier_groups.empty()) {
-         warning_at(start_loc, 1, "#pragma lu_bitpack generate_functions: you didn't specify any data to serialize; is this intentional?");
+         warning_at(start_loc, 1, "%<#pragma lu_bitpack generate_functions%>: you did not specify any data to serialize; is this intentional?");
       }
       
       try {
          auto& gs = basic_global_state::get();
          gs.global_options.computed.resolve(gs.global_options.requested);
          
-         sector_functions_generator generator(gs.global_options.computed);
+         codegen::sector_functions_generator generator(gs.global_options.computed);
          generator.identifiers_to_serialize = identifier_groups;
          generator.run();
       } catch (std::runtime_error& ex) {
-         error_at(start_loc, "#pragma lu_bitpack generate_functions: a problem occurred: %s", ex.what());
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: a problem occurred: %s", ex.what());
          return;
       }
    }

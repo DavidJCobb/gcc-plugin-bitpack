@@ -75,12 +75,12 @@ namespace codegen {
       auto& stored = this->_struct_info[info.type];
       assert(stored.descriptor != nullptr);
       
-      auto pair = stored.whole_struct_functions[info.type];
-      if (!pair.first.empty()) {
-         assert(!pair.second.empty() && "Should've generated both functions together!");
+      auto& pair = stored.whole_struct_functions;
+      if (!pair.read.empty()) {
+         assert(!pair.save.empty() && "Should've generated both functions together!");
          return pair;
       }
-      assert(pair.second.empty() && "Should've generated both functions together!");
+      assert(pair.save.empty() && "Should've generated both functions together!");
       
       const auto& ty = gw::builtin_types::get_fast();
       
@@ -115,13 +115,13 @@ namespace codegen {
       gw::expr::local_block root_save;
       
       value_pair state_ptr = {
-         .read = dst_read.nth_parameter(0).as_value().deference(),
-         .save = dst_save.nth_parameter(0).as_value().deference(),
+         .read = dst_read.nth_parameter(0).as_value().dereference(),
+         .save = dst_save.nth_parameter(0).as_value().dereference(),
       };
       
       serialization_value object;
-      object.read = dst_read.nth_parameter(1).as_value().deference();
-      object.save = dst_save.nth_parameter(1).as_value().deference();
+      object.read = dst_read.nth_parameter(1).as_value().dereference();
+      object.save = dst_save.nth_parameter(1).as_value().dereference();
       object.descriptor = &info;
       
       for(auto& m_descriptor : info.members) {
@@ -184,7 +184,7 @@ namespace codegen {
       gw::flow::simple_for_loop read_loop(ty.basic_int);
       read_loop.counter_bounds = {
          .start     = (intmax_t)start,
-         .last      = (intmax_t)(start + count - 1),
+         .last      = (uintmax_t)(start + count - 1),
          .increment = 1,
       };
       

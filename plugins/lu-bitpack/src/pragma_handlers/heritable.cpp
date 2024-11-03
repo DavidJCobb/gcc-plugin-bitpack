@@ -5,6 +5,6 @@
 
 namespace pragma_handlers {
    extern void heritable(cpp_reader* reader) {
-      heritable_options_stockpile::get().handle_pragma(reader);
+      bitpacking::heritable_options_stockpile::get().handle_pragma(reader);
    }
 }

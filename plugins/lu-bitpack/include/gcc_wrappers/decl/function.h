@@ -1,6 +1,7 @@
 #pragma once
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/param.h"
+#include "gcc_wrappers/decl/result.h"
 #include "gcc_wrappers/type.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -46,6 +47,7 @@ namespace gcc_wrappers {
             
             type function_type() const;
             param nth_parameter(size_t) const;
+            result result_variable() const;
             
             bool has_body() const;
             
@@ -59,7 +61,7 @@ namespace gcc_wrappers {
             function_with_modifiable_body(tree);
          
          public:
-            void set_result_decl(result&);
+            void set_result_decl(result);
             void set_root_block(expr::local_block&);
       };
    }

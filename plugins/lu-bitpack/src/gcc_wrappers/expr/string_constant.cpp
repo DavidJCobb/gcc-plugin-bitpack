@@ -4,7 +4,7 @@
 namespace gcc_wrappers::expr {
    WRAPPED_TREE_NODE_BOILERPLATE(string_constant)
    
-   string_constant::string_constant(std::string_view sn) {
+   string_constant::string_constant(std::string_view s) {
       this->_node = build_string(s.size(), s.data());
    }
    

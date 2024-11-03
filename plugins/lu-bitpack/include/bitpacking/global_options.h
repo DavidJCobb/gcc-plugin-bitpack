@@ -34,9 +34,9 @@ namespace bitpacking {
             } sectors;
             struct {
                std::string bitstream_state;
-               std::string boolean     = "bool";
+               std::string boolean;     // defaults to built-in `bool`
                std::string buffer_byte;
-               std::string string_char = "char";
+               std::string string_char; // defaults to built-in `char`
             } types;
             
             void consume_pragma_kv_set(const gcc_helpers::pragma_kv_set&);

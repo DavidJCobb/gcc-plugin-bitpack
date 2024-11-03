@@ -123,10 +123,16 @@ namespace gcc_wrappers {
          out = "const ";
       
       auto id = TYPE_NAME(this->_node);
-      if (TREE_CODE(id) != IDENTIFIER_NODE) {
-         out += "<unnamed>";
-      } else {
-         out += IDENTIFIER_POINTER(id);
+      switch (TREE_CODE(id)) {
+         case IDENTIFIER_NODE:
+            out += IDENTIFIER_POINTER(id);
+            break;
+         case TYPE_DECL:
+            out += IDENTIFIER_POINTER(DECL_NAME(id));
+            break;
+         default:
+            out += "<unnamed>";
+            break;
       }
       
       return out;

@@ -10,6 +10,7 @@ int plugin_is_GPL_compatible;
 
 #include <tree.h>
 #include <c-family/c-pragma.h>
+#include "gcc_wrappers/builtin_types.h"
 
 // not allowed to be const
 static plugin_info _my_plugin_info = {
@@ -156,6 +157,7 @@ static void register_attributes(void* event_data, void* data) {
 }
 
 #include "pragma_handlers/debug_dump_function.h"
+#include "pragma_handlers/debug_dump_identifier.h"
 #include "pragma_handlers/generate_functions.h"
 #include "pragma_handlers/heritable.h"
 #include "pragma_handlers/set_options.h"
@@ -180,6 +182,11 @@ static void register_pragmas(void* event_data, void* data) {
       "lu_bitpack",
       "debug_dump_function",
       &pragma_handlers::debug_dump_function
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "debug_dump_identifier",
+      &pragma_handlers::debug_dump_identifier
    );
 }
 

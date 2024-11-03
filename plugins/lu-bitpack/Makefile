@@ -10,7 +10,6 @@ SOURCES=\
         src/codegen/serialization_value.cpp \
         src/gcc_helpers/dump_function.cpp \
         src/gcc_helpers/extract_pragma_kv_args.cpp \
-        src/gcc_helpers/type_is_char.cpp \
         src/gcc_wrappers/decl/base.cpp \
         src/gcc_wrappers/decl/field.cpp \
         src/gcc_wrappers/decl/function.cpp \
@@ -39,6 +38,7 @@ SOURCES=\
         src/lu/strings/printf_string.cpp \
         src/lu/strings/trim.cpp \
         src/pragma_handlers/debug_dump_function.cpp \
+        src/pragma_handlers/debug_dump_identifier.cpp \
         src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/heritable.cpp \
         src/pragma_handlers/set_options.cpp \

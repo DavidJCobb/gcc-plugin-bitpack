@@ -145,8 +145,13 @@ namespace {
       }
       gw::type _get_type_decl(const char* identifier) {
          auto node = lookup_name(get_identifier(identifier));
-         if (!gw::type::node_is(node))
-            node = NULL_TREE;
+         if (node != NULL_TREE) {
+            if (TREE_CODE(node) == TYPE_DECL) {
+               node = TREE_TYPE(node);
+            } else if (!gw::type::node_is(node)) {
+               node = NULL_TREE;
+            }
+         }
          return gw::type::from_untyped(node);
       }
    }
@@ -157,7 +162,7 @@ namespace {
          if (!type.empty())
             return;
          throw std::runtime_error(lu::strings::printf_string(
-            "the %%<%s%%> type is missing",
+            "the %<%s%> type is missing",
             noun
          ));
       }
@@ -172,7 +177,7 @@ namespace {
          if (!decl.empty())
             return;
          throw std::runtime_error(lu::strings::printf_string(
-            "the %%<%s%%> function is missing",
+            "the %<%s%> function is missing",
             noun
          ));
       }

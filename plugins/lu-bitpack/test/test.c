@@ -2,6 +2,8 @@
 #include "types.h"
 #include "bitstreams.h"
 
+#include <stdbool.h> // bool
+
 #define LU_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
 #define LU_STRING(...) __attribute__((lu_bitpack_string(__VA_ARGS__)))
 
@@ -31,6 +33,10 @@
    func_write_string = lu_BitstreamWrite_string_optional_terminator, \
    func_write_string_terminated = lu_BitstreamWrite_string, \
 )
+
+//#pragma lu_bitpack debug_dump_identifier bool
+//#pragma lu_bitpack debug_dump_identifier uint8_t
+#pragma lu_bitpack debug_dump_identifier char
 
 static struct StructA {
    LU_BITCOUNT(6) u8 a[9]; // bitcount is set per-element

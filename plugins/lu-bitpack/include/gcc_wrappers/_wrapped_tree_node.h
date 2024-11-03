@@ -68,7 +68,7 @@ namespace gcc_wrappers {
 
 // std::hash isn't declared in any one header, so just pick and include a 
 // random header that's known to declare it:
-#include <memory>
+#include <optional>
 
 // allow wrapped nodes as keys in containers like `std::unordered_map`
 namespace std {

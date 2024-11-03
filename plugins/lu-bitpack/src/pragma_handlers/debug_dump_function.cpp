@@ -1,4 +1,7 @@
 #include "pragma_handlers/debug_dump_function.h"
+#include <iostream>
+#include <string_view>
+#include "gcc_helpers/dump_function.h"
 
 #include <tree.h>
 #include <c-family/c-common.h> // lookup_name

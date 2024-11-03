@@ -33,6 +33,9 @@ namespace gcc_wrappers::decl {
          return param::from_untyped(decl);
       throw std::out_of_range("out-of-bounds function_decl parameter access");
    }
+   result function::result_variable() const {
+      return result::from_untyped(DECL_RESULT(this->_node));
+   }
    
    bool function::has_body() const {
       assert(!empty());
@@ -47,7 +50,7 @@ namespace gcc_wrappers::decl {
 }
 
 // Avoid warnings on later includes:
-#include "gcc_wrappers/_boilerplate.define.h"
+#include "gcc_wrappers/_boilerplate.undef.h"
 
 #include "gcc_wrappers/decl/result.h"
 #include "gcc_wrappers/expr/local_block.h"
@@ -63,7 +66,7 @@ namespace gcc_wrappers::decl {
       assert(node_is(n));
    }
    
-   void function_with_modifiable_body::set_result_decl(result& decl) {
+   void function_with_modifiable_body::set_result_decl(result decl) {
       DECL_RESULT(this->_node) = decl.as_untyped();
    }
    

@@ -133,6 +133,12 @@ namespace codegen {
          }
          member.bitpacking_options = computed;
       });
-      
+   }
+   
+   size_t struct_descriptor::size_in_bits() const {
+      size_t bc = 0;
+      for(auto& m : this->members)
+         bc += m.size_in_bits();
+      return bc;
    }
 }
