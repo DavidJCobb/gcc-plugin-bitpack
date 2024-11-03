@@ -82,7 +82,7 @@ namespace bitpacking::global_options {
          _pull_identifier(
             _name("func_", "_s32"),
             _name("bitpacking ", " function for int32t values"),
-            dst.s16
+            dst.s32
          );
          _pull_identifier(
             _name("func_", "_u8"),
@@ -97,7 +97,7 @@ namespace bitpacking::global_options {
          _pull_identifier(
             _name("func_", "_u32"),
             _name("bitpacking ", " function for uint32_t values"),
-            dst.u16
+            dst.u32
          );
          _pull_identifier(
             _name("func_", "_buffer"),
@@ -136,7 +136,7 @@ namespace {
    namespace {
       gw::decl::function _get_func_decl(const char* identifier) {
          auto node = lookup_name(get_identifier(identifier));
-         if (!gw::decl::function::node_is(node))
+         if (node != NULL_TREE && !gw::decl::function::node_is(node))
             node = NULL_TREE;
          return gw::decl::function::from_untyped(node);
       }
@@ -144,15 +144,7 @@ namespace {
          return _get_func_decl(identifier.c_str());
       }
       gw::type _get_type_decl(const char* identifier) {
-         auto node = lookup_name(get_identifier(identifier));
-         if (node != NULL_TREE) {
-            if (TREE_CODE(node) == TYPE_DECL) {
-               node = TREE_TYPE(node);
-            } else if (!gw::type::node_is(node)) {
-               node = NULL_TREE;
-            }
-         }
-         return gw::type::from_untyped(node);
+         return gw::type::lookup_by_name(identifier);
       }
    }
    
@@ -177,7 +169,7 @@ namespace {
          if (!decl.empty())
             return;
          throw std::runtime_error(lu::strings::printf_string(
-            "the %<%s%> function is missing",
+            "the %s function is missing",
             noun
          ));
       }
@@ -190,7 +182,7 @@ namespace {
          if (!func_type.is_unprototyped_function())
             return;
          throw std::runtime_error(lu::strings::printf_string(
-            "the %%<%s%%> function (%%<%s%%>) is unprototyped; this is wrong",
+            "the %s function (%<%s%>) is unprototyped; this is wrong",
             noun,
             func_decl.name().data()
          ));
@@ -206,7 +198,7 @@ namespace {
          if (rt == desired_return_type)
             return;
          throw std::runtime_error(lu::strings::printf_string(
-            "incorrect return type for the %%<%s%%> function (%%<%s%%>) (%%<%s%%> expected; %%<%s%%> found)",
+            "incorrect return type for the %s function (%<%s%>) (%<%s%> expected; %<%s%> found)",
             noun,
             func_decl.name().data(),
             desired_return_type.pretty_print().c_str(),
@@ -237,7 +229,7 @@ namespace {
          auto arg_type = gw::type::from_untyped((*arg_it).second);
          if (arg_type.empty()) {
             throw std::runtime_error(lu::strings::printf_string(
-               "too few arguments for the %%<%s%%> function (%%<%s%%>) (only %u present)",
+               "too few arguments for the %s function (%<%s%>) (only %u present)",
                noun,
                func_decl.name().data(),
                arg_index
@@ -259,7 +251,7 @@ namespace {
          }
          
          throw std::runtime_error(lu::strings::printf_string(
-            "incorrect argument %u type for the %%<%s%%> function (%%<%s%%>) (%%<%s%%> expected; %%<%s%%> found)",
+            "incorrect argument %u type for the %s function (%<%s%>) (%<%s%> expected; %<%s%> found)",
             arg_index,
             noun,
             func_decl.name().data(),
@@ -281,14 +273,14 @@ namespace {
          if (raw_arg_type == NULL_TREE) {
             auto arg_type = gw::type::from_untyped(raw_arg_type);
             throw std::runtime_error(lu::strings::printf_string(
-               "extra argument(s) found for the %%<%s%%> function (%%<%s%%>) (first extra argument type is %%<%s%%>)",
+               "extra argument(s) found for the %s function (%<%s%>) (first extra argument type is %<%s%>)",
                noun,
                func_decl.name().data(),
                arg_type.pretty_print().c_str()
             ));
          }
          throw std::runtime_error(lu::strings::printf_string(
-            "the %%<%s%%> function (%%<%s%%>) is varargs; this is wrong",
+            "the %s function (%<%s%>) is varargs; this is wrong",
             noun,
             func_decl.name().data()
          ));
@@ -356,7 +348,7 @@ namespace bitpacking::global_options {
          
          // bool lu_BitstreamRead_bool(struct lu_BitstreamState*)
          {
-            auto noun_str = lu::strings::printf_string("bitstream %s function for bool values", op_name);
+            auto noun_str = lu::strings::printf_string("bitstream %s bool value", op_name);
             auto noun = noun_str.c_str();
             
             set.boolean = _get_func_decl(src.functions.read.boolean);
@@ -378,7 +370,7 @@ namespace bitpacking::global_options {
             gw::decl::function decl,
             gw::type           result_type
          ) {
-            auto noun_str = lu::strings::printf_string("bitstream %s function for %s values", op_name, noun_type);
+            auto noun_str = lu::strings::printf_string("bitstream %s %s value", op_name, noun_type);
             auto noun = noun_str.c_str();
             
             _check_exists(noun, decl);
@@ -447,9 +439,10 @@ namespace bitpacking::global_options {
          
          // void lu_BitstreamRead_bool(struct lu_BitstreamState*, bool)
          {
-            auto noun_str = lu::strings::printf_string("bitstream %s function for bool values", op_name);
+            auto noun_str = lu::strings::printf_string("bitstream %s bool value", op_name);
             auto noun = noun_str.c_str();
             
+            set.boolean = _get_func_decl(src.functions.write.boolean);
             auto decl = set.boolean;
             _check_exists(noun, decl);
             auto type = decl.function_type();
@@ -459,7 +452,7 @@ namespace bitpacking::global_options {
             auto   it = type.function_arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
-            _check_nth_argument    (noun, decl,   i,   it, this->types.boolean);
+            _check_nth_argument    (noun, decl, ++i, ++it, this->types.boolean);
             _check_argument_endcap (noun, decl, ++it);
          }
          
@@ -469,7 +462,7 @@ namespace bitpacking::global_options {
             gw::decl::function decl,
             gw::type           result_type
          ) {
-            auto noun_str = lu::strings::printf_string("bitstream %s function for %s values", op_name, noun_type);
+            auto noun_str = lu::strings::printf_string("bitstream %s %s value", op_name, noun_type);
             auto noun = noun_str.c_str();
             
             _check_exists(noun, decl);

@@ -210,10 +210,6 @@ int plugin_init (
    
    std::cerr << "Loaded plug-in: " << plugin_info->base_name << ".\n";
    
-   // force-create the singleton now, so other code can safely use `get_fast` 
-   // to access it.
-   gcc_wrappers::builtin_types::get();
-   
    register_callback(
       plugin_info->base_name,
       PLUGIN_ATTRIBUTES,

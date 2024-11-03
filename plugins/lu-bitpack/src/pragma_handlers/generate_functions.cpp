@@ -9,8 +9,15 @@
 #include "basic_global_state.h"
 #include "codegen/sector_functions_generator.h"
 
+#include "gcc_wrappers/builtin_types.h"
+
 namespace pragma_handlers {
    extern void generate_functions(cpp_reader* reader) {
+   
+      // force-create the singleton now, so other code can safely use `get_fast` 
+      // to access it.
+      gcc_wrappers::builtin_types::get();
+      
       std::string read_name;
       std::string save_name;
       std::vector<std::vector<std::string>> identifier_groups;
@@ -145,7 +152,10 @@ namespace pragma_handlers {
          generator.identifiers_to_serialize = identifier_groups;
          generator.run();
       } catch (std::runtime_error& ex) {
-         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: a problem occurred: %s", ex.what());
+         std::string message = "%<#pragma lu_bitpack generate_functions%>: a problem occurred: ";
+         message += ex.what();
+         
+         error_at(start_loc, message.c_str());
          return;
       }
    }

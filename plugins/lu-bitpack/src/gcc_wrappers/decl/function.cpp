@@ -1,4 +1,5 @@
 #include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/decl/param.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 #include <stdexcept>
@@ -9,9 +10,29 @@ namespace gcc_wrappers::decl {
    
    function::function(const char* name, const type& function_type) {
       this->_node = build_fn_decl(name, function_type.as_untyped());
+      //
+      // NOTE: That doesn't automatically build DECL_ARGUMENTS. We need 
+      // to do so manually.
+      //
+      auto args = function_type.function_arguments();
+      tree prev = NULL_TREE;
+      for(auto pair : args) {
+         auto p = param::from_untyped(build_decl(
+            UNKNOWN_LOCATION,
+            PARM_DECL,
+            NULL_TREE, // argument name
+            pair.second
+         ));
+         if (prev == NULL_TREE) {
+            DECL_ARGUMENTS(this->_node) = p.as_untyped();
+         } else {
+            TREE_CHAIN(prev) = p.as_untyped();
+         }
+         prev = p.as_untyped();
+      }
+      
    }
-   function::function(const std::string& name, const type& function_type) {
-      this->_node = build_fn_decl(name.c_str(), function_type.as_untyped());
+   function::function(const std::string& name, const type& function_type) : function(name.c_str(), function_type) {
    }
    
    type function::function_type() const {

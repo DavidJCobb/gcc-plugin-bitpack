@@ -59,6 +59,9 @@ namespace gcc_wrappers {
             return t;
          };
          
+         static type lookup_by_name(const char*);
+         static type lookup_by_name(const std::string&);
+         
          bool operator==(const type) const;
          
          std::string name() const;

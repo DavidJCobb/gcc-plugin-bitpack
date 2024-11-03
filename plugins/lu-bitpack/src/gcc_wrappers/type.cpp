@@ -2,7 +2,8 @@
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
-#include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to
+#include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to, identifier_global_tag, lookup_name
+#include <stringpool.h> // get_identifier
 
 // Defined in GCC source, `c-tree.h`; not included in the plug-in headers, bafflingly.
 // Do not confuse this with the C++ `comptypes`, which has a different signature and 
@@ -12,11 +13,39 @@ extern int comptypes(tree, tree);
 namespace gcc_wrappers {
    WRAPPED_TREE_NODE_BOILERPLATE(type)
    
+   /*static*/ type type::lookup_by_name(const char* name) {
+      auto id_node = get_identifier(name);
+      auto node    = lookup_name(id_node);
+      //
+      // The `lookup_name` function returns a `*_DECL` node with the given 
+      // identifier. However, TYPE_DECLs only exist in C when the `typedef` 
+      // keyword is used. To find normal struct definitions, we need to use 
+      // another approach.
+      //
+      if (node == NULL_TREE) {
+         //
+         // That "other approach" is to look for a "tag."
+         //
+         node = identifier_global_tag(id_node);
+         if (node == NULL_TREE)
+            return {};
+      }
+      if (TREE_CODE(node) == TYPE_DECL) {
+         node = TREE_TYPE(node);
+      } else if (!TYPE_P(node)) {
+         return {};
+      }
+      return from_untyped(node);
+   }
+   /*static*/ type type::lookup_by_name(const std::string& s) {
+      return lookup_by_name(s.c_str());
+   }
+   
    bool type::operator==(const type other) const {
       if (this->_node == other._node)
          return true;
       
-      assert(c_language == c_language_kind::clk_c);
+      gcc_assert(c_language == c_language_kind::clk_c);
       return comptypes(this->_node, other._node) != 0;
    }
    
@@ -230,6 +259,7 @@ namespace gcc_wrappers {
    }
    
    type type::add_const() const {
+      gcc_assert(!empty());
       type out;
       out.set_from_untyped(c_build_qualified_type(this->_node, TYPE_QUAL_CONST));
       return out;
@@ -246,9 +276,8 @@ namespace gcc_wrappers {
    }
    
    type type::add_pointer() const {
-      type out;
-      out.set_from_untyped(build_pointer_type(this->_node));
-      return out;
+      gcc_assert(!empty());
+      return type::from_untyped(build_pointer_type(this->_node));
    }
    type type::remove_pointer() const {
       if (!is_pointer())
@@ -282,7 +311,7 @@ namespace gcc_wrappers {
    }
    
    type::fixed_point_info type::get_fixed_point_info() const {
-      assert(is_fixed_point());
+      gcc_assert(is_fixed_point());
       fixed_point_info out;
       out.bitcounts = {
          .fractional = TYPE_FBIT(this->_node),
@@ -305,14 +334,14 @@ namespace gcc_wrappers {
    }
    
    type::floating_point_info type::get_floating_point_info() const {
-      assert(is_floating_point());
+      gcc_assert(is_floating_point());
       floating_point_info out;
       out.bitcount = TYPE_PRECISION(this->_node);
       return out;
    }
    
    type::integral_info type::get_integral_info() const {
-      assert(is_integer() || is_enum() || is_fixed_point());
+      gcc_assert(is_integer() || is_enum() || is_fixed_point());
       integral_info out;
       out.bitcount  = TYPE_PRECISION(this->_node);
       out.is_signed = this->is_signed();
@@ -337,7 +366,7 @@ namespace gcc_wrappers {
       }
       
       std::optional<size_t> type::array_extent() const {
-         assert(is_array());
+         gcc_assert(is_array());
          auto domain = TYPE_DOMAIN(this->_node);
          if (domain == NULL_TREE)
             return {};
@@ -368,7 +397,7 @@ namespace gcc_wrappers {
       }
       
       type type::array_value_type() const {
-         assert(is_array());
+         gcc_assert(is_array());
          type out;
          out.set_from_untyped(TREE_TYPE(this->_node));
          return out;
@@ -389,26 +418,26 @@ namespace gcc_wrappers {
    
    //#pragma region Functions
       type type::function_return_type() const {
-         assert(is_function());
+         gcc_assert(is_function());
          type out;
          out.set_from_untyped(TREE_TYPE(this->_node));
          return out;
       }
       
       list_node type::function_arguments() const {
-         assert(is_function());
+         gcc_assert(is_function());
          return list_node(TYPE_ARG_TYPES(this->_node));
       }
       
       type type::nth_argument_type(size_t n) const {
-         assert(is_function());
+         gcc_assert(is_function());
          type out;
          out.set_from_untyped(function_arguments().untyped_nth_value(n));
          return out;
       }
       
       type type::is_method_of() const {
-         assert(is_method());
+         gcc_assert(is_method());
          type t;
          t.set_from_untyped(TYPE_METHOD_BASETYPE(this->_node));
          return t;
@@ -429,7 +458,7 @@ namespace gcc_wrappers {
       }
       
       size_t type::fixed_function_arg_count() const {
-         assert(is_function());
+         gcc_assert(is_function());
          
          auto   list = function_arguments();
          size_t size = list.size();
@@ -447,7 +476,7 @@ namespace gcc_wrappers {
    
    //#pragma region Structs and unions
       list_node type::all_members() const {
-         assert(is_record() || is_union());
+         gcc_assert(is_record() || is_union());
          return list_node(TYPE_FIELDS(this->_node));
       }
    //#pragma endregion

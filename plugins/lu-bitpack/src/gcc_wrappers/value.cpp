@@ -9,6 +9,7 @@
 
 namespace gcc_wrappers {
    type value::value_type() const {
+      gcc_assert(this->_node != NULL_TREE);
       return type::from_untyped(TREE_TYPE(this->_node));
    }
    

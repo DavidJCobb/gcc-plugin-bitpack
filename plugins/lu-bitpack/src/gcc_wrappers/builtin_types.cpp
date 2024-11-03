@@ -32,6 +32,9 @@ namespace gcc_wrappers {
       this->ptrdiff = type::from_untyped(ptrdiff_type_node);
       this->size    = type::from_untyped(size_type_node);
       this->ssize   = type::from_untyped(signed_size_type_node);
+      
+      // If this assertion fails, then the singleton was created too early.
+      gcc_assert(!this->uint8.empty());
    }
    
    type builtin_types::smallest_integral_for(size_t bitcount, bool is_signed) const {

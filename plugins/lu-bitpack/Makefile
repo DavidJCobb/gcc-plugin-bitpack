@@ -49,4 +49,4 @@ include ../../Makefile.common
 
 .PHONY: test
 test: $(PLUGIN)
-	$(CCPLUGIN) -c -o /dev/null test/test.c -Itest/
+	$(CCPLUGIN) -c -o /dev/null test/test.c -Itest

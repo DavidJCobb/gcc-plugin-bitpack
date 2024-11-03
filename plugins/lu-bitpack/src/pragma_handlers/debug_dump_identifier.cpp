@@ -21,8 +21,20 @@ namespace pragma_handlers {
       }
       std::string_view name = IDENTIFIER_POINTER(data);
       
-      auto decl = lookup_name(get_identifier(name.data()));
+      auto id_node = get_identifier(name.data());
+      auto decl    = lookup_name(id_node);
       if (decl == NULL_TREE) {
+         
+         //
+         // Handle types that have no accompanying DECL node (e.g. RECORD_TYPE 
+         // declared directly rather than with the typedef keyword).
+         //
+         auto node = identifier_global_tag(id_node);
+         if (node && TYPE_P(node)) {
+            debug_tree(node);
+            return;
+         }
+         
          std::cerr << "error: " << this_pragma_name << ": identifier " << name << " not found\n";
          return;
       }
