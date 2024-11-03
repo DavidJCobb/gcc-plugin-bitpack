@@ -51,7 +51,6 @@ namespace codegen {
          auto name = lu::strings::printf_string("__lu_bitpack_save_sector_%u", this->id);
          this->functions.save = gw::decl::function(name, this->function_type);
       }
-
       this->functions.read.as_modifiable().set_result_decl(gw::decl::result(ty.basic_void));
       this->functions.save.as_modifiable().set_result_decl(gw::decl::result(ty.basic_void));
       

@@ -314,7 +314,14 @@ namespace gcc_wrappers::decl {
       
       // per `finish_function` in `c/c-decl.cc`:
       if (!decl_function_context(this->_node)) {
-         cgraph_node::finalize_function(this->_node, false); // cgraph.h
+         // re: our issue with crashing when trying to get the per-sector functions 
+         // into the object file: this branch doesn't make a difference in that 
+         // regard.
+         if constexpr (false) {
+            cgraph_node::add_new_function(this->_node, false);
+         } else {
+            cgraph_node::finalize_function(this->_node, false); // cgraph.h
+         }
       } else {
          //
          // We're a nested function.
