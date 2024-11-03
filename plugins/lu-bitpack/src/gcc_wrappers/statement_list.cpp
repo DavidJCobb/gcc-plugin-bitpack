@@ -37,12 +37,12 @@ namespace gcc_wrappers {
          assert(TREE_CODE(t) == STATEMENT_LIST);
       }
       this->_tree     = t;
-      this->_iterator = tsi_start(t);
+      this->_iterator = tsi_last(t);
    }
    
    statement_list::statement_list() {
       this->_tree     = alloc_stmt_list();
-      this->_iterator = tsi_start(this->_tree);
+      this->_iterator = tsi_last(this->_tree);
    }
    
    /*static*/ statement_list statement_list::view_of(tree node) {
@@ -61,8 +61,14 @@ namespace gcc_wrappers {
       return it;
    }
    
+   bool statement_list::empty() const {
+      return STATEMENT_LIST_HEAD(this->_tree) == nullptr;
+   }
+   
    void statement_list::append(const expr::base& expr) {
+      assert(!expr.empty());
       tsi_link_after(&this->_iterator, expr.as_untyped(), TSI_CONTINUE_LINKING);
+      assert(!empty());
    }
    void statement_list::append(statement_list&& other) {
       tsi_link_after(&this->_iterator, other._tree, TSI_CONTINUE_LINKING);

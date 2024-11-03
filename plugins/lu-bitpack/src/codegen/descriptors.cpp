@@ -105,10 +105,8 @@ namespace codegen {
          bitpacking::member_options::requested options;
          options.from_field(decl);
          if (options.omit_from_bitpacking) {
-std::cerr << "skipping struct member descriptor: " << decl.name() << "\n";
             return;
          }
-std::cerr << "loading struct member descriptor: " << decl.name() << "\n";
          
          bitpacking::member_options::computed computed;
          computed.resolve(global, options, decl.value_type());

@@ -79,6 +79,8 @@ namespace codegen {
             // The per-sector read and save functions both use the signature:
             // void f(struct lu_BitstreamState*)
             
+            in_progress_sector(sector_functions_generator&);
+            void assert_sane() const;
             bool empty() const;
             bool has_functions() const;
             void make_functions();

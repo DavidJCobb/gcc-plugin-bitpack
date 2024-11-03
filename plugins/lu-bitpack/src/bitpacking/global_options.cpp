@@ -293,6 +293,13 @@ namespace bitpacking::global_options {
       const auto& ty = gw::builtin_types::get_fast();
       
       //
+      // Value options:
+      //
+      
+      this->sectors.max_count = src.sectors.max_count;
+      this->sectors.size_per  = src.sectors.size_per;
+      
+      //
       // Resolve types:
       //
       

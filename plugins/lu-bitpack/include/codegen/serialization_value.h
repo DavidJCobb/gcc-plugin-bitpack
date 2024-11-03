@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <variant>
 #include "codegen/descriptors.h"
 #include "codegen/value_pair.h"
@@ -12,6 +13,7 @@ namespace codegen {
       > descriptor;
       
       void assert_valid() const;
+      std::string describe() const;
       
       serialization_value access_member(const member_descriptor&);
       serialization_value access_nth(value_pair n);

@@ -43,6 +43,9 @@ namespace gcc_wrappers {
             
             // estimate; may fail
             decl::function callee() const; // get_callee_fndecl
+            
+            size_t argument_count() const;
+            value nth_argument(size_t) const; // asserts in-bounds
       };
       static_assert(sizeof(call) == sizeof(value)); // no new fields
    }

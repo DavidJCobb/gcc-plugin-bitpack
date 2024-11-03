@@ -24,6 +24,12 @@ namespace codegen {
    // sector_functions_generator::in_progress_sector
    //
    
+   sector_functions_generator::in_progress_sector::in_progress_sector(sector_functions_generator& o) : owner(o) {
+      this->bits_remaining = this->owner.global_options.sectors.size_per * 8;
+   }
+   void sector_functions_generator::in_progress_sector::assert_sane() const {
+      //assert(this->bits_remaining < (size_t)40000000);
+   }
    bool sector_functions_generator::in_progress_sector::empty() const {
       return this->bits_remaining == this->owner.global_options.sectors.size_per;
    }
@@ -62,10 +68,11 @@ namespace codegen {
       this->functions.save_root = {};
    }
    void sector_functions_generator::in_progress_sector::next() {
+      this->assert_sane();
       this->functions.commit();
       this->owner.sector_functions.push_back(this->functions);
       ++this->id;
-      this->bits_remaining = this->owner.global_options.sectors.size_per;
+      this->bits_remaining = this->owner.global_options.sectors.size_per * 8;
       this->make_functions();
    }
    
@@ -126,8 +133,8 @@ namespace codegen {
       auto save_statements = root_save.statements();
       
       value_pair state_ptr = {
-         .read = dst_read.nth_parameter(0).as_value().dereference(),
-         .save = dst_save.nth_parameter(0).as_value().dereference(),
+         .read = dst_read.nth_parameter(0).as_value(),
+         .save = dst_save.nth_parameter(0).as_value(),
       };
       
       serialization_value object;
@@ -643,14 +650,17 @@ namespace codegen {
       in_progress_sector& sector,
       serialization_value object
    ) {
+      sector.assert_sane();
+      
       value_pair state_ptr;
       state_ptr.read = sector.functions.read.nth_parameter(0).as_value();
       state_ptr.save = sector.functions.save.nth_parameter(0).as_value();
       
-      size_t bitcount = object.bitcount();
+      const size_t bitcount = object.bitcount();
       if (bitcount <= sector.bits_remaining) {
          sector.functions.append(this->_serialize(state_ptr, object));
          sector.bits_remaining -= bitcount;
+         sector.assert_sane();
          return;
       }
       
@@ -669,6 +679,7 @@ namespace codegen {
             auto v = object.access_member(m);
             this->_serialize_value_to_sector(sector, v);
          }
+         sector.assert_sane();
          return;
       }
       
@@ -690,7 +701,12 @@ namespace codegen {
                sector.functions.append(
                   this->_serialize_array_slice(state_ptr, object, i, can_fit)
                );
-               sector.bits_remaining -= can_fit * elem_size;
+               {
+                  size_t consumed = can_fit * elem_size;
+                  assert(consumed <= sector.bits_remaining);
+                  sector.bits_remaining -= consumed;
+                  sector.assert_sane();
+               }
                i += can_fit;
                if (i >= extent)
                   break;
@@ -699,6 +715,8 @@ namespace codegen {
             // Split the element that won't fit across a sector boundary.
             //
             this->_serialize_value_to_sector(sector, object.access_nth(i));
+            ++i;
+            sector.assert_sane();
             //
             // Since we're in a new sector now, update the `state_ptr` to use 
             // the args from the new function. If code in one function refers 
@@ -711,6 +729,7 @@ namespace codegen {
             // Repeat this process until the whole array makes it in.
             //
          }
+         sector.assert_sane();
          return;
       }
       
@@ -719,7 +738,9 @@ namespace codegen {
       // them.
       // 
       sector.next();
+      sector.assert_sane();
       this->_serialize_value_to_sector(sector, object);
+      sector.assert_sane();
    }
    void sector_functions_generator::run() {
       in_progress_sector sector(*this);
@@ -756,7 +777,6 @@ namespace codegen {
             value.save = decl.as_value();
             value.descriptor = descriptor;
             
-std::cerr << "serializing object: " << name.c_str() << "\n";
             this->_serialize_value_to_sector(sector, value);
          }
       }

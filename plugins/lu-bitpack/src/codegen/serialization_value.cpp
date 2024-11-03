@@ -15,6 +15,13 @@ namespace codegen {
       if (this->is_member())
          assert(this->read.as_untyped() != this->save.as_untyped());
    }
+   std::string serialization_value::describe() const {
+      if (this->is_top_level_struct()) {
+         return this->as_top_level_struct().type.pretty_print();
+      } else {
+         return this->as_member().type().pretty_print();
+      }
+   }
    
    serialization_value serialization_value::access_member(const member_descriptor& desc) {
       assert(is_struct());

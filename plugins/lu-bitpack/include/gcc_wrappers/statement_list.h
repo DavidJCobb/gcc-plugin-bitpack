@@ -56,6 +56,8 @@ namespace gcc_wrappers {
          iterator begin();
          iterator end();
          
+         bool empty() const;
+         
          void append(const expr::base&);
          void append(statement_list&&);
          

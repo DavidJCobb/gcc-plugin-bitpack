@@ -140,6 +140,16 @@ extern void read_sectored(const u8* src, int sector_id) {
       read_sector_1(&state);
    }
 }
+extern void save_sectored(u8* dst, int sector_id) {
+   struct lu_BitstreamState state;
+   lu_BitstreamInitialize(&state, dst);
+   
+   if (sector_id == 0) {
+      save_sector_0(&state);
+   } else if (sector_id == 1) {
+      save_sector_1(&state);
+   }
+}
 
 //#pragma lu_bitpack debug_dump_function read_sectored
 //#pragma lu_bitpack debug_dump_function generated_read
@@ -147,6 +157,11 @@ extern void read_sectored(const u8* src, int sector_id) {
 //#pragma lu_bitpack debug_dump_function read_sector_1
 //#pragma lu_bitpack debug_dump_function save_sector_1
 //#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_1
+
+#pragma lu_bitpack debug_dump_function _save_a
+#pragma lu_bitpack debug_dump_function _save_b
+#pragma lu_bitpack debug_dump_function __lu_bitpack_write_StructA
+#pragma lu_bitpack debug_dump_function __lu_bitpack_write_StructB
 
 
 void reset_data() {
@@ -225,25 +240,15 @@ int main() {
    reset_data();
    print_data();
    printf("Sector 0 saved:\n");
-   {
-      struct lu_BitstreamState state;
-      lu_BitstreamInitialize(&state, sector_0_buffer);
-      
-      save_sector_0(&state);
-      print_buffer(sector_0_buffer, sizeof(sector_0_buffer));
-   }
+   save_sectored(sector_0_buffer, 0);
+   print_buffer(sector_0_buffer, sizeof(sector_0_buffer));
    printf("Sector 0 read:\n");
    clear_data(0);
    read_sectored(sector_0_buffer, 0);
    print_data();
    printf("Sector 1 saved:\n");
-   {
-      struct lu_BitstreamState state;
-      lu_BitstreamInitialize(&state, sector_1_buffer);
-      
-      save_sector_1(&state);
-      print_buffer(sector_1_buffer, sizeof(sector_1_buffer));
-   }
+   save_sectored(sector_1_buffer, 1);
+   print_buffer(sector_1_buffer, sizeof(sector_1_buffer));
    printf("Sector 1 read:\n");
    clear_data(1);
    read_sectored(sector_1_buffer, 1);
@@ -259,10 +264,10 @@ int main() {
    reset_data();
    print_data();
    printf("Sector 0 saved:\n");
-   clear_data(0);
    generated_save(sector_0_buffer, 0);
    print_buffer(sector_0_buffer, sizeof(sector_0_buffer));
    printf("Sector 0 read:\n");
+   clear_data(0);
    generated_read(sector_0_buffer, 0);
    print_data();
    printf("Sector 1 saved:\n");
