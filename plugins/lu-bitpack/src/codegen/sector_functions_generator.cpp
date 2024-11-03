@@ -423,27 +423,54 @@ namespace codegen {
       const auto& ty = gw::builtin_types::get_fast();
       
       in_progress_func_pair top_pair;
-      
-      // void __lu_bitpack_read_by_sector(const buffer_byte_type* src, int sector_id);
-      top_pair.read = gw::decl::function(
-         "__lu_bitpack_read_by_sector",
-         gw::type::make_function_type(
-            ty.basic_void,
-            // args:
-            this->global_options.types.buffer_byte_ptr.add_const(),
-            ty.basic_int // int sectorID
-         )
-      );
-      // void __lu_bitpack_save_by_sector(buffer_byte_type* dst, int sector_id);
-      top_pair.save = gw::decl::function(
-         "__lu_bitpack_save_by_sector",
-         gw::type::make_function_type(
-            ty.basic_void,
-            // args:
-            this->global_options.types.buffer_byte_ptr,
-            ty.basic_int // int sectorID
-         )
-      );
+      {  // void __lu_bitpack_read_by_sector(const buffer_byte_type* src, int sector_id);
+         auto c_name  = this->top_level_function_names.read.c_str();
+         auto id_node = get_identifier(c_name);
+         auto node    = lookup_name(id_node);
+         if (node != NULL_TREE) {
+            if (TREE_CODE(node) != FUNCTION_DECL) {
+               throw std::runtime_error(lu::strings::printf_string("identifier %<%s%> is already in use by something other than a function", c_name));
+            }
+            top_pair.read = gw::decl::function::from_untyped(node);
+         } else {
+            top_pair.read = gw::decl::function(
+               c_name,
+               gw::type::make_function_type(
+                  ty.basic_void,
+                  // args:
+                  this->global_options.types.buffer_byte_ptr.add_const(),
+                  ty.basic_int // int sectorID
+               )
+            );
+            if (top_pair.read.has_body()) {
+               throw std::runtime_error(lu::strings::printf_string("cannot generate a definition for function %<%s%>, as it already has a definition", c_name));
+            }
+         }
+      }
+      {  // void __lu_bitpack_save_by_sector(buffer_byte_type* dst, int sector_id);
+         auto c_name  = this->top_level_function_names.save.c_str();
+         auto id_node = get_identifier(c_name);
+         auto node    = lookup_name(id_node);
+         if (node != NULL_TREE) {
+            if (TREE_CODE(node) != FUNCTION_DECL) {
+               throw std::runtime_error(lu::strings::printf_string("identifier %<%s%> is already in use by something other than a function", c_name));
+            }
+            top_pair.save = gw::decl::function::from_untyped(node);
+         } else {
+            top_pair.save = gw::decl::function(
+               c_name,
+               gw::type::make_function_type(
+                  ty.basic_void,
+                  // args:
+                  this->global_options.types.buffer_byte_ptr,
+                  ty.basic_int // int sectorID
+               )
+            );
+            if (top_pair.save.has_body()) {
+               throw std::runtime_error(lu::strings::printf_string("cannot generate a definition for function %<%s%>, as it already has a definition", c_name));
+            }
+         }
+      }
       
       size_t size = this->sector_functions.size();
       {  // Read

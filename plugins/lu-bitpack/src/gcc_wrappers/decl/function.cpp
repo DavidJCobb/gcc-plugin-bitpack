@@ -3,6 +3,8 @@
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 #include <stdexcept>
+#include "lu/strings/printf_string.h"
+#include <stringpool.h> // get_identifier
 
 // function
 namespace gcc_wrappers::decl {
@@ -14,21 +16,29 @@ namespace gcc_wrappers::decl {
       // NOTE: That doesn't automatically build DECL_ARGUMENTS. We need 
       // to do so manually.
       //
-      auto args = function_type.function_arguments();
-      tree prev = NULL_TREE;
-      for(auto pair : args) {
-         auto p = param::from_untyped(build_decl(
-            UNKNOWN_LOCATION,
-            PARM_DECL,
-            NULL_TREE, // argument name
-            pair.second
-         ));
-         if (prev == NULL_TREE) {
-            DECL_ARGUMENTS(this->_node) = p.as_untyped();
-         } else {
-            TREE_CHAIN(prev) = p.as_untyped();
+      {
+         size_t i = 0;
+         
+         auto args = function_type.function_arguments();
+         tree prev = NULL_TREE;
+         for(auto pair : args) {
+            // Generate a name for the arguments, to avoid crashes on a 
+            // null IDENTIFIER_NODE when dumping function info elsewhere.
+            auto arg_name = lu::strings::printf_string("__arg_%u", i++);
+            
+            auto p = param::from_untyped(build_decl(
+               UNKNOWN_LOCATION,
+               PARM_DECL,
+               get_identifier(arg_name.c_str()),
+               pair.second
+            ));
+            if (prev == NULL_TREE) {
+               DECL_ARGUMENTS(this->_node) = p.as_untyped();
+            } else {
+               TREE_CHAIN(prev) = p.as_untyped();
+            }
+            prev = p.as_untyped();
          }
-         prev = p.as_untyped();
       }
       
    }

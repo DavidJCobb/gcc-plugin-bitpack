@@ -29,6 +29,10 @@ namespace codegen {
          // Inputs:
          bitpacking::global_options::computed& global_options;
          std::vector<identifier_group> identifiers_to_serialize;
+         struct {
+            std::string read;
+            std::string save;
+         } top_level_function_names;
          
          // Outputs:
          std::vector<func_pair> sector_functions;

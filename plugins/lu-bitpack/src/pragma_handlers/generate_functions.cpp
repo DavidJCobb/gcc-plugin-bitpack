@@ -150,6 +150,10 @@ namespace pragma_handlers {
          
          codegen::sector_functions_generator generator(gs.global_options.computed);
          generator.identifiers_to_serialize = identifier_groups;
+         generator.top_level_function_names = {
+            .read = read_name,
+            .save = save_name,
+         };
          generator.run();
       } catch (std::runtime_error& ex) {
          std::string message = "%<#pragma lu_bitpack generate_functions%>: a problem occurred: ";
