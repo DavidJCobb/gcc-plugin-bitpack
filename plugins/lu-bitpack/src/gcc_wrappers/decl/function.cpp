@@ -43,6 +43,7 @@ namespace gcc_wrappers::decl {
             get_identifier(arg_name.c_str()),
             pair.second
          ));
+         DECL_ARG_TYPE(p.as_untyped()) = pair.second;
          DECL_CONTEXT(p.as_untyped()) = this->_node;
          if (prev == NULL_TREE) {
             DECL_ARGUMENTS(this->_node) = p.as_untyped();
@@ -228,6 +229,9 @@ namespace gcc_wrappers::decl {
       //       BLOCK_SUPERCONTEXT(block)
       //          The parent BLOCK or FUNCTION_DECL node.
       //
+      gcc_assert(!lb.empty());
+      gcc_assert(BIND_EXPR_BLOCK(lb.as_untyped()) == NULL_TREE && "This local block seems to already be in use elsewhere.");
+      
       DECL_SAVED_TREE(this->_node) = lb.as_untyped();
       TREE_STATIC(this->_node) = 1;
       

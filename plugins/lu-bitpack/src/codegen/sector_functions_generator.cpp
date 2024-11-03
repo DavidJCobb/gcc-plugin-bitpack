@@ -56,6 +56,9 @@ namespace codegen {
       
       this->functions.read.nth_parameter(0).make_used();
       this->functions.save.nth_parameter(0).make_used();
+      
+      this->functions.read_root = {};
+      this->functions.save_root = {};
    }
    void sector_functions_generator::in_progress_sector::next() {
       this->functions.commit();
@@ -139,6 +142,8 @@ namespace codegen {
          root_save.statements().append(expr.save);
       }
       
+      dst_read.set_is_defined_elsewhere(false);
+      dst_save.set_is_defined_elsewhere(false);
       dst_read.set_root_block(root_read);
       dst_save.set_root_block(root_save);
       

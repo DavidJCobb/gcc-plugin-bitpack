@@ -103,6 +103,8 @@ extern void _read_c(struct lu_BitstreamState* state, struct StructC* dst) {
 extern void _read_sector_0(struct lu_BitstreamState* state) {
    _read_a(state, &sStructA);
    _read_b(state, &sStructB);
+}
+extern void _read_sector_1(struct lu_BitstreamState* state) {
    _read_c(state, &sStructC);
 }
 #pragma lu_bitpack debug_dump_function _read_sector_0

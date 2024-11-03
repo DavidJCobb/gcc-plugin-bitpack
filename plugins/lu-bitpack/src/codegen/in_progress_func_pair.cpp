@@ -16,8 +16,8 @@ namespace codegen {
       // These lines are what allow the top-level functions to emit to the object file.
       // Theoretically, uncommenting them would also allow the per-sector functions to 
       // emit to the object file. In practice, however, we just crash instead.
-      //this->read.set_is_defined_elsewhere(false);
-      //this->save.set_is_defined_elsewhere(false);
+      this->read.set_is_defined_elsewhere(false);
+      this->save.set_is_defined_elsewhere(false);
       // It's due to something inside of these functions, but hell if I know what.
       
       this->read.as_modifiable().set_root_block(this->read_root);
@@ -31,11 +31,11 @@ namespace codegen {
             // per-sector functions make it into the compiled object file.
             //
             // it *does* expose the function to `lookup_name` and friends, though.
-            c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
+            //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
             
             // Anything that calls pushdecl crashes in combination with the above 
             // `set_is_defined_elsewhere(false)` calls.
-            //pushdecl(decl.as_untyped());
+            pushdecl(decl.as_untyped());
             //c_simulate_builtin_function_decl(decl.as_untyped());
          }
       }
@@ -47,11 +47,11 @@ namespace codegen {
             // per-sector functions make it into the compiled object file.
             //
             // it *does* expose the function to `lookup_name` and friends, though.
-            c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
+            //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
             
             // Anything that calls pushdecl crashes in combination with the above 
             // `set_is_defined_elsewhere(false)` calls.
-            //pushdecl(decl.as_untyped());
+            pushdecl(decl.as_untyped());
             //c_simulate_builtin_function_decl(decl.as_untyped());
          }
       }
