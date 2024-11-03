@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "gcc_helpers/extract_pragma_kv_args.h"
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/type.h"
 
@@ -36,6 +37,8 @@ namespace bitpacking {
                std::string buffer_byte;
                std::string string_char = "char";
             } types;
+            
+            void consume_pragma_kv_set(const gcc_helpers::pragma_kv_set&);
       };
       
       struct computed {
@@ -68,6 +71,7 @@ namespace bitpacking {
                gcc_wrappers::type bitstream_state_ptr;
                gcc_wrappers::type boolean;
                gcc_wrappers::type buffer_byte;
+               gcc_wrappers::type buffer_byte_ptr;
                gcc_wrappers::type string_char;
             } types;
             

@@ -1,5 +1,6 @@
 #include "bitpacking/member_options.h"
 #include <cassert>
+#include "bitpacking/heritable_options.h"
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/string_constant.h"
 #include <diagnostic.h> // warning(), error(), etc.
@@ -7,6 +8,25 @@
 namespace {
    namespace gw {
       using namespace gcc_wrappers;
+   }
+   
+   static bool type_is_string_or_array_thereof(
+      const bitpacking::global_options::computed& global,
+      gw::type type
+   ) {
+      auto at = type;
+      auto et = at.array_value_type();
+      do {
+         if (!et.is_array()) {
+            if (et == global.types.string_char) {
+               return true;
+            }
+            break;
+         }
+         at = et;
+         et = et.array_value_type();
+      } while (true);
+      return false;
    }
 }
 
@@ -242,28 +262,38 @@ namespace bitpacking::member_options {
    ) {
       assert(!src.omit_from_bitpacking);
       
-      if (src.is_explicit_string) {
+      const heritable_options* inherit_from = nullptr;
+      bool is_integer_h = false;
+      bool is_string_h  = false;
+      if (!src.inherit_from.empty()) {
+         inherit_from = heritable_options_stockpile::get().options_by_name(src.inherit_from);
+         if (inherit_from == nullptr) {
+            throw std::runtime_error(lu::strings::printf_string("data member inherits from undefined heritable option set %s", src.inherit_from.c_str()));
+         }
+         is_integer_h = std::holds_alternative<heritable_options::integral_data>(inherit_from->data);
+         is_string_h  = std::holds_alternative<heritable_options::string_data>(inherit_from->data);
+      }
+      
+      bool is_string = src.is_explicit_string;
+      if (inherit_from) {
+         if (is_string_h) {
+            is_string = true;
+         } else {
+            if (src.is_explicit_string) {
+               throw std::runtime_error("contradictory bitpacking options (this field is a string, but inherits an option set of another type)");
+            }
+         }
+      }
+      
+      if (is_string) {
          if (src.is_explicit_buffer) {
+            if (is_string_h) {
+               throw std::runtime_error("contradictory bitpacking options (this field is an opaque buffer, but inherits an option set of another type)");
+            }
             throw std::runtime_error("contradictory bitpacking options (opaque buffer AND string)");
          }
-         
-         bool is_array_of_char = false;
-         
-         auto at = member_type;
-         auto et = at.array_value_type();
-         do {
-            if (!et.is_array()) {
-               if (et == global.types.string_char) {
-                  array_of_char = true;
-               }
-               break;
-            }
-            at = et;
-            et = et.array_value_type();
-         } while (true);
-         
-         if (!is_array_of_char) {
-            throw std::runtime_error("string bitpacking options applied to a data member that is not an array of the designated string character type");
+         if (!type_is_string_or_array_thereof(global, member_type)) {
+            throw std::runtime_error("string bitpacking options applied to a data member that is not a string or array thereof");
          }
          
          this->kind = member_kind::string;
@@ -275,8 +305,16 @@ namespace bitpacking::member_options {
             }
             dst.length = *opt;
             
+            std::optional<size_t> override_length;
+            if (inherit_from) {
+               override_length = std::get<heritable_options::string_data>(inherit_from->data).length;
+            }
             if (src.string.length.has_value()) {
-               auto l = *src.string.length;
+               override_length = src.string.length;
+            }
+            
+            if (override_length.has_value()) {
+               auto l = *override_length;
                if (l > dst.length) {
                   throw std::runtime_error(lu::strings::printf_string(
                      "the specified length (%u) is too large to fit in the target data member (array extent %u)",
@@ -287,8 +325,15 @@ namespace bitpacking::member_options {
                dst.length = l;
             }
          }
-         if (src.string.with_terminator.has_value())
+         if (src.string.with_terminator.has_value()) {
             dst.with_terminator = *src.string.with_terminator;
+         } else {
+            if (inherit_from && is_string_h) {
+               auto opt = std::get<heritable_options::string_data>(inherit_from->data).with_terminator;
+               if (opt.has_value())
+                  dst.with_terminator = *opt;
+            }
+         }
          return;
       }
       
@@ -309,6 +354,9 @@ namespace bitpacking::member_options {
       }
       
       if (src.is_explicit_buffer) {
+         if (inherit_from) {
+            throw std::runtime_error("contradictory bitpacking options (this field is an opaque buffer, but inherits an option set of another type)");
+         }
          this->kind = member_kind::buffer;
          this->data = buffer_data{
             .bytecount = value_type.size_in_bytes(),
@@ -327,6 +375,15 @@ namespace bitpacking::member_options {
          if (src.integral.bitcount.has_value() && *src.integral.bitcount != value_type.size_in_bits()) {
             throw std::runtime_error("overriding the bitcount for pointers is invalid");
          }
+         if (is_integer_h) {
+            const auto& data = std::get<heritable_options::integral_data>(inherit_from->data);
+            if (data.min.has_value() || data.max.has_value()) {
+               throw std::runtime_error("specifying a minimum or maximum integer value for pointers is invalid (pointer field inherits from an integer option set that sets these options)");
+            }
+            if (data.bitcount.has_value() && *src.integral.bitcount != value_type.size_in_bits()) {
+               throw std::runtime_error("overriding the bitcount for pointers is invalid (pointer field inherits from an integer option set that sets these options)");
+            }
+         }
          this->kind = member_kind::pointer;
          this->data = integral_data{
             .bitcount = value_type.size_in_bits(),
@@ -338,25 +395,40 @@ namespace bitpacking::member_options {
       this->kind = member_kind::integral;
       auto& dst = this->data.emplace<integral_data>();
       
-      if (src.integral.min.has_value()) {
-         dst.min = *src.integral.min;
+      std::optional<size_t>    opt_bitcount;
+      std::optional<intmax_t>  opt_min;
+      std::optional<uintmax_t> opt_max;
+      if (is_integer_h) {
+         const auto& data = std::get<heritable_options::integral_data>(inherit_from->data);
+         opt_bitcount = data.bitcount;
+         opt_min      = data.min;
+         opt_max      = data.max;
       }
-      if (src.integral.bitcount.has_value()) {
-         dst.bitcount = *src.integral.bitcount;
+      if (auto& src_opt = src.integral.bitcount; src_opt.has_value())
+         opt_bitcount = src_opt;
+      if (auto& src_opt = src.integral.min; src_opt.has_value())
+         opt_min = src_opt;
+      if (auto& src_opt = src.integral.max; src_opt.has_value())
+         opt_max = src_opt;
+      
+      if (opt_bitcount.has_value()) {
+         dst.bitcount = *opt_bitcount;
+         if (opt_min.has_value()) {
+            dst.min = *opt_min;
+         }
          return;
-      }
-      {
+      } else {
          auto integral_info = this->type.get_integral_info();
          
          std::intmax_t  min;
          std::uintmax_t max;
-         if (src.integral.min.has_value()) {
-            min = *src.integral.min;
+         if (opt_min.has_value()) {
+            min = *opt_min;
          } else {
             min = integral_info.min;
          }
-         if (src.integral.max.has_value()) {
-            max = *src.integral.max;
+         if (opt_max.has_value()) {
+            max = *opt_max;
          } else {
             max = integral_info.max;
          }

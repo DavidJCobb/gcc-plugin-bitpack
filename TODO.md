@@ -19,9 +19,7 @@ Reading fields' serialization options:
 * Add a field attribute indicating that a field should be serialized as an opaque buffer.
   * Update `bitpacking::data_options::requested` to check for and react to the attribute.
 * Finish `bitpacking::data_options::requested` generally.
-  * `lu_bitpack_funcs`
   * `lu_bitpack_inherit`
-  * `lu_bitpack_string`
   * Throw `std::runtime_error` on invalid. If possible, use a custom exception and find a way to report source info.
 * Finish `bitpacking::data_options::computed` generally.
 * Delete `bitpack_options.(h|cpp)`, as we'll be using `bitpacking::data_options::requested` in its place.

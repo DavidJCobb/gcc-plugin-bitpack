@@ -31,15 +31,6 @@
    func_write_string = lu_BitstreamWrite_string_optional_terminator, \
    func_write_string_terminated = lu_BitstreamWrite_string, \
 )
-#pragma lu_bitpack layout( \
-   sectors (               \
-      count     = 2,       \
-      variables = 2        \
-   ),                      \
-   sectors (               \
-      variables = 1        \
-   )                       \
-)
 
 static struct StructA {
    LU_BITCOUNT(6) u8 a[9]; // bitcount is set per-element
@@ -54,20 +45,6 @@ static struct StructC {
 } sStructC;
 
 extern void save(u8* dst, int sector_id) {
-   //
-   // The goal is to have this function's code generated entirely by this 
-   // pragma. Right now, we only serialize a single sector, but we want 
-   // to eventually have an if/else tree on the sector ID and delegate 
-   // out to separate per-sector functions whenever multiple sectors are 
-   // used. The plug-in should generate those per-sector functions from 
-   // scratch.
-   //
-   #pragma lu_bitpack generate_pack( \
-      data   = ( sStructA, sStructB, sStructC ), \
-      buffer = dst,      \
-      sector = sector_id \
-   )
-   
    struct lu_BitstreamState state;
    lu_BitstreamInitialize(&state, dst);
    
@@ -94,12 +71,11 @@ extern void read(const u8* src, int sector_id) {
 #pragma lu_bitpack debug_dump_function read
 
 extern void read_generated(const u8* src, int sector_id);
-#pragma lu_bitpack generate_read( \
-   function_identifier = read_generated, \
-   \
-   data   = ( sStructA, sStructB, sStructC ), \
-   buffer = src,      \
-   sector = sector_id \
+
+#pragma lu_bitpack generate_functions( \
+   read_name = read_generated,              \
+   save_name = save_generated,              \
+   data      = sStructA sStructB | sStructC \
 )
 #pragma lu_bitpack debug_dump_function read_generated
 

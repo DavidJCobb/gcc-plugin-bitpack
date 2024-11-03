@@ -9,9 +9,7 @@
 int plugin_is_GPL_compatible;
 
 #include <tree.h>
-#include <c-family/c-common.h> // lookup_name
 #include <c-family/c-pragma.h>
-#include <stringpool.h> // get_identifier
 
 // not allowed to be const
 static plugin_info _my_plugin_info = {
@@ -133,10 +131,20 @@ namespace _attributes {
       .handler = handle_user_attribute,
       .exclude = NULL
    };
+   static struct attribute_spec bitpack_opaque_buffer = {
+      .name = "lu_bitpack_opaque_buffer",
+      .min_length = 0, // min argcount
+      .max_length = 0, // max argcount
+      .decl_required = true,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = false,
+      .handler = handle_user_attribute,
+      .exclude = NULL
+   };
 }
 
 static void register_attributes(void* event_data, void* data) {
-   //warning (0, G_("Callback to register attributes"));
    register_attribute(&_attributes::test_attribute);
    register_attribute(&_attributes::bitpack_bitcount);
    register_attribute(&_attributes::bitpack_funcs);
@@ -144,101 +152,34 @@ static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::bitpack_range);
    register_attribute(&_attributes::bitpack_string);
    register_attribute(&_attributes::bitpack_omit);
+   register_attribute(&_attributes::bitpack_opaque_buffer);
 }
 
-namespace _pragmas {
-   static void set_options(cpp_reader* reader) {
-      constexpr const char* this_pragma_name = "#pragma lu_bitpack set_options";
-      
-      /*//
-      const auto kv = gcc_helpers::extract_pragma_kv_args(
-         this_pragma_name,
-         reader
-      );
-      try {
-         s_bitpack_options.load_pragma_args(kv);
-      } catch (std::runtime_error& e) {
-         std::cerr << "incorrect data in " << this_pragma_name << "\n";
-         std::cerr << e.what();
-      }
-      //*/
-   }
-   static void generate_read(cpp_reader* reader) {
-      constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_read";
-      
-      /*//
-      auto request_opt = parse_generate_request(reader);
-      if (request_opt.has_value()) {
-         
-         //static_assert(false, "TODO");
-         //
-         // I'm not sure if pragmas have enough visibility into the current parse state 
-         // to know a) that they're being invoked in a function body and b) be able to 
-         // inject code directly into that function body.
-         //
-         // Worst-case, we may need to have the user forward-declare a function, specify 
-         // its identifier as another argument here, and then we can generate the body 
-         // of the function.
-         //
-      std::cerr << "generating...\n";
-         generate_read_func(request_opt.value());
-      std::cerr << "generated.\n";
-      }
-      //*/
-   }
-   static void generate_pack(cpp_reader* reader) {
-      constexpr const char* this_pragma_name = "#pragma lu_bitpack generate_pack";
-      
-      std::cerr << "saw #pragma lu_bitpack generate_pack (not yet implemented)\n";
-   }
-   
-   static void debug_dump_function(cpp_reader* reader) {
-      constexpr const char* this_pragma_name = "#pragma lu_bitpack debug_dump_function";
-      
-      /*//
-      location_t loc;
-      tree       data;
-      auto token_type = pragma_lex(&data, &loc);
-      if (token_type != CPP_NAME) {
-         std::cerr << "error: " << this_pragma_name << ": not a valid identifier\n";
-         return;
-      }
-      std::string_view name = IDENTIFIER_POINTER(data);
-      
-      auto decl = lookup_name(get_identifier(name.data()));
-      if (decl == NULL_TREE) {
-         std::cerr << "error: " << this_pragma_name << ": identifier " << name << " not found\n";
-         return;
-      }
-      if (TREE_CODE(decl) != FUNCTION_DECL) {
-         std::cerr << "error: " << this_pragma_name << ": identifier " << name << " is something other than a function\n";
-         return;
-      }
-      gcc_helpers::dump_function(decl);
-      //*/
-   }
-}
+#include "pragma_handlers/debug_dump_function.h"
+#include "pragma_handlers/generate_functions.h"
+#include "pragma_handlers/heritable.h"
+#include "pragma_handlers/set_options.h"
 
 static void register_pragmas(void* event_data, void* data) {
    c_register_pragma_with_expansion(
       "lu_bitpack",
       "set_options",
-      &_pragmas::set_options
+      &pragma_handlers::set_options
    );
    c_register_pragma_with_expansion(
       "lu_bitpack",
-      "generate_read",
-      &_pragmas::generate_read
+      "heritable",
+      &pragma_handlers::heritable
    );
    c_register_pragma_with_expansion(
       "lu_bitpack",
-      "generate_pack",
-      &_pragmas::generate_pack
+      "generate_functions",
+      &pragma_handlers::generate_functions
    );
    c_register_pragma_with_expansion(
       "lu_bitpack",
       "debug_dump_function",
-      &_pragmas::debug_dump_function
+      &pragma_handlers::debug_dump_function
    );
 }
 

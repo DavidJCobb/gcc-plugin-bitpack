@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 #include "gcc_wrappers/type.h"
 #include "codegen/expr_pair.h"
 #include "codegen/func_pair.h"
@@ -12,6 +14,7 @@
 namespace codegen {
    class sector_functions_generator {
       public:
+         sector_functions_generator(bitpacking::global_options::computed&);
          ~sector_functions_generator();
          
       public:
@@ -20,10 +23,18 @@ namespace codegen {
             func_pair whole_struct_functions;
          };
          
-      public:
-         bitpacking::global_options::computed& global_options;
-         std::vector<func_pair> sector_functions;
+         using identifier_group = std::vector<std::string>;
          
+      public:
+         // Inputs:
+         bitpacking::global_options::computed& global_options;
+         std::vector<identifier_group> identifiers_to_serialize;
+         
+         // Outputs:
+         std::vector<func_pair> sector_functions;
+         func_pair top_level_functions; // void read(const buffer_byte_type* src, int sector_id), etc.
+         
+      public:
          func_pair get_or_create_whole_struct_functions(const struct_descriptor&);
          
          struct_info& info_for_struct(gcc_wrappers::type);
@@ -64,10 +75,14 @@ namespace codegen {
             // The per-sector read and save functions both use the signature:
             // void f(struct lu_BitstreamState*)
             
+            bool empty() const;
             bool has_functions() const;
             void make_functions();
             void next();
          };
+         
+         void _serialize_value_to_sector(in_progress_sector&, serialization_value&);
+         void _make_top_level_functions();
          
       public:
          void run();

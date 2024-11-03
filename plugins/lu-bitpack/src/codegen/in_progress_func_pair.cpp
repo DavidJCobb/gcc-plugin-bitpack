@@ -6,7 +6,7 @@ namespace codegen {
       this->save_root.statements().append(expr.save);
    }
    void in_progress_func_pair.commit() {
-      this->read.set_root_block(this->read_root);
-      this->save.set_root_block(this->save_root);
+      this->read.as_modifiable().set_root_block(this->read_root);
+      this->save.as_modifiable().set_root_block(this->save_root);
    }
 }

@@ -15,6 +15,9 @@ namespace codegen {
    // sector_functions_generator::in_progress_sector
    //
    
+   bool sector_functions_generator::in_progress_sector::empty() const {
+      return this->bits_remaining == this->owner.global_options.sectors.size_per;
+   }
    bool sector_functions_generator::in_progress_sector::has_functions() const {
       if (!this->functions.read.empty()) {
          assert(!this->functions.save.empty());
@@ -44,7 +47,7 @@ namespace codegen {
       this->commit();
       this->owner.sector_functions.push_back(this->functions);
       ++this->id;
-      this->bits_remaining = sector_size;
+      this->bits_remaining = this->owner.global_options.sectors.size_per;
       this->make_functions();
    }
    
@@ -52,6 +55,10 @@ namespace codegen {
    // sector_functions_generator
    //
    
+   sector_functions_generator::sector_functions_generator(bitpacking::global_options::computed& go)
+      :
+      global_options(go) {
+   }
    sector_functions_generator::~sector_functions_generator() {
    }
    
@@ -403,84 +410,290 @@ namespace codegen {
       }
    }
    
+   void sector_functions_generator::_make_top_level_functions() {
+      const auto& ty = gw::builtin_types::get_fast();
+      
+      in_progress_func_pair top_pair;
+      
+      {  // void __lu_bitpack_read_by_sector(const buffer_byte_type* src, int sector_id);
+         auto name = lu::strings::printf_string("__lu_bitpack_read_by_sector", this->id);
+         top_pair.read = gw::decl::function(
+            name,
+            gw::type::make_function_type(
+               ty.t_void,
+               // args:
+               this->global_options.types.buffer_byte_ptr.add_const(),
+               ty.basic_int // int sectorID
+            )
+         );
+      }
+      {  // Save
+         auto name = lu::strings::printf_string("__lu_bitpack_save_by_sector", this->id);
+         top_pair.save = gw::decl::function(
+            name,
+            gw::type::make_function_type(
+               ty.t_void,
+               // args:
+               this->global_options.types.buffer_byte_ptr,
+               ty.basic_int // int sectorID
+            )
+         );
+      }
+      
+      size_t size = this->sector_functions.size();
+      {  // Read
+         auto statements = top_pair.read.read_root.statements();
+         
+         auto state_decl = gw::decl::variable("__lu_bitstream_state", this->global_options.types.bitstream_state);
+         state_decl.make_artificial();
+         state_decl.make_used();
+         //
+         statements.append(state_decl.make_declare_expr());
+         
+         {  // lu_BitstreamInitialize(&state, dst);
+            auto src_arg = func_decl.nth_parameter(0).as_value();
+            {
+               auto pointer_type = src_arg.value_type();
+               auto value_type   = pointer_type.remove_pointer();
+               if (value_type.is_const()) {
+                  src_arg = src_arg.conversion_sans_bytecode(value_type.remove_const().add_pointer());
+               }
+            }
+            statements.append(
+               gw::expr::call(
+                  gw::decl::function::from_untyped(needed_functions.bitstream_initialize.decl),
+                  // args:
+                  state_decl.as_value().address_of(), // &state
+                  src_arg // dst
+               )
+            );
+         }
+         
+         std::vector<gw::expr::call> calls;
+         calls.resize(size);
+         for(size_t i = 0; i < size; ++i) {
+            calls[i] = gw::expr::call(
+               this->sector_functions[i].read,
+               // args:
+               state_decl.as_value().address_of()
+            );
+         }
+         
+         auto root_cond = gw::expr::ternary::from_untyped(NULL_TREE);
+         auto prev_cond = gw::expr::ternary::from_untyped(NULL_TREE);
+         for(size_t i = 0; i < calls.size(); ++i) {
+            auto  cond = gw::expr::ternary(
+               types.t_void,
+               
+               // condition:
+               func_decl.nth_parameter(1).as_value().cmp_is_equal(
+                  gw::expr::integer_constant(types.t_int, i)
+               ),
+               
+               // branches:
+               calls[i],
+               gw::expr::base::from_untyped(NULL_TREE)
+            );
+            if (prev_cond) {
+               prev_cond.set_false_branch(cond);
+            } else {
+               root_cond = cond;
+            }
+            prev_cond = cond;
+         }
+         if (!root_cond.empty()) {
+            statements.append(root_cond);
+         }
+      }
+      {  // Save
+         auto statements = top_pair.save.read_root.statements();
+         
+         auto state_decl = gw::decl::variable("__lu_bitstream_state", this->global_options.types.bitstream_state);
+         state_decl.make_artificial();
+         state_decl.make_used();
+         //
+         statements.append(state_decl.make_declare_expr());
+         
+         {  // lu_BitstreamInitialize(&state, src);
+            auto src_arg = func_decl.nth_parameter(0).as_value();
+            statements.append(
+               gw::expr::call(
+                  gw::decl::function::from_untyped(needed_functions.bitstream_initialize.decl),
+                  // args:
+                  state_decl.as_value().address_of(), // &state
+                  func_decl.nth_parameter(0).as_value() // src
+               )
+            );
+         }
+         
+         std::vector<gw::expr::call> calls;
+         calls.resize(size);
+         for(size_t i = 0; i < size; ++i) {
+            calls[i] = gw::expr::call(
+               this->sector_functions[i].save,
+               // args:
+               state_decl.as_value().address_of()
+            );
+         }
+         
+         auto root_cond = gw::expr::ternary::from_untyped(NULL_TREE);
+         auto prev_cond = gw::expr::ternary::from_untyped(NULL_TREE);
+         for(size_t i = 0; i < calls.size(); ++i) {
+            auto  cond = gw::expr::ternary(
+               types.t_void,
+               
+               // condition:
+               func_decl.nth_parameter(1).as_value().cmp_is_equal(
+                  gw::expr::integer_constant(types.t_int, i)
+               ),
+               
+               // branches:
+               calls[i],
+               gw::expr::base::from_untyped(NULL_TREE)
+            );
+            if (prev_cond) {
+               prev_cond.set_false_branch(cond);
+            } else {
+               root_cond = cond;
+            }
+            prev_cond = cond;
+         }
+         if (!root_cond.empty()) {
+            statements.append(root_cond);
+         }
+      }
+      //
+      // Finalize functions:
+      //
+      {
+         auto& func_dst = top_pair.read.as_modifiable();
+         
+         gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
+         func_dst.set_result_decl(retn_decl);
+      }
+      {
+         auto& func_dst = top_pair.save.as_modifiable();
+         
+         gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
+         func_dst.set_result_decl(retn_decl);
+      }
+      top_pair.commit();
+      
+      this->top_level_functions = (func_pair)top_pair; // cast for deliberate object slicing
+   }
+   
+   void sector_functions_generator::_serialize_value_to_sector(
+      in_progress_sector&  sector,
+      serialization_value& object
+   ) {
+      value state_ptr;
+      state_ptr.read = sector.functions.read.nth_parameter(0).as_value();
+      state_ptr.save = sector.functions.save.nth_parameter(0).as_value();
+      
+      size_t bitcount = object.bitcount();
+      if (bitcount <= sector.bits_remaining) {
+         sector.functions.append(this->_serialize(state_ptr, object));
+         bits_remaining -= size;
+         return;
+      }
+      
+      //
+      // The object doesn't fit. We need to serialize it in fragments, 
+      // splitting it across a sector boundary.
+      //
+      
+      //
+      // Handle top-level and nested struct members:
+      //
+      if (object.is_struct()) {
+         const auto* info = _descriptor_for_struct(object);
+         assert(info != nullptr);
+         for(const auto& m : info->members) {
+            auto v = object.access_member(m);
+            this->_serialize_value_to_sector(sector, v);
+         }
+         return;
+      }
+      
+      //
+      // Handle arrays:
+      //
+      if (object.is_array()) {
+         const auto& info = object.as_member();
+         
+         size_t elem_size = info.element_size_in_bits();
+         size_t i         = 0;
+         size_t extent    = info.array_extent();
+         while (i < extent) {
+            //
+            // Generate a loop to serialize as many elements as can fit.
+            //
+            size_t can_fit = bits_remaining / elem_size;
+            if (can_fit > 1) {
+               sector.functions._serialize_array_slice(this->_serialize(state_ptr, object, i, can_fit));
+               i += can_fit;
+               if (i >= extent)
+                  break;
+            }
+            //
+            // Split the element that won't fit across a sector boundary.
+            //
+            this->_serialize_value_to_sector(sector, object.access_nth(i));
+            //
+            // Repeat this process until the whole array makes it in.
+            //
+         }
+         return;
+      }
+      
+      //
+      // Handle indiviisible values. We need to advance to the next sector to fit 
+      // them.
+      // 
+      sector.next();
+      this->_serialize_value_to_sector(sector, object);
+   }
    void sector_functions_generator::run() {
       in_progress_sector sector(*this);
       sector.make_functions();
       
-      // returns true if serialized anything, or false if moved to next sector
-      auto _generate = [this, &sector](serialization_value object) -> void {
-         auto info_set = this->_info_for_target(object);
-         
-         size_t bitcount = object.bitcount();
-         if (bitcount <= sector.bits_remaining) {
-            sector.functions.append(this->_serialize(object));
-            bits_remaining -= size;
-            return;
+      for(size_t i = 0; i < this->identifiers_to_serialize.size(); ++i) {
+         auto& list = identifiers_to_serialize[i];
+         if (i > 0 && !sector.empty()) {
+            sector.next();
          }
          
-         //
-         // The object doesn't fit. We need to serialize it in fragments, 
-         // splitting it across a sector boundary.
-         //
-         
-         //
-         // Handle top-level and nested struct members:
-         //
-         if (object.is_struct()) {
-            const auto* info = _descriptor_for_struct(object);
-            assert(info != nullptr);
-            for(const auto& m : info->members) {
-               auto v = object.access_member(m);
-               _generate(v);
+         for(auto& name : list) {
+            auto node = lookup_name(get_identifier(name.c_str()));
+            if (node == NULL_TREE) {
+               // TODO: throw
+               continue;
             }
-            return;
-         }
-         
-         //
-         // Handle arrays:
-         //
-         if (object.is_array()) {
-            const auto& info = object.as_member();
+            if (TREE_CODE(node) != VAR_DECL) {
+               // TODO: throw
+               continue;
+            }
             
-            size_t elem_size = info.element_size_in_bits();
-            size_t i         = 0;
-            size_t extent    = info.array_extent();
-            while (i < extent) {
-               //
-               // Generate a loop to serialize as many elements as can fit.
-               //
-               size_t can_fit = bits_remaining / elem_size;
-               if (can_fit > 1) {
-                  sector.functions.serialize_array_slice(*this, object, i, can_fit);
-                  i += can_fit;
-                  if (i >= extent)
-                     break;
-               }
-               //
-               // Split the element that won't fit across a sector boundary.
-               //
-               _generate(object.access_nth(i));
-               //
-               // Repeat this process until the whole array makes it in.
-               //
+            auto decl = gw::decl::variable::from_untyped(node);
+            auto type = decl.value_type();
+            if (!type.is_record()) {
+               // TODO: throw
+               continue;
             }
-            return;
+            
+            const auto* descriptor = this->info_for_struct(type).descriptor.get();
+            
+            serialization_value value;
+            value.read = decl.as_value();
+            value.save = decl.as_value();
+            value.descriptor = descriptor;
+            
+            this->_serialize_value_to_sector(sector, value);
          }
-         
-         //
-         // Handle indiviisible values. We need to advance to the next sector to fit 
-         // them.
-         // 
-         sector.next();
-         _generate(object);
-         return;
-      };
-
-      static_assert(false, "TODO: Where to get `objects_to_serialize` from?");
-      for(serialization_value object : objects_to_serialize) {
-         _generate(object);
       }
       sector.functions.commit();
       this->sector_functions.push_back((func_pair)sector.functions); // cast to slice on purpose
+      
+      this->_make_top_level_functions();
    }
 }

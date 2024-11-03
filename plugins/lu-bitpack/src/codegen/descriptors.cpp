@@ -100,15 +100,18 @@ namespace codegen {
          if (options.omit_from_bitpacking)
             return true; // continue
          
+         bitpacking::member_options::computed computed;
+         computed.resolve(global, options, decl.value_type());
+         
          auto& member = this->members.emplace_back(decl);
-         member.kind = options.kind;
+         member.kind = computed.kind;
          member.type = decl.value_type();
          member.decl = decl;
          if (member.type.is_array()) {
             auto array_type = member_type;
             auto value_type = array_type.array_value_type();
             do {
-               if (options.is_explicit_string && value_type == global.types.string_char) {
+               if (computed.is_string() && value_type == global.types.string_char) {
                   break;
                }
                
@@ -127,7 +130,7 @@ namespace codegen {
                value_type = array_type.array_value_type();
             } while (true);
          }
-         member.bitpacking_options = options;
+         member.bitpacking_options = computed;
       });
       
    }

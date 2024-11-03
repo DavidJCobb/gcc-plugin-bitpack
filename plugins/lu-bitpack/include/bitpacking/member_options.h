@@ -65,6 +65,16 @@ namespace bitpacking::member_options {
             gcc_wrappers::type member_type
          );
          
+         constexpr bool is_buffer() const noexcept {
+            return std::holds_alternative<buffer_data>(this->_data);
+         }
+         constexpr bool is_integral() const noexcept {
+            return std::holds_alternative<integral_data>(this->_data);
+         }
+         constexpr bool is_string() const noexcept {
+            return std::holds_alternative<string_data>(this->_data);
+         }
+         
          constexpr const buffer_data& buffer_options() const noexcept {
             return std::get<buffer_data>(this->data);
          }
