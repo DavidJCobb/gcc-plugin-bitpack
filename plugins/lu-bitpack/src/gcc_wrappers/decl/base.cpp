@@ -26,6 +26,20 @@ namespace gcc_wrappers::decl {
       return DECL_SOURCE_LINE(this->_node);
    }
    
+   bool base::linkage_status_unknown() const {
+      if (empty())
+         return false;
+      switch (TREE_CODE(this->_node)) {
+         case FUNCTION_DECL:
+         case TYPE_DECL:
+         case VAR_DECL:
+            break;
+         default:
+            return false;
+      }
+      return DECL_DEFER_OUTPUT(this->_node);
+   }
+   
    bool base::is_artificial() const {
       return DECL_ARTIFICIAL(this->_node) != 0;
    }

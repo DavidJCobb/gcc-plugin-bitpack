@@ -29,6 +29,8 @@ namespace gcc_wrappers {
             enum class _modifiable_subconstruct_tag {};
             function(_modifiable_subconstruct_tag) {}
             
+            void _make_decl_arguments_from_type();
+            
          public:
             // Creates an empty wrapper.
             function() {}

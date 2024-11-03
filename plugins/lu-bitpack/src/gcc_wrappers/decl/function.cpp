@@ -4,12 +4,54 @@
 #include <cassert>
 #include <stdexcept>
 #include "lu/strings/printf_string.h"
+#include <function.h>
 #include <stringpool.h> // get_identifier
+#include <output.h> // assemble_external
 #include <toplev.h>
+#include <c-family/c-common.h>
+#include <cgraph.h>
 
 // function
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(function)
+   
+   void function::_make_decl_arguments_from_type() {
+      gcc_assert(!empty());
+      
+      size_t i = 0;
+      
+      auto args = this->function_type().function_arguments();
+      tree prev = NULL_TREE;
+      for(auto pair : args) {
+         if (pair.second == NULL_TREE) {
+            break;
+         }
+         if (TREE_CODE(pair.second) == VOID_TYPE) {
+            //
+            // Sentinel indicating that this is not a varargs function.
+            //
+            break;
+         }
+         
+         // Generate a name for the arguments, to avoid crashes on a 
+         // null IDENTIFIER_NODE when dumping function info elsewhere.
+         auto arg_name = lu::strings::printf_string("__arg_%u", i++);
+         
+         auto p = param::from_untyped(build_decl(
+            UNKNOWN_LOCATION,
+            PARM_DECL,
+            get_identifier(arg_name.c_str()),
+            pair.second
+         ));
+         DECL_CONTEXT(p.as_untyped()) = this->_node;
+         if (prev == NULL_TREE) {
+            DECL_ARGUMENTS(this->_node) = p.as_untyped();
+         } else {
+            TREE_CHAIN(prev) = p.as_untyped();
+         }
+         prev = p.as_untyped();
+      }
+   }
    
    function::function(const char* name, const type& function_type) {
       //
@@ -21,31 +63,7 @@ namespace gcc_wrappers::decl {
       // NOTE: That doesn't automatically build DECL_ARGUMENTS. We need 
       // to do so manually.
       //
-      {
-         size_t i = 0;
-         
-         auto args = function_type.function_arguments();
-         tree prev = NULL_TREE;
-         for(auto pair : args) {
-            // Generate a name for the arguments, to avoid crashes on a 
-            // null IDENTIFIER_NODE when dumping function info elsewhere.
-            auto arg_name = lu::strings::printf_string("__arg_%u", i++);
-            
-            auto p = param::from_untyped(build_decl(
-               UNKNOWN_LOCATION,
-               PARM_DECL,
-               get_identifier(arg_name.c_str()),
-               pair.second
-            ));
-            if (prev == NULL_TREE) {
-               DECL_ARGUMENTS(this->_node) = p.as_untyped();
-            } else {
-               TREE_CHAIN(prev) = p.as_untyped();
-            }
-            prev = p.as_untyped();
-         }
-      }
-      
+      this->_make_decl_arguments_from_type();
    }
    function::function(const std::string& name, const type& function_type) : function(name.c_str(), function_type) {
    }
@@ -143,6 +161,21 @@ namespace gcc_wrappers::decl {
    function_with_modifiable_body function::as_modifiable() {
       assert(!empty());
       assert(!has_body());
+      {
+         auto args = DECL_ARGUMENTS(this->_node);
+         if (args == NULL_TREE) {
+            this->_make_decl_arguments_from_type();
+         } else {
+            //
+            // Update contexts. In the case of us taking a forward-declared 
+            // function and generating a definition for it, the PARM_DECLs 
+            // may exist but lack the appropriate DECL_CONTEXT.
+            //
+            for(; args != NULL_TREE; args = TREE_CHAIN(args)) {
+               DECL_CONTEXT(args) = this->_node;
+            }
+         }
+      }
       return function_with_modifiable_body(this->_node);
    }
 }
@@ -166,6 +199,7 @@ namespace gcc_wrappers::decl {
    
    void function_with_modifiable_body::set_result_decl(result decl) {
       DECL_RESULT(this->_node) = decl.as_untyped();
+      DECL_CONTEXT(decl.as_untyped()) = this->_node;
    }
    
    void function_with_modifiable_body::set_root_block(expr::local_block& lb) {
@@ -257,9 +291,35 @@ namespace gcc_wrappers::decl {
       };
       _traverse(lb, root_block);
       
-      // https://gcc.gnu.org/onlinedocs/gccint/Parsing-pass.html
-      // https://gcc-help.gcc.gnu.narkive.com/W8vPFrG1/how-to-insert-external-global-variable-declarations-and-pointer-assignment-statements-through-gcc
-      rest_of_decl_compilation(this->_node, true, 0); // toplev.h
-      // vars only?
+      //
+      // Actions below are needed in order to emit the function to the object file, 
+      // so the linker can see it and it's included in the program.
+      //
+      
+      if (!DECL_STRUCT_FUNCTION(this->_node)) {
+         //
+         // We need to allocate a "struct function" (i.e. a struct that describes 
+         // some stuff about the function) in order for the function to be truly 
+         // complete. (Unclear on what purpose this serves exactly, but I do know 
+         // that the GCC functions to debug-print a whole FUNCTION_DECL won't even 
+         // attempt to print the PARM_DECLs unless a struct function is present.) 
+         //
+         // Allocating a struct function triggers "layout" of the FUNCTION_DECL 
+         // and its associated DECLs, including the RESULT_DECL. As such, if there 
+         // is no RESULT_DECL, then GCC crashes.
+         //
+         gcc_assert(DECL_RESULT(this->_node) != NULL_TREE);
+         allocate_struct_function(this->_node, false); // function.h
+      }
+      
+      // per `finish_function` in `c/c-decl.cc`:
+      if (!decl_function_context(this->_node)) {
+         cgraph_node::finalize_function(this->_node, false); // cgraph.h
+      } else {
+         //
+         // We're a nested function.
+         //
+         cgraph_node::get_create(this->_node);
+      }
    }
 }

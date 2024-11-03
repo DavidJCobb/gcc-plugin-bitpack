@@ -51,6 +51,12 @@ namespace codegen {
          auto name = lu::strings::printf_string("__lu_bitpack_save_sector_%u", this->id);
          this->functions.save = gw::decl::function(name, this->function_type);
       }
+
+      this->functions.read.as_modifiable().set_result_decl(gw::decl::result(ty.basic_void));
+      this->functions.save.as_modifiable().set_result_decl(gw::decl::result(ty.basic_void));
+      
+      this->functions.read.nth_parameter(0).make_used();
+      this->functions.save.nth_parameter(0).make_used();
    }
    void sector_functions_generator::in_progress_sector::next() {
       this->functions.commit();
@@ -608,6 +614,8 @@ namespace codegen {
          gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
          func_dst.set_result_decl(retn_decl);
       }
+      top_pair.read.set_is_defined_elsewhere(false);
+      top_pair.save.set_is_defined_elsewhere(false);
       top_pair.commit();
       
       this->top_level_functions = (func_pair)top_pair; // cast for deliberate object slicing

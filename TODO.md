@@ -5,7 +5,7 @@
 
 ### BLUF
 
-* ...
+* Generated functions don't make it into object files and so are invisible to the linker.
 
 
 #### details

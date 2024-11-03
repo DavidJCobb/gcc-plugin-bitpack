@@ -75,7 +75,7 @@ extern void read(const u8* src, int sector_id) {
    
    lu_BitstreamRead_string(&state, sStructB.a, 5);
 }
-//#pragma lu_bitpack debug_dump_function read
+#pragma lu_bitpack debug_dump_function read
 
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);
@@ -85,7 +85,7 @@ extern void generated_save(u8* dst, int sector_id);
    save_name = generated_save,              \
    data      = sStructA sStructB | sStructC \
 )
-//#pragma lu_bitpack debug_dump_function generated_read
+#pragma lu_bitpack debug_dump_function generated_read
 
 
 

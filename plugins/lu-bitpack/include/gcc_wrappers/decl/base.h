@@ -24,6 +24,8 @@ namespace gcc_wrappers {
             std::string_view source_file() const;
             int source_line() const;
             
+            bool linkage_status_unknown() const;
+            
             bool is_artificial() const;
             void make_artificial();
             void set_is_artificial(bool);

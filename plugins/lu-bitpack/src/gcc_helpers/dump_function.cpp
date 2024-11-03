@@ -80,6 +80,8 @@ namespace gcc_helpers {
          }
       }
       
+      std::cerr << " - Dumping function node...\n";
+      debug_tree(decl.as_untyped());
       std::cerr << " - Dumping function body...\n";
       debug_tree(DECL_SAVED_TREE(decl.as_untyped()));
    }
