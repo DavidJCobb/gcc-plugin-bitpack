@@ -5,8 +5,7 @@
 
 ### BLUF
 
-* `sector_functions_generator` needs to know what data values to serialize; it needs to be able to pull them (or pointers to them) out of translation unit scope. This is relevant to the top-level for-loop at the bottom of `sector_functions_generator::run`.
-* The plug-in needs code to handle the attributes and pragmas. We've built most of our stuff; we just need to hook it up now.
+* ...
 
 
 #### details
