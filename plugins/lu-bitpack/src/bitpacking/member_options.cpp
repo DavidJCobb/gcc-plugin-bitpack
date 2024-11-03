@@ -351,12 +351,30 @@ namespace bitpacking::member_options {
          
          this->kind = member_kind::string;
          auto& dst = this->data.emplace<string_data>();
+         if (src.string.with_terminator.has_value()) {
+            dst.with_terminator = *src.string.with_terminator;
+         } else {
+            if (inherit_from && is_string_h) {
+               auto opt = std::get<heritable_options::string_data>(inherit_from->data).with_terminator;
+               if (opt.has_value())
+                  dst.with_terminator = *opt;
+            }
+         }
          {
             auto opt = string_length(global, member_type);
             if (!opt.has_value()) {
                throw std::runtime_error("string bitpacking options applied to a variable-length array; VLAs are not supported");
             }
             dst.length = *opt;
+            if (dst.length == 0) {
+               throw std::runtime_error("string bitpacking options applied to a zero-length string");
+            }
+            if (dst.with_terminator) {
+               --dst.length;
+               if (dst.length == 0) {
+                  throw std::runtime_error("string bitpacking options applied to a zero-length string (array of one character, to be burned on a null terminator)");
+               }
+            }
             
             std::optional<size_t> override_length;
             if (inherit_from) {
@@ -376,15 +394,6 @@ namespace bitpacking::member_options {
                   ));
                }
                dst.length = l;
-            }
-         }
-         if (src.string.with_terminator.has_value()) {
-            dst.with_terminator = *src.string.with_terminator;
-         } else {
-            if (inherit_from && is_string_h) {
-               auto opt = std::get<heritable_options::string_data>(inherit_from->data).with_terminator;
-               if (opt.has_value())
-                  dst.with_terminator = *opt;
             }
          }
          return;
