@@ -12,54 +12,35 @@ namespace codegen {
       this->save_root.statements().append(expr.save);
    }
    void in_progress_func_pair::commit() {
-      
-      // These lines are what allow the top-level functions to emit to the object file.
-      // Theoretically, uncommenting them would also allow the per-sector functions to 
-      // emit to the object file. In practice, however, we just crash instead.
+      //
+      // First, some needed changes in order for our functions to be emitted to 
+      // the object files.
+      //
       this->read.set_is_defined_elsewhere(false);
       this->save.set_is_defined_elsewhere(false);
-      // It's due to something inside of these functions, but hell if I know what.
       
       this->read.as_modifiable().set_root_block(this->read_root);
       this->save.as_modifiable().set_root_block(this->save_root);
       
+      //
+      // Finally, some cleanup. To the best of my knowledge, these actions are 
+      // also required for the functions to be emitted. We do them conditionally 
+      // so that if we're generating a definition for a function that was already 
+      // forward-declared in source, we don't conflict with the declaration.
+      //
       {
          auto decl  = this->read;
          auto prior = lookup_name(DECL_NAME(decl.as_untyped()));
          if (prior == NULL_TREE) {
-            // c_bind doesn't do what we need it to do: it doesn't ensure that the 
-            // per-sector functions make it into the compiled object file.
-            //
-            // it *does* expose the function to `lookup_name` and friends, though.
-            //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
-            
-            // Anything that calls pushdecl crashes in combination with the above 
-            // `set_is_defined_elsewhere(false)` calls.
             pushdecl(decl.as_untyped());
-            //c_simulate_builtin_function_decl(decl.as_untyped());
          }
       }
       {
          auto decl  = this->save;
          auto prior = lookup_name(DECL_NAME(decl.as_untyped()));
          if (prior == NULL_TREE) {
-            // c_bind doesn't do what we need it to do: it doesn't ensure that the 
-            // per-sector functions make it into the compiled object file.
-            //
-            // it *does* expose the function to `lookup_name` and friends, though.
-            //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
-            
-            // Anything that calls pushdecl crashes in combination with the above 
-            // `set_is_defined_elsewhere(false)` calls.
             pushdecl(decl.as_untyped());
-            //c_simulate_builtin_function_decl(decl.as_untyped());
          }
       }
-      
-      //pushdecl(this->read.as_untyped());
-      //pushdecl(this->save.as_untyped());
-      
-      //c_bind(UNKNOWN_LOCATION, this->read.as_untyped(), true);
-      //c_bind(UNKNOWN_LOCATION, this->save.as_untyped(), true);
    }
 }
