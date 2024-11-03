@@ -25,6 +25,9 @@
 * Implement internally-tagged unions, as both members and top-level types.
   * If all of the union's members are structs, and the first *n* fields of all such structs are identical, then any of those first *n* fields can be used as the union's tag.
 * When `codegen::struct_descriptor` grabs the bitpacking options for a member, it should wrap resolving the options in a try/catch. If a `std::runtime_error` is thrown, prepend detailed error information (i.e. `%<StructName::member_name%>`) to the error message and rethrow.
+* It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
+  * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
+  * Strings are a bit more complicated because we have to account for the null terminator and zero-filling. Additionally, if we do split a string, the latter half (or halves) of the string need to zero-fill if any previous byte (in the former half (or halves)) was null. Let's shelve strings for now.
 
 
 #### details
