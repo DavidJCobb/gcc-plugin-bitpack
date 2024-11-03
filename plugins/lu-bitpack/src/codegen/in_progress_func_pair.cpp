@@ -31,7 +31,8 @@ namespace codegen {
             // per-sector functions make it into the compiled object file.
             //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
             
-            // Anything that calls pushdecl crashes as per the above.
+            // Anything that calls pushdecl crashes in combination with the above 
+            // `set_is_defined_elsewhere(false)` calls.
             //pushdecl(decl.as_untyped());
             //c_simulate_builtin_function_decl(decl.as_untyped());
          }
@@ -44,7 +45,8 @@ namespace codegen {
             // per-sector functions make it into the compiled object file.
             //c_bind(UNKNOWN_LOCATION, decl.as_untyped(), true);
             
-            // Anything that calls pushdecl crashes as per the above.
+            // Anything that calls pushdecl crashes in combination with the above 
+            // `set_is_defined_elsewhere(false)` calls.
             //pushdecl(decl.as_untyped());
             //c_simulate_builtin_function_decl(decl.as_untyped());
          }
