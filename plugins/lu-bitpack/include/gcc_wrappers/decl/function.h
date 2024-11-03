@@ -49,6 +49,33 @@ namespace gcc_wrappers {
             param nth_parameter(size_t) const;
             result result_variable() const;
             
+            // DECL_PRESERVE_P
+            bool is_always_emitted() const;
+            void make_always_emitted();
+            void set_is_always_emitted(bool);
+            
+            // DECL_EXTERNAL
+            //
+            // NOTE: a C99 "extern inline" function will be marked as 
+            // being defined elsewhere yet still have a definition in 
+            // the current translation unit.
+            bool is_defined_elsewhere() const;
+            void set_is_defined_elsewhere(bool);
+            
+            // Indicates that this decl's name is to be accessible from 
+            // outside of the current translation unit.
+            bool is_externally_accessible() const; // TREE_PUBLIC
+            void make_externally_accessible();
+            void set_is_externally_accessible(bool);
+            
+            bool is_noreturn() const; // TREE_THIS_VOLATILE
+            void make_noreturn();
+            void set_is_noreturn(bool);
+            
+            bool is_nothrow() const;
+            void make_nothrow();
+            void set_is_nothrow(bool);
+            
             bool has_body() const;
             
             // assert(!has_body());

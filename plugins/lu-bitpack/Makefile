@@ -20,6 +20,7 @@ SOURCES=\
         src/gcc_wrappers/decl/variable.cpp \
         src/gcc_wrappers/expr/assign.cpp \
         src/gcc_wrappers/expr/base.cpp \
+        src/gcc_wrappers/expr/call.cpp \
         src/gcc_wrappers/expr/declare.cpp \
         src/gcc_wrappers/expr/go_to_label.cpp \
         src/gcc_wrappers/expr/integer_constant.cpp \
@@ -50,3 +51,11 @@ include ../../Makefile.common
 .PHONY: test
 test: $(PLUGIN)
 	$(CCPLUGIN) -c -o /dev/null test/test.c -Itest
+
+.PHONY: test_and_run
+test_and_run: $(PLUGIN)
+	- rm -f test/*.o
+	$(CCPLUGIN) -c test/bitstreams.c -o test/bitstreams.o -Itest
+	$(CCPLUGIN) -c test/test.c -o test/test.o -Itest
+	$(CCPLUGIN) test/bitstreams.o test/test.o -o test/test
+	test/test

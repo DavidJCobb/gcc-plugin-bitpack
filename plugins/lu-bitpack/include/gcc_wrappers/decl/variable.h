@@ -30,6 +30,17 @@ namespace gcc_wrappers {
             expr::declare make_declare_expr();
             
             type value_type() const;
+            
+            bool is_defined_elsewhere() const;
+            void set_is_defined_elsewhere(bool);
+            
+            // Indicates that this decl's name is to be accessible from 
+            // outside of the current translation unit.
+            bool is_externally_accessible() const; // TREE_PUBLIC
+            void make_externally_accessible();
+            void set_is_externally_accessible(bool);
+            
+            void make_file_scope_static();
       };
    }
 }

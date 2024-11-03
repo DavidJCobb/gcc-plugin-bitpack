@@ -102,6 +102,8 @@ namespace gcc_wrappers {
          type remove_const() const;
          bool is_const() const;
          
+         bool is_volatile() const;
+         
          type add_pointer() const;
          type remove_pointer() const;
          bool is_pointer() const;

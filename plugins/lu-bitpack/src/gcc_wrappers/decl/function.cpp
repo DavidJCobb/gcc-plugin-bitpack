@@ -5,12 +5,17 @@
 #include <stdexcept>
 #include "lu/strings/printf_string.h"
 #include <stringpool.h> // get_identifier
+#include <toplev.h>
 
 // function
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(function)
    
    function::function(const char* name, const type& function_type) {
+      //
+      // Create the node with GCC's defaults (defined elsewhere, extern, 
+      // artificial, nothrow).
+      //
       this->_node = build_fn_decl(name, function_type.as_untyped());
       //
       // NOTE: That doesn't automatically build DECL_ARGUMENTS. We need 
@@ -66,6 +71,68 @@ namespace gcc_wrappers::decl {
    }
    result function::result_variable() const {
       return result::from_untyped(DECL_RESULT(this->_node));
+   }
+
+   bool function::is_always_emitted() const {
+      if (empty())
+         return false;
+      return DECL_PRESERVE_P(this->_node);
+   }
+   void function::make_always_emitted() {
+      set_is_always_emitted(true);
+   }
+   void function::set_is_always_emitted(bool) {
+      assert(!empty());
+      DECL_PRESERVE_P(this->_node) = 1;
+   }
+   
+   bool function::is_defined_elsewhere() const {
+      if (empty())
+         return false;
+      return DECL_EXTERNAL(this->_node);
+   }
+   void function::set_is_defined_elsewhere(bool v) {
+      assert(!empty());
+      DECL_EXTERNAL(this->_node) = v ? 1 : 0;
+   }
+            
+   bool function::is_externally_accessible() const {
+      if (empty())
+         return false;
+      return TREE_PUBLIC(this->_node);
+   }
+   void function::make_externally_accessible() {
+      set_is_externally_accessible(true);
+   }
+   void function::set_is_externally_accessible(bool v) {
+      assert(!empty());
+      TREE_PUBLIC(this->_node) = v ? 1 : 0;
+   }
+
+   bool function::is_noreturn() const {
+      if (empty())
+         return false;
+      return TREE_THIS_VOLATILE(this->_node);
+   }
+   void function::make_noreturn() {
+      set_is_noreturn(true);
+   }
+   void function::set_is_noreturn(bool v) {
+      assert(!empty());
+      TREE_THIS_VOLATILE(this->_node) = v ? 1 : 0;
+   }
+   
+   bool function::is_nothrow() const {
+      if (empty())
+         return false;
+      return TREE_NOTHROW(this->_node);
+   }
+   void function::make_nothrow() {
+      set_is_nothrow(true);
+   }
+   void function::set_is_nothrow(bool v) {
+      assert(!empty());
+      TREE_NOTHROW(this->_node) = v ? 1 : 0;
    }
    
    bool function::has_body() const {
@@ -128,6 +195,7 @@ namespace gcc_wrappers::decl {
       //          The parent BLOCK or FUNCTION_DECL node.
       //
       DECL_SAVED_TREE(this->_node) = lb.as_untyped();
+      TREE_STATIC(this->_node) = 1;
       
       auto root_block = make_node(BLOCK);
       BLOCK_SUPERCONTEXT(root_block) = this->_node;
@@ -188,5 +256,10 @@ namespace gcc_wrappers::decl {
          _impl(lb, block, _impl);
       };
       _traverse(lb, root_block);
+      
+      // https://gcc.gnu.org/onlinedocs/gccint/Parsing-pass.html
+      // https://gcc-help.gcc.gnu.narkive.com/W8vPFrG1/how-to-insert-external-global-variable-declarations-and-pointer-assignment-statements-through-gcc
+      rest_of_decl_compilation(this->_node, true, 0); // toplev.h
+      // vars only?
    }
 }

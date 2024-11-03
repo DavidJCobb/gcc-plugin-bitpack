@@ -11,4 +11,7 @@ typedef int32_t s32;
 
 typedef uint8_t bool8;
 
+#define TRUE 1
+#define FALSE 0
+
 #define EOS '\0'

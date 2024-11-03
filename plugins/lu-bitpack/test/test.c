@@ -3,6 +3,7 @@
 #include "bitstreams.h"
 
 #include <stdbool.h> // bool
+#include <stdio.h>
 
 #define LU_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
 #define LU_STRING(...) __attribute__((lu_bitpack_string(__VA_ARGS__)))
@@ -11,9 +12,9 @@
    sector_count=3, \
    sector_size=8,  \
    bool_typename            = bool8, \
-   buffer_byte_typename     = void,    \
+   buffer_byte_typename     = void, \
    bitstream_state_typename = lu_BitstreamState, \
-   string_char_typename     = u8,    \
+   string_char_typename     = u8, \
    func_initialize  = lu_BitstreamInitialize, \
    func_read_bool   = lu_BitstreamRead_bool, \
    func_read_u8     = lu_BitstreamRead_u8,   \
@@ -36,11 +37,7 @@
    func_write_string_terminated = lu_BitstreamWrite_string, \
    func_write_buffer = lu_BitstreamWrite_buffer, \
 )
-
-//#pragma lu_bitpack debug_dump_identifier bool
-//#pragma lu_bitpack debug_dump_identifier uint8_t
-//#pragma lu_bitpack debug_dump_identifier char
-//#pragma lu_bitpack debug_dump_identifier lu_BitstreamState
+#define char u8
 
 static struct StructA {
    LU_BITCOUNT(6) u8 a[9]; // bitcount is set per-element
@@ -49,11 +46,6 @@ static struct StructA {
 static struct StructB {
    LU_STRING("with-terminator") char a[6];
 } sStructB;
-//#pragma lu_bitpack debug_dump_identifier StructA
-//#pragma lu_bitpack debug_dump_identifier sStructA
-
-//typedef struct StructA test_typedef_StructA;
-//#pragma lu_bitpack debug_dump_identifier test_typedef_StructA
 
 static struct StructC {
    LU_STRING("with-terminator") char a[24];
@@ -70,7 +62,7 @@ extern void save(u8* dst, int sector_id) {
    
    lu_BitstreamWrite_string(&state, sStructB.a, 3);
 }
-#pragma lu_bitpack debug_dump_function save
+//#pragma lu_bitpack debug_dump_function save
 
 extern void read(const u8* src, int sector_id) {
    struct lu_BitstreamState state;
@@ -83,63 +75,108 @@ extern void read(const u8* src, int sector_id) {
    
    lu_BitstreamRead_string(&state, sStructB.a, 5);
 }
-#pragma lu_bitpack debug_dump_function read
+//#pragma lu_bitpack debug_dump_function read
 
-extern void read_generated(const u8* src, int sector_id);
+extern void generated_read(const u8* src, int sector_id);
+extern void generated_save(u8* dst, int sector_id);
 
 #pragma lu_bitpack generate_functions( \
-   read_name = read_generated,              \
-   save_name = save_generated,              \
+   read_name = generated_read,              \
+   save_name = generated_save,              \
    data      = sStructA sStructB | sStructC \
 )
-#pragma lu_bitpack debug_dump_function read_generated
+//#pragma lu_bitpack debug_dump_function generated_read
 
-extern void trigger_read() {
-   u8 buffer[20];
-   
+
+
+
+void reset_data() {
    for(int i = 0; i < 9; ++i)
-      buffer[i] = i + 2;
-   buffer[9] = 3;
+      sStructA.a[i] = i + 2;
+   sStructA.b = 3;
    
-   buffer[10] = 'A';
-   buffer[11] = 'B';
-   buffer[12] = 'C';
-   buffer[13] = 'D';
-   buffer[14] = 'E';
-   buffer[15] = '\0';
+   for(int i = 0; i < 6; ++i)
+      sStructB.a[i] = ("ABCDE\0")[i];
    
-   read(buffer, 0);
-}
-extern void trigger_save() {
-   u8 buffer[20];
-   
-   save(buffer, 0);
-}
-
-extern void do_sector_0();
-extern void do_sector_1();
-extern void do_sector_2();
-extern void do_sector_3();
-extern void test_if_else(int sector_id) {
-   if (sector_id == 0) {
-      do_sector_0();
-   } else if (sector_id == 1) {
-      do_sector_1();
-   } else if (sector_id == 2) {
-      do_sector_2();
-   } else if (sector_id == 3) {
-      do_sector_3();
+   for(int i = 0; i < 24; ++i) {
+      if (i <= 10) {
+         sStructC.a[i] = ("abcdefghij")[i];
+      } else {
+         sStructC.a[i] = 0;
+      }
    }
 }
-//#pragma lu_bitpack debug_dump_function test_if_else
-   
-struct TestPtrAccess {
-   int a;
-};
-extern int test_ptr_access_func(struct TestPtrAccess* mut, const struct TestPtrAccess* immut) {
-   mut->a = 5;
-   
-   int c = immut->a;
-   return c + 3;
+
+void print_buffer(const u8* buffer, int size) {
+   printf("Buffer: ");
+   for(int i = 0; i < size; ++i) {
+      printf("%02X ", buffer[i]);
+   }
+   printf("\n");
 }
-//#pragma lu_bitpack debug_dump_function test_ptr_access_func
+
+void print_data() {
+   printf(" - sStructA:\n");
+   printf("    - a == ");
+   for(int i = 0; i < 9; ++i) {
+      printf("%02X ", sStructA.a[i]);
+   }
+   printf("\n");
+   printf("    - b == %02X\n", sStructA.b);
+   
+   printf(" - sStructB:\n");
+   printf("    - a == ");
+   for(int i = 0; i < 6; ++i) {
+      char c = sStructB.a[i];
+      if (c == '\0') {
+         printf("'\0' ");
+      } else {
+         printf("%c ", c);
+      }
+   }
+   printf("\n");
+   
+   printf(" - sStructC:\n");
+   printf("    - a == ");
+   for(int i = 0; i < 24; ++i) {
+      char c = sStructB.a[i];
+      if (c == '\0') {
+         printf("'\0' ");
+      } else {
+         printf("%c ", c);
+      }
+   }
+   printf("\n");
+}
+
+int main() {
+   u8 test_buffer[64] = { 0 };
+   
+   printf("Testing pre-written functions...\n\n");
+   reset_data();
+   
+   save(test_buffer, 0);
+   printf("Saved:\n");
+   print_data();
+   print_buffer(test_buffer, sizeof(test_buffer));
+   
+   read(test_buffer, 0);
+   printf("Read:\n");
+   print_data();
+   print_buffer(test_buffer, sizeof(test_buffer));
+   
+   printf("Testing generated functions...\n\n");
+   reset_data();
+   
+   generated_save(test_buffer, 0);
+   printf("Saved:\n");
+   print_data();
+   print_buffer(test_buffer, sizeof(test_buffer));
+   
+   generated_read(test_buffer, 0);
+   printf("Read:\n");
+   print_data();
+   print_buffer(test_buffer, sizeof(test_buffer));
+   
+   return 0;
+}

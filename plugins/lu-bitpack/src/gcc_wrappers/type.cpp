@@ -275,6 +275,10 @@ namespace gcc_wrappers {
       return TREE_READONLY(this->_node);
    }
    
+   bool type::is_volatile() const {
+      return TYPE_VOLATILE(this->_node);
+   }
+   
    type type::add_pointer() const {
       gcc_assert(!empty());
       return type::from_untyped(build_pointer_type(this->_node));

@@ -40,8 +40,11 @@ namespace gcc_wrappers {
                   args.as_untyped()...
                );
             }
+            
+            // estimate; may fail
+            decl::function callee() const; // get_callee_fndecl
       };
-      static_assert(sizeof(assign) == sizeof(value)); // no new fields
+      static_assert(sizeof(call) == sizeof(value)); // no new fields
    }
 }
 
