@@ -45,16 +45,30 @@ namespace gcc_helpers {
          
          std::string_view name = IDENTIFIER_POINTER(key_data);
          
+         struct {
+            location_t loc;
+            int        type;
+            tree       data;
+         } token_after_entry;
+         
          bool has_value = false;
          {
             location_t loc;
             tree       data;
             token_type = pragma_lex(&data, &loc);
+            
+            token_after_entry.loc  = loc;
+            token_after_entry.data = data;
+            token_after_entry.type = token_type;
+            
             switch (token_type) {
                case CPP_EQ:
                   has_value = true;
                   break;
                case CPP_COMMA:
+                  has_value = false;
+                  break;
+               case CPP_CLOSE_PAREN:
                   has_value = false;
                   break;
                default:
@@ -94,24 +108,22 @@ namespace gcc_helpers {
             }
          }
          dst[std::string(name)] = value;
+         if (has_value) {
+            token_after_entry.type = pragma_lex(&token_after_entry.data, &token_after_entry.loc);
+         }
          //
          // Advance to next pair, or exit.
          //
          bool stop = false;
-         {
-            location_t loc;
-            tree       data;
-            auto token_type = pragma_lex(&data, &loc);
-            switch (token_type) {
-               case CPP_COMMA:
-                  continue;
-               case CPP_CLOSE_PAREN:
-                  stop = true;
-                  break;
-               default:
-                  error_at(loc, "expected key/value pair separator %<,%> or closing paren, after %<%s%> - ignored", pragma_name);
-                  return {};
-            }
+         switch (token_after_entry.type) {
+            case CPP_COMMA:
+               continue;
+            case CPP_CLOSE_PAREN:
+               stop = true;
+               break;
+            default:
+               error_at(token_after_entry.loc, "expected key/value pair separator %<,%> or closing paren, after %<%s%> - ignored", pragma_name);
+               return {};
          }
          if (stop)
             break;
