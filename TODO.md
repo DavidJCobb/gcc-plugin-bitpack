@@ -5,7 +5,6 @@
 
 ### Short-term
 
-* Add a test-case for when we hit the sector limit.
 * When a data member doesn't specify a pre-pack or post-unpack function, but its type does (i.e. the type is a struct and contains the appropriate attribute), pull the values from that.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
   * Most bitpacking options apply to the most deeply nested value when used on an array of any rank. For defaults, though, you'd need to at least be able to specify whether the value is per-element or for the entire member; and you'd then also need a syntax to provide values for (potentially nested) arrays. (We should support whatever initializer syntax C supports.)
@@ -13,8 +12,6 @@
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
   * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
-* Improve error reporting for values that fail to fit within sector boundaries. We currently have a try/catch in `sector_functions_generator::_serialize_value_to_sector` that we can use to add more error-reporting information, but I'm short on time to finish it right this second.
-  * To report the value, we'd have to build a "path string" as we recurse into the struct hierarchy. Easiest way would be to have a `std::string` member of the generator, which each call appends to at the start; before appending, each call would want to remember the string's `size()` and then, on return, `resize` it back to that length to remove what was appended.
 * Long-term plans below
   * Pre-pack and post-unpack functions
   * Union support

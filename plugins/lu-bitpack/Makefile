@@ -10,6 +10,7 @@ SOURCES=\
         src/codegen/serialization_value.cpp \
         src/gcc_helpers/dump_function.cpp \
         src/gcc_helpers/extract_pragma_kv_args.cpp \
+        src/gcc_helpers/stringify_fully_qualified_accessor.cpp \
         src/gcc_wrappers/decl/base.cpp \
         src/gcc_wrappers/decl/field.cpp \
         src/gcc_wrappers/decl/function.cpp \
@@ -149,6 +150,16 @@ testcase_heritables: $(PLUGIN)
 .PHONY: testcase_heritables_bad
 testcase_heritables_bad: TESTDIR=testcases/heritables_bad
 testcase_heritables_bad: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
+
+.PHONY: testcase_insufficient_sector_count
+testcase_insufficient_sector_count: TESTDIR=testcases/insufficient_sector_count
+testcase_insufficient_sector_count: $(PLUGIN)
 	- rm -f testcases/*.o
 	- rm -f $(TESTDIR)/*.o
 	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases

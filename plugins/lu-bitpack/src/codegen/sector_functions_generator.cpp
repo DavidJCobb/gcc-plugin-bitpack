@@ -12,6 +12,7 @@
 #include "gcc_wrappers/type/helpers/make_function_type.h"
 #include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/statement_list.h"
+#include "gcc_helpers/stringify_fully_qualified_accessor.h"
 #include "lu/strings/printf_string.h"
 namespace {
    namespace gw {
@@ -744,23 +745,31 @@ namespace codegen {
       // Handle indivisible values. We need to advance to the next sector to fit 
       // them.
       // 
+      if (bitcount >= this->global_options.sectors.size_per) {
+         auto described = gcc_helpers::stringify_fully_qualified_accessor(object.read);
+         auto message   = lu::strings::printf_string(
+            "failed to serialize data value %<%s%>: the object is too large to fit in any sector, and is not of a type that can be split across multiple sectors",
+            described.c_str()
+         );
+         throw std::runtime_error(message);
+      }
+      //
+      // Try to open a new sector.
+      //
       try {
          sector.next();
       } catch (std::runtime_error& ex) {
          //
          // Failed to open a new sector: we've hit the max sector count.
          //
-         // TODO: Report the full path of the failed value.
-         //
-         /*//
-         auto message = lu::strings::printf(
-            "failed to serialize data value: ",
+         auto described = gcc_helpers::stringify_fully_qualified_accessor(object.read);
+         auto message   = lu::strings::printf_string(
+            "failed to serialize data value %<%s%>: ",
+            described.c_str()
          );
          message += ex.what();
+         //
          throw std::runtime_error(message);
-         //*/
-         
-         throw; // for now just rethrow because I'm out of time
       }
       sector.assert_sane();
       this->_serialize_value_to_sector(sector, object);
@@ -800,8 +809,6 @@ namespace codegen {
                   type.pretty_print().c_str()
                ));
             }
-            
-            this->_current_value_path = name;
             
             const auto* descriptor = this->info_for_struct(type.as_record()).descriptor.get();
             

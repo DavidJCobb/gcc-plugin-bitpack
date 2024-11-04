@@ -329,7 +329,7 @@ namespace bitpacking::member_options {
       this->transforms.pre_pack    = src.transforms.pre_pack;
       this->transforms.post_unpack = src.transforms.post_unpack;
       if (!this->transforms.pre_pack.empty() || !this->transforms.post_unpack.empty()) {
-         warning(OPT_Wpragmas, "a data member specifies pre-pack/post-unpack transform functions; this functionality isn't implemented yet");
+         warning(OPT_Wpragmas, "a data member specifies pre-pack/post-unpack transform functions; this functionality is not yet implemented");
       }
       
       const heritable_options* inherit_from = nullptr;
