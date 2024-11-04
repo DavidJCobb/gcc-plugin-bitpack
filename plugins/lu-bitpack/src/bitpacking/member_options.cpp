@@ -305,6 +305,16 @@ namespace bitpacking::member_options {
             continue;
          }
          
+         if (key.starts_with("lu_bitpack_")) {
+            warning_at(
+               decl.source_location(),
+               1,
+               "unrecognized bitpacking attribute %<%s%> on field %<%s%>",
+               key.data(),
+               decl.name().data()
+            );
+         }
+         
          // Done.
       }
    }

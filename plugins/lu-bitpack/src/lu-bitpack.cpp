@@ -43,7 +43,8 @@ static tree handle_user_attribute(tree* node, tree name, tree args, int flags, b
    // required beyond the checks implied by the rest of this structure." 
    // Quoted verbatim because I have no idea what that means.
    //
-  return NULL_TREE;
+   *no_add_attrs = false;
+   return NULL_TREE;
 }
 
 namespace _attributes {
@@ -132,8 +133,8 @@ namespace _attributes {
       .handler = handle_user_attribute,
       .exclude = NULL
    };
-   static struct attribute_spec bitpack_opaque_buffer = {
-      .name = "lu_bitpack_opaque_buffer",
+   static struct attribute_spec bitpack_as_opaque_buffer = {
+      .name = "lu_bitpack_as_opaque_buffer",
       .min_length = 0, // min argcount
       .max_length = 0, // max argcount
       .decl_required = true,
@@ -153,7 +154,7 @@ static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::bitpack_range);
    register_attribute(&_attributes::bitpack_string);
    register_attribute(&_attributes::bitpack_omit);
-   register_attribute(&_attributes::bitpack_opaque_buffer);
+   register_attribute(&_attributes::bitpack_as_opaque_buffer);
 }
 
 #include "pragma_handlers/debug_dump_function.h"

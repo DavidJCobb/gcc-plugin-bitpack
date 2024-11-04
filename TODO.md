@@ -7,8 +7,6 @@
 
 * When a data member doesn't specify a pre-pack or post-unpack function, but its type does (i.e. the type is a struct and contains the appropriate attribute), pull the values from that.
 * When a data member specifies pre-pack or post-unpack functions (or when its type does), emit a warning stating that this functionality is not yet implemented.
-* Implement the ability to mark a data member to be serialized as an opaque buffer, and then devise a testcase for this.
-  * I believe I've already added the attribute, but I don't remember what, if anything, checks it, and I've not tested it.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
 * Devise testcases for heritable options.
   * Test valid uses of integer options
