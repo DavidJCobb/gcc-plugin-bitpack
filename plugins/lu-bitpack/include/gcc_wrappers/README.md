@@ -7,195 +7,194 @@ Goals:
 
 * Stricter typing
 * Add convenient, relevant accessors, so I don't constantly have to rummage around GCC internals
-  * There is no immediately obvious correlation between the name of the header that declares a function and the name of the file that defines it, and most search engines I've been using -- even those specifically built for code -- miss identifiers *constantly*, so this is genuinely quite painful.
+  * Many, many identifiers are declared in `foo.h` only to be defined in some completely differently-named `bar/baz.cc`. Most search engines I've been using -- even those specifically built for code -- miss identifiers *constantly*, so this is quite painful.
 * Improved ergonomics
+* Improved version independence via built-in version checks wherever I am aware of the need for them
+* Abstracted access to important GCC functions that are exported but not included in the plug-in headers (e.g. stuff from `c/c-tree.h` like the C-language `comptypes`, where plug-ins are given the C/C++ and the C++-exclusive headers but not the C-exclusive headers)
 
-## To-do list
+Known defects:
 
-### Better interoperability of wrappers
+* The wrapper classes act as views, but some have constructors which actually create a new tree node for you. The issue is that some wrappers' default constructors do so (e.g. `expr::local_block`), while most wrappers' default constructors do not (creating instead a wrapper around `NULL_TREE`). This is generally only done when it is convenient, but it's still inconsistent, and I should revise the API to be more explicit about when nodes are created.
 
-I should make it possible to do things like the following:
+An example of how these wrappers look when generating a function declaration and definition from scratch:
 
 ```c++
 namespace gw {
    using namespace gcc_wrappers;
 }
 
-// Assume:
-//    state_type == instance of gw::type
-//    loop_index == instance of gw::decl::variable
+// Generate `void __generated_function_T(T* __arg_0)` for some type T:
 
-gw::statement_list statements;
+gw::decl::function make_function(gw::type type) {
+   gw::type int_type  = gw::builtin_types::get().basic_int;
+   gw::type void_type = gw::builtin_types::get().basic_void;
 
-// Declare a variable `__lu_bitstream_state` of type `state_type`
-auto state_decl = gw::decl::variable("__lu_bitstream_state", state_type);
-state_decl.mark_artificial();
-state_decl.mark_used();
-
-// Get access to static variable sStructA
-gw::decl::variable object_decl;
-object_decl.set_from_untyped(lookup_name(get_identifier("sStructA")));
-
-// sStructA.a[i] = lu_BitstreamRead_u8(&__lu_bitstream_state, 6);
-statements.append(
-   gw::expr::assign(
-      // sStructA.a[i]
-      object_decl.access_member("a").access_array_element(loop_index),
+   gw::decl::function result;
+   {
+      auto func_name = std::string("__generated_function_" + type.name());
+      auto func_type = gw::type::make_function_type(
+         // return type:
+         void_type,
+         // argument types:
+         type.add_pointer()
+      );
+      result = gw::decl::function(func_name, func_type);
+   }
+   auto dst = result.as_modifiable();
+   dst.set_result_decl(gw::decl::result(void_type));
+   
+   gw::expr::local_block root_block;
+   auto statements = root_block.statements();
+   
+   // Assume that the struct has a member `int foo[10]`.
+   // Let's create a loop to set all of those integers 
+   // to `i + 3`.
+   //
+   {
+      //
+      // First, we create the loop, specifying the value 
+      // type of its counter variable. Then, we can set 
+      // the counter bounds.
+      //
+      gw::flow::simple_for_loop loop(int_type);
+      loop.counter_bounds = {
+         .start     = 0,
+         .last      = 9,
+         .increment = 1,
+      };
       
-      // lu_BitstreamRead_u8(&__lu_bitstream_state, 6);
-      gw::expr::call(
-         func_decl_to_call,
-         state_decl.address_of(), // returns gw::expr::addressof
-         gw::integer_constant(uint8_type_node, 6)
-      )
-   )
-);
+      //
+      // At this point, the loop has created declarations 
+      // for its counter variable and internal labels. You 
+      // can use the counter variables in expressions, and 
+      // you can generate `gw::expr::go_to_label`s if you 
+      // need to `break` or `continue`.
+      //
+      
+      gw::statement_list loop_body;
+      
+      loop_body.append(
+         //
+         // `__arg_0->foo[i] = i + 3`, expressed by way of 
+         // the form `(*__arg_0).foo[i] = i + 3`:
+         //
+         gw::expr::assign(
+            result.nth_argument(0).as_value().deference()
+               .access_member("foo").access_array_element(loop.counter.as_value()),
+            //
+            // =
+            //
+            loop.counter.as_value().add(
+               gw::expr::integer_constant(int_type, 3)
+            )
+         )
+      );
+      
+      //
+      // We want to tell the loop to generate its local 
+      // block and relevant expressions, including those 
+      // expressions to actually place its labels somewhere.
+      //
+      loop.bake();
+      
+      statements.append(loop.enclosing);
+   }
+   
+   //
+   // We've generated the code we want to, so let's now go 
+   // ahead and finalize our function.
+   //
+   // We want this function to make it into the object file, 
+   // so let's mark it as non-extern before we commit its 
+   // root block.
+   //
+   dst.set_is_defined_elsewhere(false);
+   dst.set_root_block(root_block);
+   
+   //
+   // As a bonus, let's also bind the function to the current 
+   // scope, so that name lookups (`lookup_name`) can find it.
+   //
+   // The "current scope" is, AFAIK, whatever scope GCC is 
+   // parsing at the time this code runs. I don't know of a more 
+   // direct or controlled way to bind declarations to, say, the 
+   // file scope specifically.
+   //
+   dst.introduce_to_current_scope();
+
+   return result;
+}
 ```
 
-This requires designing a common interface: anything that an `ARRAY_REF` node can point to should offer the `access_array_element` accessor, for example.
+## Classes offered
 
-A lot of the checks can only be done at run-time due to how `*_EXPR`s work, so I think in practice, what I'll have to do is...
+* `list_node` is a wrapper around tree lists &mdash; not to be confused with tree chains. "Lists" in this context are key/value maps wherein each list node has a key (`TREE_PURPOSE(node)`) and a value (`TREE_VALUE(node)`).
+* `statement_list` is a wrapper around statement lists, with helper functions for appending expressions and other lists.
+* `type` represents any `*_TYPE` node.
+* `value` is an abstraction for any node that can be used in expressions. This can include expressions themselves, or it can include certain kinds of declarations, such as variable and function-parameter declarations.
+* `decl::base` represents any `*_DECL` node. Subclasses exist for some declaration types. Declarations that can be used as values offer an `as_value()` member function which converts them to a `value`.
+* `expr::base` represents any `*_EXPR` node. Subclasses exist for some expression types. All expressions are considered usable as values, so `expr::base` subclasses `value`.
+* Structures in the `flow` namespace exist as helpers to generate things like `for` loops.
 
-* Common `_wrapped_tree_node` class from which everything inherits, to offer the `as_untyped()` and `empty()` accessors and store the `protected` tree pointer.
-* `_maybe_value` base class for all operations that are valid on a value.
-  * Operations assert that they're being run on a node whose `TREE_CODE(TREE_TYPE(node))` is correct.
-* All `*_DECL`s and `*_EXPR`s that represent values would inherit from `_maybe_value`.
-
-#### Research
-
-`COMPONENT_REF` (member access) can access members of the following, provided the underlying type (`TREE_TYPE`) of the thing being accessed is a `RECORD_TYPE` or `UNION_TYPE`:
-
-* `VAR_DECL`
-* Any `*_EXPR` whose result is of a `RECORD_TYPE` or `UNION_TYPE`
-* Anything else?
-  * `PARM_DECL`
-  * `RESULT_DECL`?
-
-`ARRAY_REF` can access array elements of...
-
-* `VAR_DECL`
-* Any `*_EXPR` whose result is of an `ARRAY_TYPE`
-* Anything else?
-  * `PARM_DECL`?
-  * `*_REF`?
-
-`ADDR_EXPR` (addressof, i.e. `&foo`) can be used on...
-
-* `VAR_DECL`
-* Anything else?
-  * `PARM_DECL`?
-  * `*_REF`?
-  * Any `*_EXPR` that represents an addressable object?
-
-`INDIRECT_REF` (pointer deference, i.e. `foo->`) can be used on...
-
-* ?
-
-There's no way to have a statically type-safe approach, because the result type can be transitive (e.g. we could get an `INTEGER_TYPE` from a `PREDECREMENT_EXPR` that wraps an `ARRAY_REF` that wraps a `COMPONENT_REF`). We'll just have to assert type-correctness at run-time. Thankfully, all `*_EXPR` nodes declare their result type, so we don't have to traverse through whole expression trees to do type chcking.
+The wrappers for types, values, declarations, and expressions should be treated similarly to pointers: you can use them to wrap arbitrary nodes (e.g. `decl::base::from_untyped(node)`), and they will assert that the node is either `NULL_TREE` or a node of the correct `TREE_CODE`. You can check if a wrapper is empty by calling `empty()` on it.
 
 
-### Divide the `type` wrapper up the same way as the `decl` and `expr` wrappers
+## Potential future plans
 
-Wrappers around `RECORD_TYPE` and `UNION_TYPE` should offer convenient access to the types' members, handling for the user the work of separating data and function members, and separating static and non-static members.
+* Consider making it so that `decl::label` doesn't offer `as_value()`, but does offer `value address_of() const`. Taking the address of a label is a GCC extension (the resulting type is `void*`), and is why we allow conversion to values, but I would expect the overwhelming majority of other value-related operations to still be invalid.
+* Things to document about `gw::expr::integer_constant`:
+  * The value is `((TREE_INT_CST_HIGH(node) << HOST_BITS_PER_WIDE_INT) + TREE_INST_CST_LOW(node))` i.e. the value may be wider than whatever a "wide int" is on the platform the compiler and plug-in are compiled on.
+  * `HOST_BITS_PER_WIDE_INT` is always at least 32.
+* More `flow` wrappers to simplify common control flow structures
+  * `while`
+  * `do` ... `while`
+  * `switch`/`case`, including with fall-through
+    * We need not support things like Duff's device here.
+* Consider renaming `decl::base::is_defined_elsewhere` and friends to `decl::base::is_extern`. Some GCC comments seem to suggest that `DECL_EXTERN` doesn't correspond 1:1 with the C/C++ `extern` keyword, else I'd have used that name to start with.
 
-* `FIELD_DECL`: non-static data member
-* `VAR_DECL`: static data member
-* `CONST_DECL`: ?
-* `TYPE_DECL`: type declaration or typedef
+### Missing features
 
-Wrappers around `FUNCTION_TYPE` should offer easy access to the return type (`TREE_TYPE(fn_type)`), the argument types and default value expressions (`TYPE_ARG_TYPES(fn_type)`), and an easy way to check if the function is varargs.[^function-type] Wrappers around `METHOD_TYPE` are similar.[^method-type]
+* Division (integer and real) via `TRUNC_DIV_EXPR`, `RDIV_EXPR`, and `EXACT_DIV_EXPR`.
+* `ARRAY_RANGE_REF`. There's a member function declaration on `value` but no implementation.
 
-[^function-type]: From the GCC documentation: "The `TREE_TYPE` gives the return type of the function. The `TYPE_ARG_TYPES` are a `TREE_LIST` of the argument types. The `TREE_VALUE` of each node in this list is the type of the corresponding argument; the `TREE_PURPOSE` is an expression for the default argument value, if any. If the last node in the list is `void_list_node` (a `TREE_LIST` node whose `TREE_VALUE` is the `void_type_node`), then functions of this type do not take variable arguments. Otherwise, they do take a variable number of arguments. Note that in C (but not in C++) a function declared like `void f()` is an unprototyped function taking a variable number of arguments; the `TYPE_ARG_TYPES` of such a function will be `NULL`."
+### Member functions
 
-[^method-type]: `METHOD_TYPE` types store `decltype(*this)` as `TYPE_METHOD_BASETYPE(fn_type)`. Additionally, the `TYPE_ARG_TYPES` includes the `this` pointer.
+* `gw::expr::integer_constant` should offer member functions that wrap `tree_int_cst_lt` and `tree_int_cst_equal`, the comparison operators for `INTEGER_CST` nodes. The full value is compared and both types are assumed to have the same signedness; if you want integer promotion, etc., you need to do it yourself.
+* `gw::expr::integer_constant` should offer an `int sign() const` method that wraps `tree_int_cst_sgn` (which returns -1, 0, or 1, the current sign of the value).
 
-Wrappers around `ENUMERAL_TYPE` should offer easy access to the enum members[^walk-enum-members] and information on the enum's underlying type[^enum-underlying].
+### Divide the `type` wrapper similarly to `decl::base` and `expr::base`
 
-[^walk-enum-members]: You can walk an enum's members via the `TREE_LIST`-type node `TYPE_VALUES(type)`. For each list item, `std::string_view(IDENTIFIER_POINTER(TREE_PURPOSE(item)))` is the member name and `TREE_VALUE(item)` is an `INTEGER_CST`-type node holding the member value. (If needed, you can also backtrack from the `CONST_DECL` enum members to the enum type via `TREE_TYPE(member)`.) Additionally, `TYPE_MIN_VALUE(type)` and `TYPE_MAX_VALUE(type)` each return `INTEGER_CST`-type nodes indicating the lowest and highest values among the enum type's members.
+Currently we have a single `gw::type` wrapper for all type nodes. This wrapper offers every possible accessor (that I could think of to implement) pertaining to types, along with a slew of `is_*` member functions, and simply `assert`s that you're using the accessors only when appropriate. For example, you can call `array_extent()` on any type. This is an improvement over using bare `tree`s because you've at least narrowed things down to type-related accessors, but it's still not *great*.
 
-[^enum-underlying]: `TYPE_PRECISION(type)` stores the number of bits used to represent an enum type's values. If there are no negative members in the enum, then `TYPE_UNSIGNED(type)` will be truthy (even if the enum was declared with a signed underlying type?).
+We could divide `gw::type` into `gw::type::base` with subclasses for e.g. `gw::type::enumeration`, `gw::type::function`, `gw::type::structure`, `gw::type::untagged_union`, and so on. That way, you can do `my_type.as_struct()` given some `gw::type::base my_type`. (We would of course still have `bool gw::type::base::is_struct() const` and so on.)
 
-Wrappers around `INTEGER_TYPE` should offer information about the integer type, e.g. the number of defined bits in the type (`(unsigned int)TYPE_PRECISION(type)`), whether the type is signed (`TYPE_UNSIGNED(type)`), and the lowest and highest representable values (`TYPE_MIN_VALUE(type)` and `TYPE_MAX_VALUE(type)`, both offering `INTEGER_CST`-type nodes).
+If we go this route, then we'd want a hierarchy like
 
-Wrappers around `REAL_TYPE` should offer the number of defined bits in the type (`(unsigned int)TYPE_PRECISION(type)`).
+* `gw::type::base`
+  * `gw::type::array`
+  * `gw::type::container`
+    * `gw::type::record`
+    * `gw::type::untagged_union`
+  * `gw::type::function`
+    * `gw::type::method`
+  * `gw::type::numeric`
+    * `gw::type::fixed_point`
+    * `gw::type::floating_point`
+    * `gw::type::integral`
+      * `gw::type::enumeration`
+  * `gw::type::pointer`
 
-Wrappers around `FIXED_POINT_TYPE` should offer the number of defined bits in the type (`(unsigned int)TYPE_PRECISION(type)`), the number of fractional and integral bits (`TYPE_FBIT(type)` and `TYPE_IBIT(type)`), whether the type is signed (`TYPE_UNSIGNED(type)`), and whether the type is saturating (`TYPE_SATURATING(type)`).
+We'd want to have a single top-level `type.h` file that we can include to bring the relevant types into scope, ~~to avoid having to redo includes across the entire project~~ for convenience's sake.
 
-Wrappers around `ARRAY_TYPE` should offer easy access to the array extent.
+### To-be-implemented expression types
 
-In general, any transformation available in C++'s `<type_traits>` library should be replicated on all applicable types.
+Potentially notable ones:
 
-### Type wrappers
-
-#### Base
-
-Offer easy access to:
-
-* The type alignment in bits (`/*int*/ TYPE_ALIGN(type)`)
-* The type size in bits (`TYPE_SIZE(type)` is an `INTEGER_CST`-type node or, if the type is incomplete, `NULL_TREE`)
-* The type declaration (`TYPE_NAME(type)` is a `TYPE_DECL`, not an `IDENTIFIER_NODE`)
-* `TYPE_CANONICAL(type)`
-* `TYPE_MAIN_VARIANT(type)`
-
-Figure out a reliable way of equality-comparing types that doesn't rely on `same_type_p` or `comptypes`, since we can't link to those (AFAIK?) when we're invoked by the C compiler (as opposed to the C++ compiler; the plug-in headers do at least include the C++ versions of those functions).
-
-
-### Decl wrappers
-
-#### Base
-
-Offer easy access to:
-
-* `std::string_view(IDENTIFIER_POINTER(DECL_NAME(decl)))`: declaration name
-* `std::string_view(DECL_SOURCE_FILE(decl))`
-* `DECL_SOURCE_LINE(decl)`, an `int`
-* read access to `DECL_ARTIFICIAL(decl) == 1`
-* `DECL_CONTEXT(decl)`
-  * But what kinds of nodes can this be?
-
-#### Function decl
-
-Offer easy access to:
-
-#### Type decl (`TYPE_DECL`)
-
-Offer easy access to:
-
-* `TREE_TYPE(type_decl)`: the declared type (a `*_TYPE` node)
-* `DECL_ORIGINAL_TYPE(type_decl)`: If `type_decl` is a typedef, then this is the type node (`*_TYPE`) that `type_decl` is a new name for.
-
-
-### Expr wrappers
-
-#### Base
-
-#### To-be-implemented types
-
-`INTEGER_CST` represents an integer constant. They are not always `int`; the underlying type can be accessed via `TREE_TYPE(node)`. The value is `((TREE_INT_CST_HIGH(node) << HOST_BITS_PER_WIDE_INT) + TREE_INST_CST_LOW(node))` i.e. the value may be wider than whatever a "wide int" is on the platform the compiler and plug-in are compiled on. (`HOST_BITS_PER_WIDE_INT` is always at least 32.)
-
-* Use `TREE_INT_CST_LOW` to get the low wide-int of the value i.e. the low 32 bits.
-* Use `tree_int_cst_lt` and `tree_int_cst_equal` to compare two full integer constants. The full value is compared and both types are assumed to have the same signedness; if you want integer promotion, etc., you need to do it yourself.
-* Use `tree_int_cst_sgn` to get a constant's sign (-1, 0, or 1). This takes the type into account, i.e. unsigned-type constants are never negative.
-
-Other expression types include...
-
-* `BIND_EXPR`: A local block.
-  * Operand 0 is a `TREE_LIST` of local variables (`VAR_DECL`).
-  * Operand 1 is the body of the block.
-* `CALL_EXPR`: Function calls.
-  * Operand 0 is a `POINTER_TYPE` expression indicating the function to call.
-  * Operand 1 is a `TREE_LIST` full of the arguments to pass, from left to right.
-    * Each item's `TREE_VALUE` is an expression producing the argument to pass. The `TREE_PURPOSE` is unspecified/undefined.
-    * For calls to non-static member functions, `this` is an argument and is passed here.
-    * Default argument values are included here even if the original source code didn't explicitly specify those arguments.
 * `EXIT_EXPR`: Conditionally breaks out of the nearest containing `LOOP_EXPR`. The sole operand is the condition to test, and we exit if the result is nonzero.
   * `EXIT_EXPR` should only appear somewhere inside of a `LOOP_EXPR`.
 * `LOOP_EXPR`: An infinite loop. `LOOP_EXPR_BODY(expr)` is the loop body. The loop executes repeatedly until an `EXIT_EXPR` is run.
-* `MODIFY_EXPR`: Assignment.
-  * Operand 0 is the LHS and is "a `VAR_DECL`, `INDIRECT_REF`, `COMPONENT_REF`, or other lvalue."
-  * Operand 1 is the RHS.
-  * These also handle compound assignment, i.e. `i += 2` parses to `i = (i + 2)`.
 * `INIT_EXPR`: Same as `MODIFY_EXPR`, but used for when a variable is initialized.
+  * But hold on: variables can have `DECL_INITIAL` be a raw value and that seems to work just fine. When does GCC itself use `INIT_EXPR`?
 * `SAVE_EXPR`: Wraps an expression (the first operand) and prevents the expression from being executed more than once (e.g. memoization). The purpose is to avoid repetition of an expression's side-effects where the expression's result should be used more than once.
 * `STMT_EXPR`: GCC extension for treating statements as expressions e.g. `return ({ int j = 3; j + 1; });`.
   * `STMT_EXPR_STMT(expr)` is the statement contained in the expression, and is always a `COMPOUND_STMT`.
@@ -210,142 +209,15 @@ Unusual ones (see [docs](https://gcc.gnu.org/onlinedocs/gcc-3.4.3/gccint/Express
 * `TARGET_EXPR`
 * `VA_ARG_EXPR`
 * `VTABLE_REF`
-
-Arithmetic operators:
-
-* `ABS_EXPR`: unary absolute value of an integer or real (check the expression node's type to know which).
-* `PLUS_EXPR`, `MINUS_EXPR`, and `MULT_EXPR`: Addition, subtraction, and multiplication, where the first operand is LHS and the second is RHS. The operands may be integral or real types, but you'll never see an integral paired with a real or vice versa here.
-* `TRUNC_DIV_EXPR`: Integer division, rounding toward zero.
-* `TRUNC_MOD_EXPR`: `a - (a/b)*b` using integer division i.e. `TRUNC_DIV_EXPR`
-* `RDIV_EXPR`: Floating-point division.
-* `EXACT_DIV_EXPR`: Undocumented.
-* `NEGATE_EXPR`: unary negation of an integer or real (check the expression node's type to know which).
-* `PREDECREMENT_EXPR`: `--x` producing an integral, real, or bool.
-* `PREINCREMENT_EXPR`: `++x` producing an integral, real, or bool.
-* `POSTDECREMENT_EXPR`: `x--` producing an integral, real, or bool.
-* `POSTINCREMENT_EXPR`: `x++` producing an integral, real, or bool.
-
-Access operators:
-
-* `ADDR_EXPR`: address-of operator used on an object or label.
-  * Taking the address of a label is a GCC extension, and the resulting type is `void*`.
-  * If the target isn't an lvalue, a temporary is created, and the address of the temporary is used.
-* `ARRAY_REF`: array access; operands are the array and the index. The expression type must be the array's value type.
-* `ARRAY_RANGE_REF`: array slice access; operands are the array and the start index. The expression type must be an array with the same value type, whose length is the length of the slice to be accessed.
-* `COMPONENT_REF`: member access.
-  * Operand 0 is the object to access a field of; `TYPE_CODE(TREE_TYPE(operand))` must be `RECORD_TYPE` or `UNION_TYPE`.
-  * Operand 1 is the `FIELD_DECL` to access.
-  * There already exists a `build_component_ref` function to build these accesses for you given an object, field identifier, and (for error reporting) source locations. However, its signature has changed occasionally from version to version of GCC.
-* `INDIRECT_REF`: dereferencing of a pointer or reference.
 * `NON_LVALUE_EXPR`: wraps a single operand to indicate that it's not an lvalue. Often, you can just unwrap it and deal with the operand directly.
 
 Conversion and decomposition operators:
 
 * `COMPLEX_EXPR`: construction of a `COMPLEX_TYPE`-type value given two operands: the real and imaginary parts. Both operands are of the same type, and can be integers or reals.
 * `CONJ_EXPR`: "These nodes represent the conjugate of their operand."
-* `CONVERT_EXPR`: conversion between two types that *may* require code generation. Never used for C++-specific conversions (e.g. between subclass and superclass pointers). Never used for user-defined conversions (the calls are made explicitly).
 * `IMAGPART_EXPR` and `REALPART_EXPR`: Access the real or imaginary halves of a complex number (the sole operand).
-* `FIX_TRUNC_EXPR`: conversion of a float to an integer or bool, truncating. The operand is always a real; the result, always an integer or bool.
-* `FLOAT_EXPR`: conversion of an integer or bool to a float. The operand is always an integer or bool; the result, always a real.
-* `NOP_EXPR`: conversion between two types that don't require any actual bytecode (e.g. from `char*` to `int*`, or from a pointer to a reference).
-
-Comparison operators:
-
-* `LT_EXPR`: Operands are either both integral or both real. Result is always integral or bool.
-* `LE_EXPR`
-* `GT_EXPR`
-* `GE_EXPR`
-* `EQ_EXPR`
-* `NE_EXPR`
 
 Logical operators:
 
-* `TRUTH_NOT_EXPR`: logical-NOT of an integer or bool.
-* `TRUTH_ANDIF_EXPR` and `TRUTH_ORIF_EXPR`: logical-AND and logical-OR. These operators short-circuit. Both operands must be integer or bools.
-* `TRUTH_AND_EXPR`, `TRUTH_OR_EXPR`, and `TRUTH_XOR_EXPR`: non-short-circuiting logical AND, OR, and XOR operations. C and C++ don't have operators for these, but frontends can generate them if they can tell that short-circuiting doesn't matter.
 * `THROW_EXPR`: a `throw` expression. The sole operand is all code needed to perform the operation *except* for the actual call to the `__throw` function. Generated by the compiler-internal function `emit_throw`.
 * `COMPOUND_EXPR`: comma operator. First operand is computed and discarded; second operand is the result.
-* `COND_EXPR`: ternary (`a ? b : c`).
-  * `a` must be of boolean or integral type.
-  * `b` and `c` must be the same type as the entire expression, *unless* they unconditionally throw or call a `noreturn` function, in which case their type should be `void`. This allows things like `(i >= 0 && i < 10) ? i : abort()` for array bounds checking to be encoded more-or-less directly into a `COND_EXPR`.
-  * There's a GNU extension wherein `x ? : 3` is equivalent to `x ? x : 3`. The resulting `COND_EXPR` tree does not omit the second operand; it may be the same as the first operand (same tree node?) or it may use a `SAVE_EXPR` to avoid side-effects.
-
-Bitwise operators:
-
-* `BIT_NOT_EXPR`: bitwise-NOT of a single value, producing an integer.
-* `LSHIFT_EXPR`: bitshift left. First operand is the integer to shift; second is any expression yielding the number of bits by which to shift. Result is undefined if the second expression is larger than the number of bits in the first operand's type (i.e. `TYPE_SIZE(TREE_TYPE(operand))`).
-* `RSHIFT_EXPR`: arithmetic shift right (i.e. if the to-be-shifted integer is of a signed type, extend the sign bit). First operand is the integer to shift; second is any expression yielding the number of bits by which to shift. Result is undefined if the second expression is larger than the number of bits in the first operand's type (i.e. `TYPE_SIZE(TREE_TYPE(operand))`).
-* `BIT_IOR_EXPR, `BIT_XOR_EXPR`, and `BIT_AND_EXPR`: bitwise inclusive-OR, exclusive-OR, and bitwise-AND. Both operands are integers.
-
-Overall table:
-
-| `TREE_CODE` | Operand 0 type | Operand 1 | Result type | Details |
-| :- | :- | :- | :- | :- |
-| `ABS_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | | `INTEGER_TYPE` or `REAL_TYPE` | Unary absolute value. |
-| `ADDR_EXPR` | lvalue, temporary, or `LABEL_DECL` | | `POINTER_TYPE` | `&label` produces `void*` |
-| `AGGR_INIT_EXPR` | ? | ? | ? | ? |
-| `ARRAY_REF` | `ARRAY_TYPE` | | `TREE_TYPE(a)` | |
-| `ARRAY_RANGE_REF` | `ARRAY_TYPE` | | `ARRAY_TYPE` | Result has the same value type as operand 0, copying and returning a slice of the array. |
-| `ASM_EXPR` | ? | ? | ? | Inline assembly. |
-| `BIND_EXPR` | `TREE_LIST` of `VAR_DECL` | block body | ? | Local block of statements. |
-| `BIT_AND_EXPR` | `INTEGER_TYPE` | `INTEGER_TYPE` | `INTEGER_TYPE` | Bitwise-AND (`&`). |
-| `BIT_IOR_EXPR` | `INTEGER_TYPE` | `INTEGER_TYPE` | `INTEGER_TYPE` | Bitwise-OR (`|`). |
-| `BIT_XOR_EXPR` | `INTEGER_TYPE` | `INTEGER_TYPE` | `INTEGER_TYPE` | Bitwise-XOR (`^`). |
-| `BIT_NOT_EXPR` | ? | | `INTEGER_TYPE` | Bitwise-NOT. |
-| `CALL_EXPR` | `POINTER_TYPE` to `FUNCTION_TYPE` | `TREE_LIST` of arguments | Matches function return type | Function call. |
-| `CLEANUP_POINT_EXPR` | ? | ? | ? | ? |
-| `COMPLEX_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `COMPLEX_TYPE` | Construct a complex type given the real and imaginary parts. |
-| `COMPONENT_REF` | `RECORD_TYPE` or `UNION_TYPE` | `FIELD_DECL` | &lt;any&gt; | Member access. |
-| `COMPOUND_EXPR` | ? | ? | Same as Operand 1 | Comma operator. |
-| `COMPOUND_LITERAL_EXPR` | ? | ? | ? | ? |
-| `COND_EXPR` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | `void` or same as result | `void` or same as Operand 1 | Either or both of operand 1 and the result must be `void` if they unconditionally `throw` or call a `noreturn` function. Operand 1 may be a `SAVE_EXPR` matching Operand 0. |
-| `CONJ_EXPR` | ? | ? | ? | ? |
-| `CONSTRUCTOR` | ? | ? | ? | ? |
-| `CONVERT_EXPR` | &lt;any&gt; | | &lt;any&gt; | Conversion, excluding C++ superclass/subclass pointer conversions and user-defined conversions. |
-| `DECL_EXPR` | | | | Local declaration; use `DECL_EXPR_DECL(decl)` to get the `*_DECL`. |
-| `EQ_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a == b (numeric only?) |
-| `EXACT_DIV_EXPR` | ? | ? | ? | ? |
-| `EXIT_EXPR` | condition | | | Conditionally break from the nearest enclosing `LOOP_EXPR`. |
-| `FIX_TRUNC_EXPR` | `REAL_TYPE` | | `INTEGER_TYPE` or `BOOLEAN_TYPE` | Truncating conversion. |
-| `FLOAT_EXPR` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | | `REAL_TYPE` | Conversion. |
-| `GE_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a > b |
-| `GT_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a >= b |
-| `IMAGPART_EXPR` | `COMPLEX_TYPE` | | ? | Access the imaginary part of a complex number. |
-| `MODIFY_EXPR` | `VAR_DECL`, `INDIRECT_REF`, `COMPONENT_REF`, or other lvalue | &lt;any&gt; | ? | Assignment operation given LHS and RHS. |
-| `INDIRECT_REF` | `POINTER_TYPE` or `REFERENCE_TYPE` | | &lt;any&gt; | Deferencing. |
-| `INIT_EXPR` | `VAR_DECL`, `INDIRECT_REF`, `COMPONENT_REF`, or other lvalue | &lt;any&gt; | ? | Same as `MODIFY_EXPR` but for initialization. |
-| `INTEGER_CST` | ? | ? | `INTEGER_TYPE` | Integer constant. |
-| `LE_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a < b |
-| `LOOP_EXPR` | | | | Loop forever until a descendant `EXIT_EXPR` runs. |
-| `LSHIFT_EXPR` | `INTEGER_TYPE` | number of bits to shift | Same as Operand 0 | Bitshift left. Value undefined if Operand 1 evaluates to a number creater than `TYPE_SIZE(TREE_TYPE(a))`. |
-| `LT_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a <= b |
-| `MINUS_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | Same as Operand 0? | Subtraction (a - b). |
-| `MULT_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | Same as Operand 0? | Multiplication. |
-| `NE_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | `INTEGER_TYPE` or `BOOLEAN_TYPE` | a != b (numeric only?) |
-| `NEGATE_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | | `INTEGER_TYPE` or `REAL_TYPE` | Unary negation. |
-| `NON_LVALUE_EXPR` | &lt;any&gt; | | &lt;any&gt; | Wraps an operand to indicate that it's not an lvalue. |
-| `NOP_EXPR` | &lt;any&gt; | | &lt;any&gt; | Conversion that produces no bytecode. |
-| `PLUS_EXPR` | `INTEGER_TYPE` or `REAL_TYPE` | Same as Operand 0 | Same as Operand 0? | Addition. |
-| `POSTDECREMENT_EXPR` | ? | ? | `INTEGER_TYPE` or `REAL_TYPE` or `BOOLEAN_TYPE` | `x--` |
-| `POSTINCREMENT_EXPR` | ? | ? | `INTEGER_TYPE` or `REAL_TYPE` or `BOOLEAN_TYPE` | `x++` |
-| `PREDECREMENT_EXPR` | ? | ? | `INTEGER_TYPE` or `REAL_TYPE` or `BOOLEAN_TYPE` | `--x` |
-| `PREINCREMENT_EXPR` | ? | ? | `INTEGER_TYPE` or `REAL_TYPE` or `BOOLEAN_TYPE` | `++x` |
-| `RDIV_EXPR` | ? | ? | ? | Floating-point division. |
-| `REALPART_EXPR` | `COMPLEX_TYPE` | | ? | Access the real part of a complex number. |
-| `RETURN_EXPR` | `RESULT_DECL`, `MODIFY_EXPR`, `INIT_EXPR`, or `NULL_TREE` | | | Null tree if no return value; else either containing function's result decl, or a modify/init expr acting directly on the result decl. |
-| `RSHIFT_EXPR` | `INTEGER_TYPE` | number of bits to shift | Same as Operand 0 | Bitshift right. (Sign-extending shift if operand type is signed.) Value undefined if Operand 1 evaluates to a number creater than `TYPE_SIZE(TREE_TYPE(a))`. |
-| `SAVE_EXPR` | &lt;any&gt; | | same as operand 0? | Memoize an expression to prevent duplicate side-effects |
-| `STMT_EXPR` | | | &lt;any&gt; | See below. If no result, uses `void` type. |
-| `SWITCH_EXPR` | ? | ? | ? | |
-| `TARGET_EXPR` | ? | ? | ? | ? |
-| `THROW_EXPR` | code | | ? | See `emit_throw`. |
-| `TRUNC_DIV_EXPR` | ? | ? | `INTEGER_TYPE` | Integer division, with truncation. |
-| `TRUNC_MOD_EXPR` | ? | ? | `INTEGER_TYPE` | See below. |
-| `TRUTH_AND_EXPR` | ? | ? | ? | Logical-AND without short-circuiting. |
-| `TRUTH_ANDIF_EXPR` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | Logical-AND with short-circuiting. |
-| `TRUTH_OR_EXPR` | ? | ? | ? | Logical-OR without short-circuiting. |
-| `TRUTH_ORIF_EXPR` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | Logical-OR with short-circuiting. |
-| `TRUTH_NOT_EXPR` | `INTEGER_TYPE` or `BOOLEAN_TYPE` | | ? | Logical-NOT. |
-| `TRUTH_XOR_EXPR` | ? | ? | ? | Logical-XOR without short-circuiting. |
-| `VA_ARG_EXPR` | ? | ? | ? | ? |
-| `VTABLE_REF` | ? | ? | ? | ? |

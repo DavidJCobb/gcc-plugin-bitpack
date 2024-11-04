@@ -72,8 +72,12 @@ namespace gcc_wrappers {
          type canonical() const;
          type main_variant() const;
          
+         // If this type was defined via the `typedef` keyword, returns the TYPE_DECL 
+         // produced by that keyword. You can walk transitive typedefs this way. If 
+         // this type isn't the result of a `typedef`, then the result is `empty()`.
+         //
          // Make sure to include the header for `type_def` yourself before calling. 
-         // Can't include it for you or we'll get a circular dependency.
+         // Can't include it for you here or we'll get a circular dependency.
          decl::type_def declaration() const;
          
          bool is_complete() const;
