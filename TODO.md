@@ -9,9 +9,6 @@
 * When a data member specifies pre-pack or post-unpack functions (or when its type does), emit a warning stating that this functionality is not yet implemented.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
   * Most bitpacking options apply to the most deeply nested value when used on an array of any rank. For defaults, though, you'd need to at least be able to specify whether the value is per-element or for the entire member; and you'd then also need a syntax to provide values for (potentially nested) arrays. (We should support whatever initializer syntax C supports.)
-* Devise testcases for heritable options.
-  * Test error case: applying string options to explicit opaque-buffer members
-  * Test error case: applying integer options to explicit string members
 * We don't currently enforce the max sector count. If we exceed the count upon starting a new sector, we should `throw` a `std::runtime_error` to fail.
 * Alongside the serialization functions, we should generate XML output describing the serialization format we're computing.
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.

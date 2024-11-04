@@ -145,3 +145,13 @@ testcase_heritables: $(PLUGIN)
 	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
 	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
 	$(TESTDIR)/test
+
+.PHONY: testcase_heritables_bad
+testcase_heritables_bad: TESTDIR=testcases/heritables_bad
+testcase_heritables_bad: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test

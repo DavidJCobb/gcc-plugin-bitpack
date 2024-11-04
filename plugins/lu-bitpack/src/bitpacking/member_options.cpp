@@ -366,6 +366,14 @@ namespace bitpacking::member_options {
             throw std::runtime_error("string bitpacking options applied to a data member that is not a string or array thereof");
          }
          
+         if (
+            src.integral.bitcount.has_value() || 
+            src.integral.min.has_value() || 
+            src.integral.max.has_value()
+         ) {
+            throw std::runtime_error("contradictory bitpacking options (this field uses integral bitpacking options, but inherits a string option set)");
+         }
+         
          this->kind = member_kind::string;
          auto& dst = this->data.emplace<string_data>();
          if (src.string.with_terminator.has_value()) {
