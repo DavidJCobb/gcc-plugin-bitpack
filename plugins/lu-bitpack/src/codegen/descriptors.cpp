@@ -34,13 +34,13 @@ namespace codegen {
          return bitpacking::member_kind::array;
       return this->target->kind;
    }
-   gw::type member_descriptor_view::type() const {
+   gw::type::base member_descriptor_view::type() const {
       auto type = this->target->type;
       for(size_t i = 0; i < this->_state.array_rank; ++i)
-         type = type.array_value_type();
+         type = type.as_array().value_type();
       return type;
    }
-   gw::type member_descriptor_view::innermost_value_type() const {
+   gw::type::base member_descriptor_view::innermost_value_type() const {
       return this->target->value_type;
    }
    
@@ -96,7 +96,7 @@ namespace codegen {
    
    struct_descriptor::struct_descriptor(
       const bitpacking::global_options::computed& global,
-      gw::type type
+      gw::type::record type
    ) {
       this->type = type;
       type.for_each_field([this, &global](tree raw_decl) {
@@ -117,8 +117,8 @@ namespace codegen {
          member.decl       = decl;
          member.value_type = member.type;
          if (member.type.is_array()) {
-            auto array_type = member.type;
-            auto value_type = array_type.array_value_type();
+            auto array_type = member.type.as_array();
+            auto value_type = array_type.value_type();
             do {
                if (computed.is_string() && value_type == global.types.string_char) {
                   break;
@@ -126,7 +126,7 @@ namespace codegen {
                
                size_t extent;
                {
-                  auto extent_opt = array_type.array_extent();
+                  auto extent_opt = array_type.extent();
                   if (!extent_opt.has_value()) {
                      throw std::runtime_error(lu::strings::printf_string(
                         "struct data member %<%s::%s%> is a variable-length array; VLAs are not "
@@ -142,8 +142,8 @@ namespace codegen {
                if (!value_type.is_array()) {
                   break;
                }
-               array_type = value_type;
-               value_type = array_type.array_value_type();
+               array_type = value_type.as_array();
+               value_type = array_type.value_type();
             } while (true);
             member.value_type = value_type;
          }

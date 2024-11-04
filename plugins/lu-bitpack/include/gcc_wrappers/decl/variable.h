@@ -1,7 +1,7 @@
 #pragma once
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/expr/declare.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/value.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -22,14 +22,14 @@ namespace gcc_wrappers {
             
          public:
             variable(
-               const char* identifier_name,
-               const type& value_type,
-               location_t  source_location = UNKNOWN_LOCATION
+               const char*       identifier_name,
+               const type::base& value_type,
+               location_t        source_location = UNKNOWN_LOCATION
             );
             
             expr::declare make_declare_expr();
             
-            type value_type() const;
+            type::base value_type() const;
             
             value initial_value() const;
             void set_initial_value(value);

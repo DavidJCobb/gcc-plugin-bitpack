@@ -21,11 +21,9 @@ namespace gcc_wrappers::expr {
       TREE_USED(this->_node) = v;
    }
    
-   type base::get_result_type() const {
+   type::base base::get_result_type() const {
       if (empty())
          return {};
-      type t;
-      t.set_from_untyped(TREE_TYPE(this->_node));
-      return t;
+      return type::base::from_untyped(TREE_TYPE(this->_node));
    }
 }

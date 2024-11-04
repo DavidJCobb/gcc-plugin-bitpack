@@ -143,14 +143,14 @@ namespace {
       gw::decl::function _get_func_decl(const std::string& identifier) {
          return _get_func_decl(identifier.c_str());
       }
-      gw::type _get_type_decl(const char* identifier) {
+      gw::type::base _get_type_decl(const char* identifier) {
          return gw::type::lookup_by_name(identifier);
       }
    }
    
    // "Check" functions for types.
    namespace {
-      void _check_exists(const char* noun, gw::type type) {
+      void _check_exists(const char* noun, gw::type::base type) {
          if (!type.empty())
             return;
          throw std::runtime_error(lu::strings::printf_string(
@@ -177,9 +177,9 @@ namespace {
       void _check_prototyped(
          const char*        noun,
          gw::decl::function func_decl,
-         gw::type           func_type
+         gw::type::function func_type
       ) {
-         if (!func_type.is_unprototyped_function())
+         if (!func_type.is_unprototyped())
             return;
          throw std::runtime_error(lu::strings::printf_string(
             "the %s function (%<%s%>) is unprototyped; this is wrong",
@@ -191,10 +191,10 @@ namespace {
       void _check_return_type(
          const char*        noun,
          gw::decl::function func_decl,
-         gw::type           func_type,
-         gw::type           desired_return_type
+         gw::type::function func_type,
+         gw::type::base     desired_return_type
       ) {
-         auto rt = func_type.function_return_type();
+         auto rt = func_type.return_type();
          if (rt == desired_return_type)
             return;
          throw std::runtime_error(lu::strings::printf_string(
@@ -210,7 +210,7 @@ namespace {
       
          Argument checks. Usage example:
          
-            auto   list = type.function_arguments();
+            auto   list = type.arguments();
             auto   it   = list.begin();
             size_t i    = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
@@ -224,9 +224,9 @@ namespace {
          gw::decl::function      func_decl,
          unsigned int            arg_index,
          gw::list_node::iterator arg_it,
-         gw::type                desired_arg_type
+         gw::type::base          desired_arg_type
       ) {
-         auto arg_type = gw::type::from_untyped((*arg_it).second);
+         auto arg_type = gw::type::base::from_untyped((*arg_it).second);
          if (arg_type.empty()) {
             throw std::runtime_error(lu::strings::printf_string(
                "too few arguments for the %s function (%<%s%>) (only %u present)",
@@ -271,7 +271,7 @@ namespace {
          if (raw_arg_type == ty.basic_void.as_untyped())
             return;
          if (raw_arg_type == NULL_TREE) {
-            auto arg_type = gw::type::from_untyped(raw_arg_type);
+            auto arg_type = gw::type::base::from_untyped(raw_arg_type);
             throw std::runtime_error(lu::strings::printf_string(
                "extra argument(s) found for the %s function (%<%s%>) (first extra argument type is %<%s%>)",
                noun,
@@ -315,8 +315,17 @@ namespace bitpacking::global_options {
             this->types.string_char = _get_type_decl(src.types.string_char.c_str());
          }
       }
-      this->types.bitstream_state = _get_type_decl(src.types.bitstream_state.c_str());
-      this->types.buffer_byte     = _get_type_decl(src.types.buffer_byte.c_str());
+      {
+         auto t = _get_type_decl(src.types.bitstream_state.c_str());
+         if (!t.is_record()) {
+            throw std::runtime_error(lu::strings::printf_string(
+               "the bitstream state type (%<%s%>) must be a struct type",
+               t.pretty_print().c_str()
+            ));
+         }
+         this->types.bitstream_state = t.as_record();
+      }
+      this->types.buffer_byte = _get_type_decl(src.types.buffer_byte.c_str());
       
       _check_exists("boolean", this->types.boolean);
       _check_exists("string char", this->types.string_char);
@@ -341,7 +350,7 @@ namespace bitpacking::global_options {
          _check_prototyped  (noun, decl, type);
          _check_return_type (noun, decl, type, ty.basic_void);
          
-         auto   it = type.function_arguments().begin();
+         auto   it = type.arguments().begin();
          size_t i  = 0;
          _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
          _check_nth_argument    (noun, decl, ++i, ++it, ty.uint8.add_pointer());
@@ -365,7 +374,7 @@ namespace bitpacking::global_options {
             _check_prototyped  (noun, decl, type);
             _check_return_type (noun, decl, type, this->types.boolean);
             
-            auto   it = type.function_arguments().begin();
+            auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
             _check_argument_endcap (noun, decl, ++it);
@@ -385,7 +394,7 @@ namespace bitpacking::global_options {
             _check_prototyped  (noun, decl, type);
             _check_return_type (noun, decl, type, result_type);
             
-            auto   it = type.function_arguments().begin();
+            auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
             _check_nth_argument    (noun, decl, ++i, ++it, ty.uint8);
@@ -422,7 +431,7 @@ namespace bitpacking::global_options {
             _check_prototyped  (noun, decl, type);
             _check_return_type (noun, decl, type, ty.basic_void);
             
-            auto   it = type.function_arguments().begin();
+            auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
             _check_nth_argument    (noun, decl, ++i, ++it, element_type.add_pointer());
@@ -456,7 +465,7 @@ namespace bitpacking::global_options {
             _check_prototyped  (noun, decl, type);
             _check_return_type (noun, decl, type, ty.basic_void);
             
-            auto   it = type.function_arguments().begin();
+            auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
             _check_nth_argument    (noun, decl, ++i, ++it, this->types.boolean);
@@ -477,7 +486,7 @@ namespace bitpacking::global_options {
             _check_prototyped  (noun, decl, type);
             _check_return_type (noun, decl, type, ty.basic_void);
             
-            auto   it = type.function_arguments().begin();
+            auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
             _check_nth_argument    (noun, decl, ++i, ++it, result_type);
@@ -515,7 +524,7 @@ namespace bitpacking::global_options {
             _check_prototyped  (noun, decl, type);
             _check_return_type (noun, decl, type, ty.basic_void);
             
-            auto   it = type.function_arguments().begin();
+            auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
             _check_nth_argument    (noun, decl, ++i, ++it, element_type.add_const().add_pointer());

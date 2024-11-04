@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/decl/base.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/value.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -20,8 +20,8 @@ namespace gcc_wrappers {
             }
             
          public:
-            type value_type() const;
-            type effective_type() const;
+            type::base value_type() const;
+            type::base effective_type() const;
       };
    }
 }

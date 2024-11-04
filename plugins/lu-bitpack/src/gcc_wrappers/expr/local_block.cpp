@@ -13,7 +13,7 @@ namespace gcc_wrappers::expr {
          NULL_TREE          // BLOCK node
       );
    }
-   local_block::local_block(type desired) {
+   local_block::local_block(type::base desired) {
       this->_node = build3(
          BIND_EXPR,
          desired.as_untyped(), // return type
@@ -31,7 +31,7 @@ namespace gcc_wrappers::expr {
          NULL_TREE                // BLOCK node
       );
    }
-   local_block::local_block(type desired, statement_list&& statements) {
+   local_block::local_block(type::base desired, statement_list&& statements) {
       this->_node = build3(
          BIND_EXPR,
          desired.as_untyped(),    // return type

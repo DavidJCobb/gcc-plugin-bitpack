@@ -4,7 +4,7 @@
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/decl/result.h"
 #include "gcc_wrappers/list_node.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 namespace {
    namespace gw {
       using namespace gcc_wrappers;

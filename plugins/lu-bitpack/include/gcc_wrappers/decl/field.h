@@ -1,7 +1,8 @@
 #pragma once
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/list_node.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/container.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -14,9 +15,9 @@ namespace gcc_wrappers {
             WRAPPED_TREE_NODE_BOILERPLATE(field)
             
          public:
-            list_node attributes() const;
-            type      member_of() const; // RECORD_TYPE or UNION_TYPE
-            type      value_type() const;
+            list_node       attributes() const;
+            type::container member_of() const; // RECORD_TYPE or UNION_TYPE
+            type::base      value_type() const;
             
             size_t offset_in_bits() const;
             size_t size_in_bits() const;

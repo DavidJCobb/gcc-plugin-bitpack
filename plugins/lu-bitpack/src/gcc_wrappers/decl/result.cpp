@@ -4,7 +4,7 @@
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(result)
    
-   result::result(type t) {
+   result::result(type::base t) {
       this->_node = build_decl(
          UNKNOWN_LOCATION,
          RESULT_DECL,
@@ -15,11 +15,9 @@ namespace gcc_wrappers::decl {
       this->make_sym_debugger_ignored();
    }
    
-   type result::value_type() const {
+   type::base result::value_type() const {
       if (empty())
          return {};
-      type t;
-      t.set_from_untyped(TREE_TYPE(this->_node));
-      return t;
+      return type::base::from_untyped(TREE_TYPE(this->_node));
    }
 }

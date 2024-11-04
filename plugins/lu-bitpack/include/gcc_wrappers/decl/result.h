@@ -1,7 +1,7 @@
 #pragma once
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/expr/declare.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/value.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -21,9 +21,9 @@ namespace gcc_wrappers {
             }
             
          public:
-            result(type);
+            result(type::base);
             
-            type value_type() const;
+            type::base value_type() const;
       };
    }
 }

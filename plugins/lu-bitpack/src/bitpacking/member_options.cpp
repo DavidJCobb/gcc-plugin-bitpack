@@ -8,6 +8,7 @@
 #include "bitpacking/heritable_options.h"
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/string_constant.h"
+#include "gcc_wrappers/type/array.h"
 #include <diagnostic.h> // warning(), error(), etc.
 
 namespace {
@@ -17,10 +18,10 @@ namespace {
    
    static bool type_is_string_or_array_thereof(
       const bitpacking::global_options::computed& global,
-      gw::type type
+      gw::type::array type
    ) {
-      auto at = type;
-      auto et = at.array_value_type();
+      gw::type::array at = type;
+      gw::type::base  et = at.value_type();
       do {
          if (!et.is_array()) {
             if (et == global.types.string_char) {
@@ -28,18 +29,18 @@ namespace {
             }
             break;
          }
-         at = et;
-         et = et.array_value_type();
+         at = et.as_array();
+         et = at.value_type();
       } while (true);
       return false;
    }
    
    static std::optional<size_t> string_length(
       const bitpacking::global_options::computed& global,
-      gw::type type
+      gw::type::array type
    ) {
       auto at = type;
-      auto et = at.array_value_type();
+      auto et = at.value_type();
       do {
          if (!et.is_array()) {
             if (et == global.types.string_char) {
@@ -47,8 +48,8 @@ namespace {
             }
             break;
          }
-         at = et;
-         et = et.array_value_type();
+         at = et.as_array();
+         et = at.value_type();
       } while (true);
       return false;
    }
@@ -311,7 +312,7 @@ namespace bitpacking::member_options {
    void computed::resolve(
       const global_options::computed& global,
       const requested& src,
-      gw::type member_type
+      gw::type::base member_type
    ) {
       assert(!src.omit_from_bitpacking);
       
@@ -345,7 +346,10 @@ namespace bitpacking::member_options {
             }
             throw std::runtime_error("contradictory bitpacking options (opaque buffer AND string)");
          }
-         if (!type_is_string_or_array_thereof(global, member_type)) {
+         if (
+            !member_type.is_array() ||
+            !type_is_string_or_array_thereof(global, member_type.as_array())
+         ) {
             throw std::runtime_error("string bitpacking options applied to a data member that is not a string or array thereof");
          }
          
@@ -361,7 +365,7 @@ namespace bitpacking::member_options {
             }
          }
          {
-            auto opt = string_length(global, member_type);
+            auto opt = string_length(global, member_type.as_array());
             if (!opt.has_value()) {
                throw std::runtime_error("string bitpacking options applied to a variable-length array; VLAs are not supported");
             }
@@ -404,14 +408,14 @@ namespace bitpacking::member_options {
       //
       auto value_type = member_type;
       if (member_type.is_array()) {
-         auto array_type = member_type;
-         value_type = array_type.array_value_type();
+         auto array_type = member_type.as_array();
+         value_type = array_type.value_type();
          do {
             if (!value_type.is_array()) {
                break;
             }
-            array_type = value_type;
-            value_type = array_type.array_value_type();
+            array_type = value_type.as_array();
+            value_type = array_type.value_type();
          } while (true);
       }
       if (value_type.empty()) {
@@ -457,6 +461,10 @@ namespace bitpacking::member_options {
          return;
       }
       
+      if (!value_type.is_integral()) {
+         throw std::runtime_error("unsupported member type");
+      }
+      
       this->kind = member_kind::integer;
       auto& dst = this->data.emplace<integral_data>();
       
@@ -483,19 +491,17 @@ namespace bitpacking::member_options {
          }
          return;
       } else {
-         auto integral_info = value_type.get_integral_info();
-         
          std::intmax_t  min;
          std::uintmax_t max;
          if (opt_min.has_value()) {
             min = *opt_min;
          } else {
-            min = integral_info.min;
+            min = value_type.as_integral().minimum_value();
          }
          if (opt_max.has_value()) {
             max = *opt_max;
          } else {
-            max = integral_info.max;
+            max = value_type.as_integral().maximum_value();
          }
          
          dst.min = min;

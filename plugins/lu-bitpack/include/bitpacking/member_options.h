@@ -3,7 +3,7 @@
 #include <variant>
 #include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/list_node.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 #include "bitpacking/member_kind.h"
 
 namespace bitpacking::global_options {
@@ -62,7 +62,7 @@ namespace bitpacking::member_options {
          void resolve(
             const global_options::computed&,
             const requested& src,
-            gcc_wrappers::type member_type
+            gcc_wrappers::type::base member_type
          );
          
          constexpr bool is_buffer() const noexcept {

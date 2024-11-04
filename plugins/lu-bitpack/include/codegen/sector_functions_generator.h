@@ -3,7 +3,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/function.h"
+#include "gcc_wrappers/type/record.h"
 #include "codegen/expr_pair.h"
 #include "codegen/func_pair.h"
 #include "codegen/value_pair.h"
@@ -41,10 +42,10 @@ namespace codegen {
       public:
          func_pair get_or_create_whole_struct_functions(const struct_descriptor&);
          
-         struct_info& info_for_struct(gcc_wrappers::type);
+         struct_info& info_for_struct(gcc_wrappers::type::record);
          
       protected:
-         std::unordered_map<gcc_wrappers::type, struct_info> _struct_info;
+         std::unordered_map<gcc_wrappers::type::record, struct_info> _struct_info;
          
          const struct_descriptor* _descriptor_for_struct(serialization_value&);
          
@@ -69,8 +70,8 @@ namespace codegen {
          );
          
          struct in_progress_sector {
-            sector_functions_generator& owner;
-            gcc_wrappers::type function_type;
+            sector_functions_generator&  owner;
+            gcc_wrappers::type::function function_type;
             //
             size_t                id = 0;
             size_t                bits_remaining = 0;

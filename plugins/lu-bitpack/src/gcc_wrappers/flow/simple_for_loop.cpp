@@ -11,7 +11,7 @@ namespace {
 }
 
 namespace gcc_wrappers::flow {
-   simple_for_loop::simple_for_loop(type counter_type)
+   simple_for_loop::simple_for_loop(type::integral counter_type)
       :
       counter("__i", counter_type)
    {
@@ -56,7 +56,7 @@ namespace gcc_wrappers::flow {
       statements.append(gw::expr::label(this->label_continue));
       statements.append(
          gw::expr::ternary(
-            gw::type::from_untyped(void_type_node),
+            gw::type::base::from_untyped(void_type_node),
             this->counter.as_value().cmp_is_less_or_equal(
                gw::expr::integer_constant(counter_type, this->counter_bounds.last)
             ),

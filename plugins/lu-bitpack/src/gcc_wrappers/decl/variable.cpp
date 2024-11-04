@@ -8,9 +8,9 @@ namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(variable)
    
    variable::variable(
-      const char* identifier_name,
-      const type& variable_type,
-      location_t  source_location
+      const char*       identifier_name,
+      const type::base& variable_type,
+      location_t        source_location
    ) {
       this->_node = build_decl(
          source_location,
@@ -24,12 +24,10 @@ namespace gcc_wrappers::decl {
       return expr::declare(*this);
    }
    
-   type variable::value_type() const {
+   type::base variable::value_type() const {
       if (empty())
          return {};
-      type t;
-      t.set_from_untyped(TREE_TYPE(this->_node));
-      return t;
+      return type::base::from_untyped(TREE_TYPE(this->_node));
    }
    
    value variable::initial_value() const {

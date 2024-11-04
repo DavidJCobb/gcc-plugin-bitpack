@@ -2,7 +2,8 @@
 #include <memory>
 #include <vector>
 #include "gcc_wrappers/decl/field.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/record.h"
 #include "bitpacking/member_kind.h"
 #include "bitpacking/member_options.h"
 
@@ -16,8 +17,8 @@ namespace codegen {
    class member_descriptor {
       public:
          bitpacking::member_kind   kind; // for arrays, is the innermost value type's kind
-         gcc_wrappers::type        type;
-         gcc_wrappers::type        value_type; // if `type` is `int(&)[3][2]`, this is `int`
+         gcc_wrappers::type::base  type;
+         gcc_wrappers::type::base  value_type; // if `type` is `int(&)[3][2]`, this is `int`
          gcc_wrappers::decl::field decl;
          
          // for arrays only. given `int foo[4][3][2]`, this would be `{ 4, 3, 2 }`.
@@ -30,10 +31,10 @@ namespace codegen {
    
    class struct_descriptor {
       public:
-         gcc_wrappers::type type;
+         gcc_wrappers::type::record type;
          std::vector<member_descriptor> members;
          
-         struct_descriptor(const bitpacking::global_options::computed&, gcc_wrappers::type);
+         struct_descriptor(const bitpacking::global_options::computed&, gcc_wrappers::type::record);
          size_t size_in_bits() const;
    };
    
@@ -53,8 +54,8 @@ namespace codegen {
          member_descriptor_view(const member_descriptor&);
       
          bitpacking::member_kind kind() const;
-         gcc_wrappers::type type() const;
-         gcc_wrappers::type innermost_value_type() const;
+         gcc_wrappers::type::base type() const;
+         gcc_wrappers::type::base innermost_value_type() const;
          
          const bitpacking::member_options::computed& bitpacking_options() const;
       

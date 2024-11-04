@@ -2,7 +2,7 @@
 #include <type_traits>
 #include "gcc_wrappers/expr/base.h"
 #include "gcc_wrappers/decl/function.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/function.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -22,16 +22,16 @@ namespace gcc_wrappers {
             template<typename... Args> requires (std::is_base_of_v<value, Args> && ...)
             call(decl::function func_decl, Args... args) {
                auto func_type = func_decl.function_type();
-               if (!func_type.is_unprototyped_function()) {
+               if (!func_type.is_unprototyped()) {
                   //
                   // Verify argcount. Note that C does not support default argument 
                   // initializers, so a function that takes N args must receive N 
                   // explicitly-specified args.
                   //
-                  if (func_type.is_varargs_function()) {
-                     assert(sizeof...(Args) >= func_type.fixed_function_arg_count());
+                  if (func_type.is_varargs()) {
+                     assert(sizeof...(Args) >= func_type.fixed_argument_count());
                   } else {
-                     assert(sizeof...(Args) == func_type.fixed_function_arg_count());
+                     assert(sizeof...(Args) == func_type.fixed_argument_count());
                   }
                }
                this->_node = build_call_expr(

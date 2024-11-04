@@ -1,5 +1,5 @@
 #pragma once
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/value.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -15,7 +15,7 @@ namespace gcc_wrappers {
          public:
             location_t source_location() const;
          
-            type get_result_type() const;
+            type::base get_result_type() const;
             
             bool suppresses_unused_warnings();
             void suppress_unused_warnings();

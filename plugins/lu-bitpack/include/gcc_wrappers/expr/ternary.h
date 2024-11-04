@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/expr/base.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -14,7 +14,7 @@ namespace gcc_wrappers {
          
          public:
             ternary(
-               type       result_type,
+               type::base result_type,
                value      condition,
                expr::base if_true,
                expr::base if_false

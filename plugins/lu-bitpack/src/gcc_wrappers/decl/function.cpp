@@ -57,7 +57,7 @@ namespace gcc_wrappers::decl {
       }
    }
    
-   function::function(const char* name, const type& function_type) {
+   function::function(const char* name, const type::function& function_type) {
       //
       // Create the node with GCC's defaults (defined elsewhere, extern, 
       // artificial, nothrow).
@@ -69,13 +69,13 @@ namespace gcc_wrappers::decl {
       //
       this->_make_decl_arguments_from_type();
    }
-   function::function(const std::string& name, const type& function_type) : function(name.c_str(), function_type) {
+   function::function(const std::string& name, const type::function& function_type) : function(name.c_str(), function_type) {
    }
    
-   type function::function_type() const {
+   type::function function::function_type() const {
       if (empty())
          return {};
-      return type::from_untyped(TREE_TYPE(this->_node));
+      return type::function::from_untyped(TREE_TYPE(this->_node));
    }
    param function::nth_parameter(size_t n) const {
       assert(!empty());

@@ -2,13 +2,13 @@
 #include "gcc_wrappers/decl/label.h"
 #include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/expr/local_block.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/integral.h"
 
 namespace gcc_wrappers {
    namespace flow {
       class simple_for_loop {
          public:
-            simple_for_loop(type counter_type);
+            simple_for_loop(type::integral counter_type);
          
             // Declarations are created when the loop itself is created, 
             // so you can reference the `break` and `continue` labels and 

@@ -3,7 +3,9 @@
 #include <string>
 #include "gcc_helpers/extract_pragma_kv_args.h"
 #include "gcc_wrappers/decl/function.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/pointer.h"
+#include "gcc_wrappers/type/record.h"
 
 namespace bitpacking {
    namespace global_options {
@@ -68,12 +70,12 @@ namespace bitpacking {
                size_t size_per  = std::numeric_limits<size_t>::max(); // size in bytes per sector
             } sectors;
             struct {
-               gcc_wrappers::type bitstream_state;
-               gcc_wrappers::type bitstream_state_ptr;
-               gcc_wrappers::type boolean;
-               gcc_wrappers::type buffer_byte;
-               gcc_wrappers::type buffer_byte_ptr;
-               gcc_wrappers::type string_char;
+               gcc_wrappers::type::record  bitstream_state;
+               gcc_wrappers::type::pointer bitstream_state_ptr;
+               gcc_wrappers::type::base    boolean;
+               gcc_wrappers::type::base    buffer_byte;
+               gcc_wrappers::type::base    buffer_byte_ptr;
+               gcc_wrappers::type::base    string_char;
             } types;
             
             void resolve(const requested&);

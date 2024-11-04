@@ -1,6 +1,9 @@
 #pragma once
 #include "gcc_wrappers/_wrapped_tree_node.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/enumeration.h"
+#include "gcc_wrappers/type/floating_point.h"
+#include "gcc_wrappers/type/integral.h"
 
 namespace gcc_wrappers {
    namespace decl {
@@ -45,7 +48,7 @@ namespace gcc_wrappers {
       
       public:
          // Value/result ype.
-         type value_type() const;
+         type::base value_type() const;
          
          // Creates a COMPONENT_REF.
          // This value must be of a RECORD_TYPE or UNION_TYPE.
@@ -99,16 +102,16 @@ namespace gcc_wrappers {
          //
          
          //#pragma region Conversions
-            bool convertible_to_enum(type) const;
+            bool convertible_to_enum(type::enumeration) const;
             bool convertible_to_floating_point() const;
-            bool convertible_to_integer(type) const;
+            bool convertible_to_integer(type::integral) const;
             bool convertible_to_pointer() const;
-            bool convertible_to_vector(type) const;
+            bool convertible_to_vector(type::base) const;
             
-            value convert_to_enum(type);
-            value convert_to_floating_point(type);
-            value convert_to_integer(type);
-            value convert_to_pointer(type);
+            value convert_to_enum(type::enumeration);
+            value convert_to_floating_point(type::floating_point);
+            value convert_to_integer(type::integral);
+            value convert_to_pointer(type::pointer);
             
             // Optimize an expr for use as the condition of an if-statement, 
             // while-statement, ternary, etc..
@@ -120,7 +123,7 @@ namespace gcc_wrappers {
             // Use for:
             //  - Explicitly casting away constness of pointers
             //  - Explicit casts between different pointer types
-            value conversion_sans_bytecode(type);
+            value conversion_sans_bytecode(type::base);
          //#pragma endregion
          
          //#pragma region Comparison operators

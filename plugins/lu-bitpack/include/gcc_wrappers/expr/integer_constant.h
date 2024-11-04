@@ -2,7 +2,7 @@
 #include <optional>
 #include <type_traits>
 #include "gcc_wrappers/expr/base.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/integral.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -18,9 +18,9 @@ namespace gcc_wrappers {
             using host_wide_uint_type = std::make_unsigned_t<host_wide_int_type>;
          
          public:
-            integer_constant(type, int);
+            integer_constant(type::integral, int);
             
-            type value_type() const;
+            type::integral value_type() const;
             
             std::optional<host_wide_int_type>  try_value_signed() const;
             std::optional<host_wide_uint_type> try_value_unsigned() const;

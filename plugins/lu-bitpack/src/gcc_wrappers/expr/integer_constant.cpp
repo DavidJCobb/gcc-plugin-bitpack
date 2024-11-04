@@ -4,14 +4,14 @@
 namespace gcc_wrappers::expr {
    WRAPPED_TREE_NODE_BOILERPLATE(integer_constant)
    
-   integer_constant::integer_constant(type t, int n) {
+   integer_constant::integer_constant(type::integral t, int n) {
       this->_node = build_int_cst(t.as_untyped(), n);
    }
 
-   type integer_constant::value_type() const {
+   type::integral integer_constant::value_type() const {
       if (empty())
          return {};
-      return type::from_untyped(TREE_TYPE(this->_node));
+      return type::integral::from_untyped(TREE_TYPE(this->_node));
    }
    
    std::optional<integer_constant::host_wide_int_type>  integer_constant::try_value_signed() const {

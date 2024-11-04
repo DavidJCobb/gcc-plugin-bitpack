@@ -166,7 +166,7 @@ namespace codegen {
       return pair;
    }
      
-   sector_functions_generator::struct_info& sector_functions_generator::info_for_struct(gcc_wrappers::type t) {
+   sector_functions_generator::struct_info& sector_functions_generator::info_for_struct(gcc_wrappers::type::record t) {
       auto& stored = this->_struct_info[t];
       if (stored.descriptor != nullptr)
          return stored;
@@ -181,7 +181,7 @@ namespace codegen {
       if (value.is_top_level_struct()) {
          return &value.as_top_level_struct();
       }
-      return this->info_for_struct(value.as_member().type()).descriptor.get();
+      return this->info_for_struct(value.as_member().type().as_record()).descriptor.get();
    }
    
    expr_pair sector_functions_generator::_serialize_whole_struct(value_pair state_ptr, serialization_value& value) {
@@ -414,7 +414,7 @@ namespace codegen {
             // zero don't waste the low bits.
             //
             to_assign = to_assign.add(
-               gw::expr::integer_constant(type, options.min)
+               gw::expr::integer_constant(type.as_integral(), options.min)
             );
          }
          out.read = gw::expr::assign(value.read, to_assign);
@@ -426,7 +426,7 @@ namespace codegen {
             to_save = to_save.conversion_sans_bytecode(ty.smallest_integral_for(type.size_in_bits(), false));
          } else {
             if (options.min != 0)
-               to_save = to_save.sub(gw::expr::integer_constant(type, options.min));
+               to_save = to_save.sub(gw::expr::integer_constant(type.as_integral(), options.min));
          }
          out.save = gw::expr::call(
             save_func,
@@ -630,13 +630,13 @@ namespace codegen {
       {
          auto func_dst = top_pair.read.as_modifiable();
          
-         gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
+         gw::decl::result retn_decl(ty.basic_void);
          func_dst.set_result_decl(retn_decl);
       }
       {
          auto func_dst = top_pair.save.as_modifiable();
          
-         gw::decl::result retn_decl(gw::type::from_untyped(void_type_node));
+         gw::decl::result retn_decl(ty.basic_void);
          func_dst.set_result_decl(retn_decl);
       }
       top_pair.read.set_is_defined_elsewhere(false);

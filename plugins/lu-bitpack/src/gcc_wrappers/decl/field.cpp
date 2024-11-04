@@ -23,22 +23,18 @@ namespace gcc_wrappers::decl {
    list_node field::attributes() const {
       return list_node(DECL_ATTRIBUTES(this->_node));
    }
-   type field::member_of() const {
+   type::container field::member_of() const {
       if (empty())
          return {};
       auto ctxt = DECL_CONTEXT(this->_node);
       assert(TREE_CODE(ctxt) == RECORD_TYPE || TREE_CODE(ctxt) == UNION_TYPE);
       
-      type t;
-      t.set_from_untyped(ctxt);
-      return t;
+      return type::container::from_untyped(ctxt);
    }
-   type field::value_type() const {
+   type::base field::value_type() const {
       if (empty())
          return {};
-      type t;
-      t.set_from_untyped(TREE_TYPE(this->_node));
-      return t;
+      return type::base::from_untyped(TREE_TYPE(this->_node));
    }
    
    size_t field::offset_in_bits() const {

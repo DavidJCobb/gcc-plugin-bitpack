@@ -9,7 +9,7 @@ namespace gcc_wrappers {
       class base : public _wrapped_tree_node {
          public:
             static bool node_is(tree t) {
-               return DECL_P(t);
+               return t != NULL_TREE && DECL_P(t);
             }
             WRAPPED_TREE_NODE_BOILERPLATE(base)
             

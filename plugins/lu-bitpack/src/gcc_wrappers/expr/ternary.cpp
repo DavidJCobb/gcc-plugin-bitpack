@@ -5,7 +5,7 @@ namespace gcc_wrappers::expr {
    WRAPPED_TREE_NODE_BOILERPLATE(ternary)
    
    ternary::ternary(
-      type       result_type,
+      type::base result_type,
       value      condition,
       expr::base if_true,
       expr::base if_false

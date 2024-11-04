@@ -1,5 +1,6 @@
 #pragma once
 #include "gcc_wrappers/expr/base.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/statement_list.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -22,9 +23,9 @@ namespace gcc_wrappers {
          
          public:
             local_block(); // void-type with allocated statement list
-            local_block(type); // with allocated statement list
+            local_block(type::base); // with allocated statement list
             local_block(statement_list&&);
-            local_block(type, statement_list&&);
+            local_block(type::base, statement_list&&);
             
             statement_list statements();
             

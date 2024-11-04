@@ -2,7 +2,7 @@
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/param.h"
 #include "gcc_wrappers/decl/result.h"
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/function.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -39,15 +39,15 @@ namespace gcc_wrappers {
             // Creates a new FUNCTION_DECL. To wrap an existing one, 
             // use the static `from_untyped` member function.
             function(
-               const char* identifier_name,
-               const type& function_type
+               const char*           identifier_name,
+               const type::function& function_type
             );
             function(
-               const std::string& identifier_name,
-               const type& function_type
+               const std::string&    identifier_name,
+               const type::function& function_type
             );
             
-            type function_type() const;
+            type::function function_type() const;
             param nth_parameter(size_t) const;
             result result_variable() const;
             

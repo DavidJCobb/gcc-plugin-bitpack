@@ -26,8 +26,8 @@ namespace gw {
 // Generate `void __generated_function_T(T* __arg_0)` for some type T:
 
 gw::decl::function make_function(gw::type type) {
-   gw::type int_type  = gw::builtin_types::get().basic_int;
-   gw::type void_type = gw::builtin_types::get().basic_void;
+   auto int_type  = gw::builtin_types::get().basic_int;
+   auto void_type = gw::builtin_types::get().basic_void;
 
    gw::decl::function result;
    {
@@ -130,10 +130,10 @@ gw::decl::function make_function(gw::type type) {
 
 * `list_node` is a wrapper around tree lists &mdash; not to be confused with tree chains. "Lists" in this context are key/value maps wherein each list node has a key (`TREE_PURPOSE(node)`) and a value (`TREE_VALUE(node)`).
 * `statement_list` is a wrapper around statement lists, with helper functions for appending expressions and other lists.
-* `type` represents any `*_TYPE` node.
 * `value` is an abstraction for any node that can be used in expressions. This can include expressions themselves, or it can include certain kinds of declarations, such as variable and function-parameter declarations.
 * `decl::base` represents any `*_DECL` node. Subclasses exist for some declaration types. Declarations that can be used as values offer an `as_value()` member function which converts them to a `value`.
 * `expr::base` represents any `*_EXPR` node. Subclasses exist for some expression types. All expressions are considered usable as values, so `expr::base` subclasses `value`.
+* `type::base` represents any `*_TYPE` node. Subclasses exist for specific varieties.
 * Structures in the `flow` namespace exist as helpers to generate things like `for` loops.
 
 The wrappers for types, values, declarations, and expressions should be treated similarly to pointers: you can use them to wrap arbitrary nodes (e.g. `decl::base::from_untyped(node)`), and they will assert that the node is either `NULL_TREE` or a node of the correct `TREE_CODE`. You can check if a wrapper is empty by calling `empty()` on it.
@@ -161,30 +161,6 @@ The wrappers for types, values, declarations, and expressions should be treated 
 
 * `gw::expr::integer_constant` should offer member functions that wrap `tree_int_cst_lt` and `tree_int_cst_equal`, the comparison operators for `INTEGER_CST` nodes. The full value is compared and both types are assumed to have the same signedness; if you want integer promotion, etc., you need to do it yourself.
 * `gw::expr::integer_constant` should offer an `int sign() const` method that wraps `tree_int_cst_sgn` (which returns -1, 0, or 1, the current sign of the value).
-
-### Divide the `type` wrapper similarly to `decl::base` and `expr::base`
-
-Currently we have a single `gw::type` wrapper for all type nodes. This wrapper offers every possible accessor (that I could think of to implement) pertaining to types, along with a slew of `is_*` member functions, and simply `assert`s that you're using the accessors only when appropriate. For example, you can call `array_extent()` on any type. This is an improvement over using bare `tree`s because you've at least narrowed things down to type-related accessors, but it's still not *great*.
-
-We could divide `gw::type` into `gw::type::base` with subclasses for e.g. `gw::type::enumeration`, `gw::type::function`, `gw::type::structure`, `gw::type::untagged_union`, and so on. That way, you can do `my_type.as_struct()` given some `gw::type::base my_type`. (We would of course still have `bool gw::type::base::is_struct() const` and so on.)
-
-If we go this route, then we'd want a hierarchy like
-
-* `gw::type::base`
-  * `gw::type::array`
-  * `gw::type::container`
-    * `gw::type::record`
-    * `gw::type::untagged_union`
-  * `gw::type::function`
-    * `gw::type::method`
-  * `gw::type::numeric`
-    * `gw::type::fixed_point`
-    * `gw::type::floating_point`
-    * `gw::type::integral`
-      * `gw::type::enumeration`
-  * `gw::type::pointer`
-
-We'd want to have a single top-level `type.h` file that we can include to bring the relevant types into scope, ~~to avoid having to redo includes across the entire project~~ for convenience's sake.
 
 ### To-be-implemented expression types
 

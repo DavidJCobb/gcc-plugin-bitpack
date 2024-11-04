@@ -1,5 +1,7 @@
 #pragma once
-#include "gcc_wrappers/type.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/integral.h"
+#include "gcc_wrappers/type/pointer.h"
 #include "lu/singleton.h"
 
 namespace gcc_wrappers {
@@ -9,35 +11,35 @@ namespace gcc_wrappers {
          builtin_types();
    
       public:
-         type basic_bool;
-         type basic_char;
-         type basic_int;
-         type basic_void;
-         type int8;
-         type int16;
-         type int32;
-         type int64;
-         type uint8;
-         type uint16;
-         type uint32;
-         type uint64;
+         type::base     basic_bool;
+         type::base     basic_char;
+         type::integral basic_int;
+         type::base     basic_void;
+         type::integral int8;
+         type::integral int16;
+         type::integral int32;
+         type::integral int64;
+         type::integral uint8;
+         type::integral uint16;
+         type::integral uint32;
+         type::integral uint64;
          
-         type intmax;
-         type uintmax;
+         type::integral intmax;
+         type::integral uintmax;
          
-         type const_char_ptr; // const char*
-         type char_ptr; // char*
+         type::pointer  const_char_ptr; // const char*
+         type::pointer  char_ptr; // char*
          
-         type const_void_ptr; // const void*
-         type void_ptr; // void*
+         type::pointer  const_void_ptr; // const void*
+         type::pointer  void_ptr; // void*
          
-         type intptr;
-         type uintptr;
-         type ptrdiff;
-         type size;   // size_t
-         type ssize;  // ssize_t (signed size_t)
+         type::integral intptr;
+         type::integral uintptr;
+         type::integral ptrdiff;
+         type::integral size;   // size_t
+         type::integral ssize;  // ssize_t (signed size_t)
          
       public:
-         type smallest_integral_for(size_t bitcount, bool is_signed = false) const;
+         type::integral smallest_integral_for(size_t bitcount, bool is_signed = false) const;
    };
 }

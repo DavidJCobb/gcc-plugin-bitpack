@@ -8,9 +8,9 @@
 #include "gcc_helpers/gcc_version_info.h"
 
 namespace gcc_wrappers {
-   type value::value_type() const {
+   type::base value::value_type() const {
       gcc_assert(this->_node != NULL_TREE);
-      return type::from_untyped(TREE_TYPE(this->_node));
+      return type::base::from_untyped(TREE_TYPE(this->_node));
    }
    
    value value::access_member(const char* name) {
@@ -128,7 +128,7 @@ namespace gcc_wrappers {
    //
    
    //#pragma region Conversions
-      bool value::convertible_to_enum(type desired) const {
+      bool value::convertible_to_enum(type::enumeration desired) const {
          return this->convertible_to_integer(desired);
       }
       bool value::convertible_to_floating_point() const {
@@ -155,7 +155,7 @@ namespace gcc_wrappers {
          }
          return false;
       }
-      bool value::convertible_to_integer(type desired) const {
+      bool value::convertible_to_integer(type::integral desired) const {
          // per `convert_to_integer_1 `gcc/convert.cc`
          if (desired.is_enum()) {
             if (!desired.is_complete())
@@ -211,7 +211,7 @@ namespace gcc_wrappers {
          }
          return false;
       }
-      bool value::convertible_to_vector(type desired) const {
+      bool value::convertible_to_vector(type::base desired) const {
          // per `convert_to_vector` in `gcc/convert.cc`
          const auto vt = this->value_type();
          switch (vt.code()) {
@@ -230,22 +230,21 @@ namespace gcc_wrappers {
          
       }
       
-      value value::convert_to_enum(type desired) {
-         assert(desired.is_enum());
+      value value::convert_to_enum(type::enumeration desired) {
          assert(convertible_to_enum(desired));
          value out;
          out.set_from_untyped(::convert_to_integer(desired.as_untyped(), this->_node));
          assert(out.as_untyped() != error_mark_node); // if this fails, update the `convertible_to...` func
          return out;
       }
-      value value::convert_to_floating_point(type desired) {
+      value value::convert_to_floating_point(type::floating_point desired) {
          assert(convertible_to_floating_point());
          value out;
          out.set_from_untyped(::convert_to_real(desired.as_untyped(), this->_node));
          assert(out.as_untyped() != error_mark_node); // if this fails, update the `convertible_to...` func
          return out;
       }
-      value value::convert_to_integer(type desired) {
+      value value::convert_to_integer(type::integral desired) {
          assert(desired.is_integer());
          assert(convertible_to_integer(desired));
          value out;
@@ -253,7 +252,7 @@ namespace gcc_wrappers {
          assert(out.as_untyped() != error_mark_node); // if this fails, update the `convertible_to...` func
          return out;
       }
-      value value::convert_to_pointer(type desired) {
+      value value::convert_to_pointer(type::pointer desired) {
          assert(convertible_to_pointer());
          value out;
          out.set_from_untyped(::convert_to_pointer(desired.as_untyped(), this->_node));
@@ -313,7 +312,7 @@ namespace gcc_wrappers {
          return v;
       }
       
-      value value::conversion_sans_bytecode(type desired) {
+      value value::conversion_sans_bytecode(type::base desired) {
          value out;
          out.set_from_untyped(build1(
             NOP_EXPR,
@@ -334,7 +333,7 @@ namespace gcc_wrappers {
       assert(vt_b.is_arithmetic());
       
       auto result_type = boolean_type_node;
-      if (vt_t == vt_b && vt_t == type::from_untyped(integer_type_node)) {
+      if (vt_t == vt_b && vt_t == type::base::from_untyped(integer_type_node)) {
          result_type = integer_type_node;
       }
       
