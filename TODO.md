@@ -10,8 +10,6 @@
 * Implement the ability to mark a data member to be serialized as an opaque buffer, and then devise a testcase for this.
   * I believe I've already added the attribute, but I don't remember what, if anything, checks it, and I've not tested it.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
-* Devise a testcase for anonymous member structs wherein nested members are to be bitpacked.
-  * I think we actually would fail to catch these, currently; or we'd treat the anonymous struct as a full nested struct, and end up engaging in shenanigans like giving it a pair of whole-struct functions. The `build_component_ref` function in GCC handles members of anonymous structs; we should look at how they did it, and offer a function on `gw::type` that lets you iterate fields in a similar manner.
 * Devise testcases for heritable options.
   * Test valid uses of integer options
   * Test valid uses of string options
@@ -19,7 +17,6 @@
   * Test error case: applying integer options to explicit string members
 * We don't currently enforce the max sector count. If we exceed the count upon starting a new sector, we should `throw` a `std::runtime_error` to fail.
 * Alongside the serialization functions, we should generate XML output describing the serialization format we're computing.
-* When `codegen::struct_descriptor` grabs the bitpacking options for a member, it should wrap resolving the options in a try/catch. If a `std::runtime_error` is thrown, prepend detailed error information (i.e. `%<StructName::member_name%>`) to the error message and rethrow.
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
   * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
