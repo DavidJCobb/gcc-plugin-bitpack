@@ -1,6 +1,8 @@
 #include "codegen/descriptors.h"
 #include "lu/strings/printf_string.h"
 #include "bitpacking/global_options.h"
+#include <gcc-plugin.h>
+#include <diagnostic.h>
 
 namespace {
    namespace gw {
@@ -180,8 +182,13 @@ namespace codegen {
    
    size_t struct_descriptor::size_in_bits() const {
       size_t bc = 0;
-      for(auto& m : this->members)
-         bc += m.size_in_bits();
+      for(auto& m : this->members) {
+         size_t m_bc = m.size_in_bits();
+         for(auto extent : m.array_extents)
+            m_bc *= extent;
+         
+         bc += m_bc;
+      }
       return bc;
    }
 }

@@ -10,7 +10,6 @@
 * Implement the ability to mark a data member to be serialized as an opaque buffer, and then devise a testcase for this.
   * I believe I've already added the attribute, but I don't remember what, if anything, checks it, and I've not tested it.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
-* Devise a testcase wherein an array is split across sector boundaries.
 * Devise a testcase for anonymous member structs wherein nested members are to be bitpacked.
   * I think we actually would fail to catch these, currently; or we'd treat the anonymous struct as a full nested struct, and end up engaging in shenanigans like giving it a pair of whole-struct functions. The `build_component_ref` function in GCC handles members of anonymous structs; we should look at how they did it, and offer a function on `gw::type` that lets you iterate fields in a similar manner.
 * Devise testcases for heritable options.
