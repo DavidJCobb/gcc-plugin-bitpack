@@ -3,180 +3,254 @@
 
 ## `lu-bitpack`
 
-### BLUF
+### Short-term
 
+* When a data member doesn't specify a pre-pack or post-unpack function, but its type does (i.e. the type is a struct and contains the appropriate attribute), pull the values from that.
+* When a data member specifies pre-pack or post-unpack functions (or when its type does), emit a warning stating that this functionality is not yet implemented.
+* Implement the ability to mark a data member to be serialized as an opaque buffer, and then devise a testcase for this.
+  * I believe I've already added the attribute, but I don't remember what, if anything, checks it, and I've not tested it.
+* Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
+* Devise a testcase for serializing bools (they should default to 1-bit values).
+  * Bools may be defined via a typedef, such that they are canonically equivalent to another type, e.g. `typedef uint8_t bool8`. In such cases, we may need to transitively check the typedef chain for a type to see if it equals the bool type "before" it equals any other type. Given any type, we can obtain its `TYPE_DECL` (if any) as `TYPE_NAME(type_node)` and given any `TYPE_DECL`, we can obtain the original type (`uint8_t` in our example) as `DECL_ORIGINAL_TYPE(decl_node)`.
 * Devise a testcase wherein a struct is split across sector boundaries.
 * Devise a testcase wherein an array is split across sector boundaries.
+* Devise a testcase for anonymous member structs wherein nested members are to be bitpacked.
+  * I think we actually would fail to catch these, currently; or we'd treat the anonymous struct as a full nested struct, and end up engaging in shenanigans like giving it a pair of whole-struct functions. The `build_component_ref` function in GCC handles members of anonymous structs; we should look at how they did it, and offer a function on `gw::type` that lets you iterate fields in a similar manner.
 * Devise testcases for heritable options.
   * Test valid uses of integer options
   * Test valid uses of string options
   * Test error case: applying string options to explicit opaque-buffer members
   * Test error case: applying integer options to explicit string members
-* Implement pre-pack and post-unpack functions.
-  * We need to actually call them, and *how* we call them will depend on the type of the member to which they've been applied. These options should work on structs, arrays, and primitives.
-  * We need to devise testcases for each member kind to which these can be applied.
 * We don't currently enforce the max sector count. If we exceed the count upon starting a new sector, we should `throw` a `std::runtime_error` to fail.
 * Alongside the serialization functions, we should generate XML output describing the serialization format we're computing.
-* Implement externally-tagged union members.
-  * If a union appears as a member of a larger struct, then it should be possible to designate one of its sibling members to serve as a tag.
-    * How do we associate the sibling's values with the union's members? Require that the tag be an integarl type, require a `lu_bitpack_union_tag_id(n)` attribute on each union member with some integer value *n*, and error if any member lacks one or if any two members use the same value?
-      * Sounds good to me!
-    * Variable-length data is not one of our design goals. If any union member is (or serializes as) shorter than the others, then we need to zero-fill with bits until we've consumed the maximum possible number of bits that the union might ever consume.
-* Implement internally-tagged unions, as both members and top-level types.
-  * If all of the union's members are structs, and the first *n* fields of all such structs are identical, then any of those first *n* fields can be used as the union's tag.
 * When `codegen::struct_descriptor` grabs the bitpacking options for a member, it should wrap resolving the options in a try/catch. If a `std::runtime_error` is thrown, prepend detailed error information (i.e. `%<StructName::member_name%>`) to the error message and rethrow.
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
-  * Strings are a bit more complicated because we have to account for the null terminator and zero-filling. Additionally, if we do split a string, the latter half (or halves) of the string need to zero-fill if any previous byte (in the former half (or halves)) was null. Let's shelve strings for now.
+  * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
+* Long-term plans below
+  * Pre-pack and post-unpack functions
+  * Union support
+
+### Long-term
+
+#### Pre-pack and post-unpack functions
+
+**BLUF:** Bitpacking involves finding the most compact possible representation of a given struct. However, we may wish to transform certain structs just before they're saved or just after they're read, so that they can be compacted further. We should offer a way to specify functions that can be called automatically to perform these operations. We currently allow the user to specify the names of functions to transform a data member, but we don't allow them to specify this on a type definition (we simply don't notice it there), nor have we actually implemented code to invoke those functions.
+
+My use case involves some kinds of data that ought to be packed in a completely separate format from the way it's stored in memory.
+
+Imagine a video game inventory that is subdivided into different categories &mdash; not just in terms of how we present data to the user, but in terms of the underlying in-memory representation as well &mdash; in an item system where every item has a globally unique ID. For example, you may have a "weapons" category and an "armor" category, with items like these:
+
+| Global ID | Item |
+| -: | :- |
+| 0 | None |
+| 1 | Wooden Sword |
+| 2 | Stone Sword |
+| 3 | Iron Sword |
+| 4 | Gold Sword |
+| 5 | Diamond Sword |
+| 6 | Iron Armor |
+| 7 | Gold Armor |
+| 8 | Diamond Armor |
+
+The highest possible global item ID is 8, requiring four bits to encode. If you can carry up to 10 weapons and up to 5 armors, then this means we need 4 &times; 15 = 60 bits for the entire inventory. Recall, however, that the inventory is categorized under the hood as well. Why not take advantage of that for serialization?
+
+It will generally be easiest to use global item IDs in memory, while the game is running; but for the sake of serialization, we can give each item category its own "local" ID space:
+
+| Global ID | Local ID | Item |
+| -: | -: | :- |
+| 0 | 0 | None |
+| 1 | 1 | Wooden Sword |
+| 2 | 2 | Stone Sword |
+| 3 | 3 | Iron Sword |
+| 4 | 4 | Gold Sword |
+| 5 | 5 | Diamond Sword |
+| 6 | 1 | Iron Armor |
+| 7 | 2 | Gold Armor |
+| 8 | 3 | Diamond Armor |
+
+The highest local weapon ID is 5, requiring only 3 bits to encode; and the highest local armor ID is 3, requiring only 2 bits to encode; and so now, the total serialized size is (3 * 10) + (2 * 5) = 40 bits. The thing is, this requires being able to transform the in-memory data before it's bitpacked, and transform the bitpacked data after it's read but before it's stored.
+
+Taking advantage of this idea using a future version of this plug-in might look like this:
+
+```c
+#define LU_BP_MAX(n) __attribute__((lu_bitpack_range(0, n)))
+#define LU_BP_TRANSFORM(pre, post) __attribute__((lu_bitpack_funcs("pre_pack=" #pre ",post_unpack=" #post )))
+
+struct PackedInventory {
+   LU_BP_MAX(5) uint8_t weapons[10];
+   LU_BP_MAX(3) uint8_t armors[5];
+};
+
+void MapInventoryForSave(const struct Inventory* in_memory, struct PackedInventory* packed);
+void MapInventoryForRead(struct Inventory* in_memory, const struct PackedInventory* packed);
+
+LU_BP_TRANSFORM(MapInventoryForSave, MapInventoryForRead)
+struct Inventory {
+   uint8_t weapons[10];
+   uint8_t armors[5];
+};
+```
+
+(Yes, the example above could be accomplished using the `lu_bitpack_range(min, max)` attribute, but only because I made the item categories contiguous for clarity. In a real-world scenario, global item IDs may not be sorted by category: weapons and armor may be interleaved together, and in that case, you'd need a more complex mapping between global and category-local IDs.
+
+(Additionally, it's valuable to have the generated serialization code handle data transformations because, for example, `Inventory` may be a member of some far larger struct that we want to save, rather than a freestanding struct that we can manually convert before and after initiating the save and load operations.)
+
+##### Details
+
+We need to be able to change the type of the value we're packing. This means that we have to generate code like the following for save:
+
+```c
+// local block to limit the scope of `__v`
+{
+   // generated variable
+   struct PackedInventory __v;
+   
+   // extra call
+   MapInventoryForSave(&currentStruct->inventory, &__v);
+   
+   __lu_bitpack_write_PackedInventory(state, &__v);
+}
+```
+
+And like the following for read:
+
+```c
+{
+   // generated variable
+   struct PackedInventory __v;
+   
+   __lu_bitpack_read_PackedInventory(state, &__v);
+   
+   // extra call
+   MapInventoryForRead(&currentStruct->inventory, &__v);
+}
+```
+
+This in turn means that we need to infer the type of `__v` from the types used in the bitpack functions. That is:
+
+* Let the *in situ* type of the to-be-packed member be *T*.
+* Let the *transformed* type of the to-be-packed member be *U*. This is the type that will be used for the generated variable `__v` above.
+* The pre-pack function must be of the form `void a(const T*, U*)`.
+* The post-unpack function must be of the form `void b(T*, const U*)`.
+
+Other support requirements:
+
+* When generating a to-be-bitpacked data member's computed bitpacking options, if the data member's type is a `struct`, then we must check for and apply `lu_bitpack_funcs` when it is present on the data member's type.
+* We should rename `lu_bitpack_funcs` to `lu_bitpack_transform`.
 
 
-#### details
+#### Union support
 
-Reading fields' serialization options:
+**BLUF:** Currently, we don't support unions at all. We could add preliminary support for them by allowing the user to mark them as opaque buffers, but we want to support bitpacking them in the future. Bitpacking unions poses a challenge primarily due to the need to split unions across sector boundaries for the most robust packing possible.
 
-* Move parsing and handling of field attributes from `data_member.(h|cpp)` to `bitpacking/data_options.(h|cpp)`.
-* Delete `struct.(h|cpp)` and `data_member.(h|cpp)`.
-* Update `bitpacking::data_options::computed` to pay attention to the `bitpacking::data_options::requested::as_string` member.
-* Add a field attribute indicating that a field should be serialized as an opaque buffer.
-  * Update `bitpacking::data_options::requested` to check for and react to the attribute.
-* Finish `bitpacking::data_options::requested` generally.
-  * `lu_bitpack_inherit`
-  * Throw `std::runtime_error` on invalid. If possible, use a custom exception and find a way to report source info.
-* Finish `bitpacking::data_options::computed` generally.
-* Delete `bitpack_options.(h|cpp)`, as we'll be using `bitpacking::data_options::requested` in its place.
+The current approach to bitpacking is always-forward: we generate one per-sector function at a time and track the amount of bits currently remaining in that sector. In order to properly split unions, however, we'll want to instead preemptively "open" every per-sector function at the start of generation, and then emit code into the "current" function. When we encounter a union and we can tell that it won't fit in the current sector, we'll...
 
-Dealing with serializable objects:
+1. Create an if/else tree branching on the union's tag, in both the current sector and the next sector. We want one branch per serializable union member.
+2. For each union member *n*...
+   1. Generate as much code into the *n* branch in the current sector.
+   2. Emit the rest of the code into the *n* branch in the next sector.
+   3. If *n* is not the largest member in the union, then pad with zeroes until the bitpacked sizes match.
+3. Once all union members are done, advance code generation as a whole to the next sector.
 
-* Currently, our `sector_functions_generator` is responsible for generating all per-sector serialization functions *and* all whole-struct serialization functions.
-  * Finish replacing `sector_functions_generator::target` with `sector_functions_generator::value_pair`.
-  * Implement member functions of `sector_functions_generator::value_pair`.
+This approach can generalize to unions that need to split multiple times, because they are large enough (and positioned close enough to the end of one sector) to span across three or more sectors.
 
-`sector_functions_generator` relies on `codegen::structure` and `codegen::structure_member`. We want to refine both of these classes.
+Of course, unions won't only contain primitive members; they may also contain nested structs, arrays, and even other unions. This means that we'd have to modify the entire overall algorithm, conceptualizing ourselves as always emitting code into one branch among potentially several, and tracking bitcounts for the current branch; and that branch must itself be able to recursively split. Potentially that means branching the entire serialization state:
 
-Currently, there are multiple places where `sector_functions_generator` needs to be able to take an arbitrary `gw::value` and produce the appropriate serialization call: whole-struct, whole-primitive, or array-slice (including whole-array). These include but are not limited to:
+```c++
+struct sector_state {
+   std::vector<in_progress_function_pair> sector_functions;
+};
 
-* When generating whole-struct functions, i.e. when generating code to serialize whole structs. These functions are generated by `sector_functions_generator::get_or_create_whole_struct_functions`.
-* When generating code to serialize an array slice. This is done in `sector_functions_generator::_serialize_object`.
-* Certain parts of the overall serialization loop in `sector_functions_generator::run`.
+// State for any given call stack frame in the recursive algorithm.
+struct branched_sector_state {
+   sector_state& common;
+   std::vector<gw::expr::local_block> branches;
+   size_t sector_id;
+   size_t bits_remaining;
+};
 
-I want to be able to define a function `sector_functions_generator::_serialize_object` that "just works:" give it the `gw::value`s of the bitstream-state-pointer and the to-be-serialized object, and it'll call out to the appropriate other functions to serialize a struct, array, or primitive. This is mostly achievable...
+//
+// When we encounter a union, we loop over its members and preemptively create 
+// gw::expr::ternary instances, to generate the needed if/else trees in the 
+// current and next sectors. We store these in a vector such that if we're at 
+// sector A and about to split, then `blocks[x][A + y]` is the `local_block` 
+// for the Xth union member's Yth branch.
+//
+// Then, we loop over each union member again. For each union member, we create 
+// a copy of our current `branched_sector_state`. We set the copy's `branches` 
+// list to `blocks[x]` and run it.
+//
+// Finally, after all union members are done, we take our `branched_sector_state` 
+// and advance it to the end of the union.
+//
+```
 
-...except for a defect in `_serialize_array`. The `_serialize_*` functions rely on an info pointer -- either a `codegen::structure&` or `codegen::structure_member&` -- to know what to serialize. The problem is that we don't create nested `codegen::structure_member`s for nested arrays; they're stored "flat," which means that when we recurse to generate for-loops for nested arrays, we don't know the right array extent to use (we can't get it off of `codegen::structure_member::decl`). This gives us two options:
+We want to support two kinds of unions: *externally tagged unions* and *internally tagged unions*.
 
-* Rummage through the data for the `gw::value`s we're working with.
-  * If they're a `FIELD_DECL`, then pull the array extent directly from its type.
-  * If instead they're an `ARRAY_REF`, then track how many array extents we're serializing until we reach a `FIELD_DECL` or a non-`ARRAY_REF`.
-    * But what if we hit something like `foo[3].bar[4][5]`?
-      * And also, I'm not sure whether `sector_functions_generator::_info_for_target` can even properly retrieve the appropriate `structure*` or `structure_member*` for nested array values or anything liek that.
-* Recursively generate nested `codegen::structure_member`s for nested arrays.
+##### Externally tagged unions
 
-Like, basically, the entire codebase is halfway between three different rewrites. I should probably copy everything *not* related to serialization, bitpacking, the attributes, the pragmas, etc., into a new folder hierarchy and then start from scratch, using those salvageable parts of the old work to guide the new.
+An externally tagged union relies on a previous-sibling member to indicate the union's active member, as in the following example, where `Foo::tag` is the tag for `Foo::data`. We can support externally tagged unions by requiring that the union itself be annotated to indicate a previous-sibling member to serve as a tag, and requiring that each member of the union be annotated with its corresponding tag value. Notably, this would allow us to support situations where the tag values don't match the order of the union's members.
 
----
+```c
+#define LU_BP_TAG(name)    __attribute__((lu_bitpack_union_tag(name)))
+#define LU_BP_TAG_VALUE(n) __attribute__((lu_bitpack_union_tagged_id(n)))
 
-I attempted to design a replacement for both `codegen::structure` and `codegen::structure_member`, `codegen::serializable_object`, motivated by the fact that we should handle arrays and structs more-or-less uniformly: both should be treated as containers that we need to iterate over in some fashion. However, using `codegen::serializable_object` to represent both a struct type (regardless of context) and a struct member basically erases the distinction between a `RECORD_TYPE` and a `FIELD_DECL`, and this is causing more problems (organizational, logistical, mental model) than it's solving. Whatever improvement I make needs to maintain that distinction; we should delete `serializable_object`.
+struct Foo {
+   int tag = 2;
+   LU_BP_TAG(tag) union {
+      LU_BP_TAG_VALUE(0) struct {
+         // ...
+      } member_0;
+      LU_BP_TAG_VALUE(1) struct {
+         // ...
+      } member_1;
+      LU_BP_TAG_VALUE(2) struct {
+         // ...
+      } member_2;
+   } data;
+};
+```
 
-### general
+Requirements that we'll need to validate:
 
-Currently writing the bitpack logic in `bitpacking/sctor_functions_generator.(h|cpp)`.
+* Marking a freestanding union type as externally tagged is an error. However, it's fine to mark a freestanding union type's members as having tag values, and then mark individual data members of that type which appear inside of other structs.
+* The union's tag member must be an integer type.
+* The union's tag member must not be marked as omitted from bitpacking.
+* The union's tag member must be a previous-sibling of the union. Probably the easiest way to verify this would be by comparing `offsetof`s; iterating over the containing struct's members isn't as likely to work due to the risk of missing anonymous structs.
+* Each member of the union must be given a tag value, or must be marked as omitted from bitpacking. If any union member lacks a tag value and isn't marked as being omitted from bitpacking, then that's an error.
+  * No two members of the union can have the same tag value.
+  * All tag values assigned to members of the union must be representable within bitpacking. If we pack the tag such that the values [2, 7] can be serialized, then no union member may have a tag value like 1 or 8.
 
-**Old bitpacking approach:**
+##### Internally tagged unions
 
-This is the approach I used to generate C source code from XML struct definitions.
+An internally tagged union only contains structs as its members. All union members have the first *n* fields in common where *n* is at least 1, and one of these shared fields is the union tag.
 
-* Index all types and their members' bitpacking options (load XML definitions)
-* For each struct type, generate a function that will serialize an entire instance of that type.
-* Create a list of `serialization_item` instances (the "item list") &mdash; one for each top-level struct to serialize.
-  * Each `serialization_item` consists of a pointer to an indexed struct, a pointer to an indexed struct member, a list of zero or more array indices, and a string representing the fully-qualified path to the described member.
-* For each item in the item list:
-  * Try to fit the item into the current sector. (In particular, if it's a struct type or an array thereof, then we invoke one of the functions we generated earlier to serialize the thing whole.)
-  * If the item doesn't fit, then try to "expand" it.
-    * If expansion is possible (i.e. if the item is a struct or array), then it will produce multiple `serialization_item` instances; replace the current item with those (splicing them into the item list), and then retry from the first of them.
-      * For example, given a member `int foo[3][2][3]`, expanding `foo` produces `foo[0]`, `foo[1]`, and `foo[2]`; and expanding `foo[0]` produces `foo[0][0]` and `foo[0][1]`.
-      * Similarly, given a member `struct foo_type { int a; int b; } c[2]`, expanding `c[0]` produces `c[0].a` and `c[0].b`. Both of these serialization items refer to the `foo_type` struct and its members `a` and `b`; the only way to know that we got here from `c[0]` is via the path string (e.g. `"c[0].a"`).
-    * If expansion is not possible, then start a new sector.
+```c
+#define LU_BP_TAG_INTERNAL(name) __attribute__((lu_bitpack_union_internal_tag(name)))
+#define LU_BP_TAG_VALUE(n)       __attribute__((lu_bitpack_union_tagged_id(n)))
 
-As you can imagine, the use of string paths here complicates using this approach in our GCC plug-in.
+LU_BP_TAG_INTERNAL(kind) union Foo {
+   LU_BP_TAG_VALUE(0) struct {
+      int   kind;
+      int   divergent_0;
+   } member_0;
+   LU_BP_TAG_VALUE(1) struct {
+      int   kind;
+      float divergent_1;
+   } member_1;
+};
+```
 
-**New bitpacking approach:**
+Requirements:
 
-* Start the zeroth sector.
-* For each top-level variable to serialize:
-  * **[A]** For each member of the current variable:
-    * If the member is a struct, then...
-      * If the member can fit entirely in the current sector, then bitpack it whole.
-      * Else if the member can't fit, then...
-        * Recursively execute **[A]** treating this member as the new current variable.
-    * Else if the member is a non-struct or array of structs, then...
-      * If the member can fit entirely in the current sector, then bitpack it whole.
-      * Else if the member can't fit, then...
-        * If the member isn't an array, then start a new sector, and then recursively execute **[A]** treating the member as the new current variable.
-        * Else if the member is an array...
-          * While there are any array elements left to serialize:
-            * Compute the number of elements *n* that can fit in the current sector's available space.
-            * Bitpack the next *n* elements.
-            * Recursively execute **[A]** treating the next element as the new current variable. The effect of this will be to split the element across sector boundaries if indeed it can be split, and start a new sector either way.
-
-Rather than indexing the bitpacking options and data for all structs in advance, we instead extract those options from struct types as those types are encountered, caching them for fast retrieval should we encounter more instances of the same struct type later.
-
-Similarly, we don't split structs across sector boundaries (with the `serialization_item` lists) in advance of code generation. Instead, we perform the sector splits as we generate code.
-
-In essence, we've folded three passes into one: we index bitpacking options and handle sector splitting as we generate the code.
-
-### Details
-
-The process is managed by a `sector_functions_generator` object. The object generates the per-sector read and save functions alongside each other, which among other things means that instead of operating directly in terms of GCC wrappers (e.g. `gw::value`), it has to use bifurcated data (e.g. `sector_functions_generator::target`, which stores one `value` for the "read" half and one value for the "save" half).
-
-### To-do
-
-In short: the overall "traversal" algorithm for `sector_functions_generator` as documented above, I think, is fine; but the functions that it calls to actually generate bitstream read/write code (for whole values and for array slices) are yet to be defined. I need to figure those out.
-
-Probably the easiest thing to start with would be the case of serializing a whole struct of type `T`: we need to lookup (or generate and cache, if they've not yet been created) functions that serialize an entire `T` (i.e. `void __read(lu_BitstreamState*, T*)` and `void __save(lu_BitstreamState*, const T*)`) and invoke them. Then comes the case of non-struct non-array values, wherein we use a variety of different functions depending on the type (bool type, specific integral types, strings). Lastly would be the case of serializing an entire array; this one's tricky because we have to be able to recursively construct for-loops to handle the case of arrays-of-arrays.
-
-* Probably it'd be best to design the "whole struct" and "primitive" cases so that they just return an `expr`, and where we insert that is our business. Then, we can have the "whole array" case return an `expr` as well. Then, we can have the top-level caller -- the "serialize whole value" function -- actually insert the expr somewhere; and at the same time that we do that, we can make the "whole array" case recursive.
-  
-  Of course, we'll need both "read" and "save" functions (i.e. "generate read-whole-struct call" and "generate save-whole-struct-call" helpers; and "generate read-whole-array call" and "generate read-primitive call" and so on).
-
-After that, we'll need to figure out the "array slice" case. This needs to behave very similarly: it gets called when we know to a certainty that that slice of the array will fit into the current sector. Honestly, if we do the "whole value" case per the bulleted note above, then we could have the "array slice" case just generate and append the outermost for-loop as appropriate.
-
-* There's no way to communicate global bitpacking options (e.g. sector size, sector count, sector layouts) to the `sector_functions_generator`.
-* We need code to generate whole-struct bitstream-read and bitstream-write functions. They should be generated on first use.
-* When dealing with an array of arrays, `sector_functions_generator::in_progress_func_pair::serialize_array_slice` needs to be able to run recursively.
-* When dealing with an array of structs, `sector_functions_generator::in_progress_func_pair::serialize_array_slice` needs code to generate the appropriate calls to the whole-struct functions we generated.
-* `sector_functions_generator::in_progress_func_pair::serialize_entire` is unimplemented.
-* `sector_functions_generator::in_progress_sector` needs a constructor which creates the initial read/save funcs and their root blocks.
-* `sector_functions_generator::in_progress_sector::next` needs to create the next set of read/save funcs and their root blocks.
-* Once we have the `sector_functions_generator` working on a basic level, we'll then want to implement the "layout" pragma, which gives you "fuzzy" control over which structs go in which sectors (i.e. being able to say, "*this* struct right here should get its own sector").
-  * Perhaps we should implement an alternate syntax when specifying the variables to serialize, e.g. `( a | b c | d )` to indicate, for example, that after `a` we should skip to the start of the next sector, and after `c` we should skip to the next sector, such that `b` and `c` can potentially share a sector, but `a` never shares a sector with `b`, nor `c` with `d`.
-
-## outdated; review
-
-* `handle_kv_string` should throw an exception with detailed error information for its caller to report
-* Custom pragma to define a set of `HeritableOptions`, and a singleton to store them
-  * Error on redefinition
-  * Error on internally inconsistent options (e.g. string with a max integral value)
-* If `lu_bitpack_string` specifies a string length, it should error if the deepest rank of the char array it's used on is not of that length (e.g. if the length is 7, `char foo[3][7]` should be accepted and `char foo[3][5]` should fail).
-* Finish implementing `lu_bitpack_inherit` for having a struct member use a set of heritable options
-* Finish implementing `lu_bitpack_funcs` (parsing only)
-* Add an attribute that annotates a struct or a struct member as being `memcpy`'d into the bitpacked stream. (Actually, it'd be bitpacked one byte at a time, so as to avoid padding bits around the nenber; but the member itself would be treated as an opaque blob of data.)
-* Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
-* Implement annotation and processing of unions
-  * If a union's members are all structs, and each struct's first member is of the same type, alignment, and name, then allow that member to be used as the union's tag (but require that the user specify this, and require that they indicate which values map to which inner structs).
-* Add pragmas to set optional top-level serialization params.
-  * Sector size
-  * Max sector count
-  * Max total size
-  * Version number location (start of sector 0; start of all sectors; no version number)
-* Add a pragma which allows you to specify that a given typedef (e.g. `BOOL`, `bool8`, etc.) always refers to a bool and should by default serialize as a single bit based on whether its value is non-zero. Try to catch nested typedefs (e.g. `typedef BOOL smeckledorfed; smeckledorfed spongebob = TRUE;`) in the struct-/union-handling logic.
-* Add pragmas to specify the names of functions that can serialize various lowest-level data types, as well as a pragma to specify a "state" data type that these functions should take as an argument.
-  * "Read" functions for integrals should take a state pointer and a bitcount, and return a result. It should be possible to specify different functions for different in-memory sizes (i.e. 8-bit, 16-bit, 32-bit). If the largest serialized value has an *n*-bit in-memory type, you should not need a function that can handle larger in-memory sizes.
-  * "Read" functions for strings should take a state pointer, a destination string `uint8_t` pointer, and a max length. There should be separate functions for strings that require an in-memory null terminator and strings that do not.
-  * "Read" functions for bools should take a state pointer.
-  * "Write" functions for integrals should take a state pointer, value, and bitcount.
-  * "Write" functions for strings should take a state pointer, source string `uint8_t` pointer, and a max length. There should be separate functions for strings that require an in-memory null terminator and strings that do not.
-  * "Write" functions for bools should take a state pointer and a value.
-  * "Read" and "write" functions for arbitrary buffers should take the same basic arguments as strings, but using void pointers rather than `uint8_t` pointers. These functions should only be necessary if any structs or struct members are annotated as being directly `memcpy`'d.
-* Add a pragma which generates the code to serialize a given variable (e.g. a global instance of some struct) into the bitpacked data, continuing from where serialization left off (or starting at the beginning of sector 0 if it's the first thing we're generating). For now, we only care about serializnig globals, so reading/writing directly from/to them is fine.
-  * When serialization is divided into sectors, there should be a general entry point that takes a sector index and a source/destination buffer. When serialization is not divided into sectors, just take a buffer.
-  * Start with the basic data types first; then implement the pre-pack and post-unpack function option.
-* Add a pragma which forces serialization to skip to the start of the next sector, leaving any remaining space in the current sector unused.
+* Freestanding union types may be marked as internally tagged (if all other requirements are met) and, if so marked, may be used as top-level data values to serialize.
+* All of the union's members must be of `struct` types.
+* All of the union's members must have their own first *n* members be identical (same names, types, and if present, initializers) given some value of *n* > 0.
+  * We may decide to only consider members that are not marked as omitted from bitpacking, such that omitted members may be interleaved between them.
+* The identifier given as the union tag must be one of those *n* nested members.
+  * That member must be an integer type.
+  * That member must not be marked as omitted from bitpacking.
+* Each member of the union must be given a tag value, or must be marked as omitted from bitpacking. If any union member lacks a tag value and isn't marked as being omitted from bitpacking, then that's an error.
+  * No two members of the union can have the same tag value.
+  * All tag values assigned to members of the union must be representable within bitpacking. If we pack the tag such that the values [2, 7] can be serialized, then no union member may have a tag value like 1 or 8.
