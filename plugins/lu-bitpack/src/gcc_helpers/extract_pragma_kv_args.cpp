@@ -18,67 +18,48 @@ namespace gcc_helpers {
       } pragma_arg_start;
       
       if (pragma_lex(&pragma_arg_start.data, &pragma_arg_start.loc) != CPP_OPEN_PAREN) {
-         error_at(pragma_arg_start.loc, "missing %<(%> after %<%s%> - ignored", pragma_name);
+         error_at(pragma_arg_start.loc, "missing %<(%> after %<%s%>; pragma ignored", pragma_name);
          return {};
       }
       
       bool seen_any = false;
       do {
-         tree       key_data;
-         location_t key_loc;
-         tree       val_data;
-         location_t val_loc;
-         
-         auto token_type = pragma_lex(&key_data, &key_loc);
-         if (seen_any && token_type == CPP_CLOSE_PAREN) {
-            //
-            // Trailing comma, e.g. foo(a=b, c=d, )
-            //
-            warning_at(key_loc, OPT_Wpragmas, "trailing comma at end of %<%s%>", pragma_name);
-            break;
+         std::string_view name;
+         {
+            tree       data;
+            location_t loc;
+            
+            auto token_type = pragma_lex(&data, &loc);
+            if (seen_any && token_type == CPP_CLOSE_PAREN) {
+               //
+               // Trailing comma, e.g. foo(a=b, c=d, )
+               //
+               warning_at(loc, OPT_Wpragmas, "trailing comma at end of %<%s%>", pragma_name);
+               break;
+            }
+            if (token_type != CPP_NAME) {
+               error_at(loc, "expected key for key/value pair, after %<%s%>; pragma ignored", pragma_name);
+               return {};
+            }
+            seen_any = true;
+            
+            name = IDENTIFIER_POINTER(data);
          }
-         if (token_type != CPP_NAME) {
-            error_at(key_loc, "expected key for key/value pair, after %<%s%> - ignored", pragma_name);
-            return {};
-         }
-         seen_any = true;
-         
-         std::string_view name = IDENTIFIER_POINTER(key_data);
          
          struct {
             location_t loc;
             int        type;
             tree       data;
          } token_after_entry;
+         //
+         token_after_entry.type = pragma_lex(&token_after_entry.data, &token_after_entry.loc);
          
-         bool has_value = false;
-         {
-            location_t loc;
-            tree       data;
-            token_type = pragma_lex(&data, &loc);
-            
-            token_after_entry.loc  = loc;
-            token_after_entry.data = data;
-            token_after_entry.type = token_type;
-            
-            switch (token_type) {
-               case CPP_EQ:
-                  has_value = true;
-                  break;
-               case CPP_COMMA:
-                  has_value = false;
-                  break;
-               case CPP_CLOSE_PAREN:
-                  has_value = false;
-                  break;
-               default:
-                  error_at(key_loc, "expected key/value separator %<=%> or pair separator %<,%>, after %<%s%> - ignored", pragma_name);
-                  return {};
-            }
-         }
          pragma_kv_value value;
-         if (has_value) {
-            token_type = pragma_lex(&val_data, &val_loc);
+         if (token_after_entry.type == CPP_EQ) {
+            tree       val_data;
+            location_t val_loc;
+            
+            auto token_type = pragma_lex(&val_data, &val_loc);
             switch (token_type) {
                case CPP_NAME:
                   {
@@ -88,7 +69,7 @@ namespace gcc_helpers {
                   break;
                case CPP_NUMBER:
                   if (TREE_CODE(val_data) != INTEGER_CST) {
-                     error_at(key_loc, "invalid integer constant for pragma %<%s%>, key %<%s%> - ignored", pragma_name, name.data());
+                     error_at(val_loc, "invalid integer constant for pragma %<%s%>, key %<%s%>; pragma ignored", pragma_name, name.data());
                      return {};
                   }
                   {
@@ -103,14 +84,15 @@ namespace gcc_helpers {
                   }
                   break;
                default:
-                  error_at(key_loc, "expected a value for pragma %<%s%>, key %<%s%>, but did not find anything recognizable - ignored", pragma_name, name.data());
+                  error_at(val_loc, "expected a value for pragma %<%s%>, key %<%s%>, but did not find anything recognizable; pragma ignored", pragma_name, name.data());
                   return {};
             }
-         }
-         dst[std::string(name)] = value;
-         if (has_value) {
+            //
+            // Consume comma or close-paren.
+            //
             token_after_entry.type = pragma_lex(&token_after_entry.data, &token_after_entry.loc);
          }
+         dst[std::string(name)] = value;
          //
          // Advance to next pair, or exit.
          //
@@ -122,7 +104,11 @@ namespace gcc_helpers {
                stop = true;
                break;
             default:
-               error_at(token_after_entry.loc, "expected key/value pair separator %<,%> or closing paren, after %<%s%> - ignored", pragma_name);
+               if (std::holds_alternative<std::monostate>(value)) {
+                  error_at(token_after_entry.loc, "expected key/value separator %<=%>, pair separator %<,%>, or closing paren %<)%>, after key %<%s%> in %<%s%>; pragma ignored", name.data(), pragma_name);
+               } else {
+                  error_at(token_after_entry.loc, "expected key/value pair separator %<,%> or closing paren, after key %<%s%> in %<%s%>; pragma ignored", name.data(), pragma_name);
+               }
                return {};
          }
          if (stop)
