@@ -78,11 +78,10 @@ namespace gcc_wrappers {
       assert(vt.is_pointer()); // TODO: allow reference types too
       
       value out;
-      out.set_from_untyped(build_unary_op(
-         UNKNOWN_LOCATION,
+      out.set_from_untyped(build1(
          INDIRECT_REF,
-         this->_node,
-         true
+         this->value_type().remove_pointer().as_untyped(),
+         this->_node
       ));
       return out;
    }
@@ -528,7 +527,7 @@ namespace gcc_wrappers {
             TRUNC_MOD_EXPR,
             vt.as_untyped(),
             this->_node,
-            arg._node
+            other._node
          ));
          return out;
       }
@@ -536,6 +535,11 @@ namespace gcc_wrappers {
       value value::div(value other, round_value_toward rounding) {
          auto vt_a = this->value_type();
          auto vt_b = other.value_type();
+         auto arg  = other;
+         
+         assert(vt_a.is_integer() || vt_a.is_floating_point());
+         assert(vt_b.is_integer() || vt_b.is_floating_point());
+         
          if (vt_a.is_floating_point()) {
             if (!vt_b.is_floating_point())
                arg = arg.convert_to_floating_point(vt_a.as_floating_point());
@@ -543,14 +547,14 @@ namespace gcc_wrappers {
             value out;
             out.set_from_untyped(build2(
                RDIV_EXPR,
-               vt_t.as_untyped(),
+               vt_a.as_untyped(),
                this->_node,
                arg._node
             ));
             return out;
          } else {
             if (!vt_b.is_integer())
-               arg = arg.convert_to_integer(vt_a.as_floating_point());
+               arg = arg.convert_to_integer(vt_a.as_integral());
             
             tree_code code;
             switch (rounding) {
@@ -572,7 +576,7 @@ namespace gcc_wrappers {
             value out;
             out.set_from_untyped(build2(
                code,
-               vt_t.as_untyped(),
+               vt_a.as_untyped(),
                this->_node,
                arg._node
             ));

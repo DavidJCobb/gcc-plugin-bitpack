@@ -171,6 +171,24 @@ namespace gcc_wrappers::type {
       return decl::type_def::from_untyped(dn);
    }
    
+   bool base::is_type_or_transitive_typedef_thereof(base other) const {
+      if (this->as_untyped() == other.as_untyped())
+         return true;
+      
+      auto current = base::from_untyped(this->_node);
+      do {
+         auto decl = current.declaration();
+         if (decl.empty())
+            return false;
+         auto other = decl.is_synonym_of();
+         if (this->as_untyped() == other.as_untyped())
+            return true;
+         current = other;
+      } while (!current.empty());
+      
+      return false;
+   }
+   
    bool base::is_complete() const {
       return COMPLETE_TYPE_P(this->_node);
    }

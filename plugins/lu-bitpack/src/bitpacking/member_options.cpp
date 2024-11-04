@@ -496,6 +496,15 @@ namespace bitpacking::member_options {
          }
          return;
       } else {
+         if (value_type.is_type_or_transitive_typedef_thereof(global.types.boolean)) {
+            if (!opt_min.has_value() && !opt_max.has_value()) {
+               this->kind = member_kind::boolean;
+               dst.min      = 0;
+               dst.bitcount = 1;
+               return;
+            }
+         }
+         
          std::intmax_t  min;
          std::uintmax_t max;
          if (opt_min.has_value()) {

@@ -48,6 +48,8 @@ namespace gcc_wrappers::type {
          // Can't include it for you here or we'll get a circular dependency.
          decl::type_def declaration() const;
          
+         bool is_type_or_transitive_typedef_thereof(base) const;
+         
          bool is_complete() const;
          
          size_t size_in_bits() const;

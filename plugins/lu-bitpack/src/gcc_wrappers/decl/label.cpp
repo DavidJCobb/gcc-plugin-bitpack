@@ -1,4 +1,5 @@
 #include "gcc_wrappers/decl/label.h"
+#include <c-family/c-common.h> // build_unary_op
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::decl {
@@ -17,5 +18,16 @@ namespace gcc_wrappers::decl {
    
    expr::label label::make_label_expr() {
       return expr::label(*this);
+   }
+   
+   value label::address_of() {
+      value out;
+      out.set_from_untyped(build_unary_op(
+         UNKNOWN_LOCATION,
+         ADDR_EXPR,
+         this->_node,
+         false
+      ));
+      return out;
    }
 }

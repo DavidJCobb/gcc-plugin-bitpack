@@ -66,19 +66,31 @@ test: $(PLUGIN)
 	$(CCPLUGIN) -c -o /dev/null test/test.c -Itest
 
 .PHONY: testcase_a
+testcase_a: TESTDIR=testcases/a
 testcase_a: $(PLUGIN)
 	- rm -f testcases/*.o
-	- rm -f testcases/a/*.o
+	- rm -f $(TESTDIR)/*.o
 	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
-	$(CCPLUGIN) -c testcases/a/test.c -o testcases/a/test.o -Itestcases
-	$(CCPLUGIN) testcases/bitstreams.o testcases/a/test.o -o testcases/a/test
-	testcases/a/test
+	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
 
 .PHONY: testcase_b
+testcase_b: TESTDIR=testcases/b
 testcase_b: $(PLUGIN)
 	- rm -f testcases/*.o
-	- rm -f testcases/b/*.o
+	- rm -f $(TESTDIR)/*.o
 	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
-	$(CCPLUGIN) -c testcases/b/test.c -o testcases/b/test.o -Itestcases
-	$(CCPLUGIN) testcases/bitstreams.o testcases/b/test.o -o testcases/b/test
-	testcases/b/test
+	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
+
+.PHONY: testcase_bool
+testcase_bool: TESTDIR=testcases/bool
+testcase_bool: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test

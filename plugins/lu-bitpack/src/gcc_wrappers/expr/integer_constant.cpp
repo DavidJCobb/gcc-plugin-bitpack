@@ -46,9 +46,9 @@ namespace gcc_wrappers::expr {
       // NOTE: This doesn't handle the case of the values having types of 
       // different signedness.
       //
-      return tree_int_cst_lt(this->_node, other.node);
+      return tree_int_cst_lt(this->_node, other._node);
    }
    bool integer_constant::operator==(const integer_constant& other) const {
-      return tree_int_cst_equal(this->_node, other.node);
+      return tree_int_cst_equal(this->_node, other._node);
    }
 }

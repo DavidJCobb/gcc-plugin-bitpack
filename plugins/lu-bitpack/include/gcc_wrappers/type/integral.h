@@ -3,7 +3,7 @@
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers::expr {
-   class integral_constant;
+   class integer_constant;
 }
 
 namespace gcc_wrappers::type {
@@ -35,7 +35,7 @@ namespace gcc_wrappers::type {
          integral make_signed() const;
          integral make_unsigned() const;
          
-         bool can_hold_value(const expr::integral_constant) const;
+         bool can_hold_value(const expr::integer_constant) const;
    };
 }
 
