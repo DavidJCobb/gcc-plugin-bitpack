@@ -7,6 +7,9 @@
 
 #include "gcc_helpers/gcc_version_info.h"
 
+#include "gcc_wrappers/type/array.h"
+#include "gcc_wrappers/type/pointer.h"
+
 namespace gcc_wrappers {
    type::base value::value_type() const {
       gcc_assert(this->_node != NULL_TREE);
@@ -271,10 +274,10 @@ namespace gcc_wrappers {
          //
          // In mimicry of `array_to_pointer_conversion` in `c/c-typeck.cc`.
          //
-         auto array_type = this->value_type();
+         auto array_type = this->value_type().as_array();
          assert(array_type.is_array());
          STRIP_TYPE_NOPS(this->_node);
-         auto value_type = array_type.array_value_type();
+         auto value_type = array_type.value_type();
          
          [[maybe_unused]] bool variably_modified = false;
          #ifdef C_TYPE_VARIABLY_MODIFIED
@@ -391,10 +394,10 @@ namespace gcc_wrappers {
       value arg = other;
       if (vt_t.is_integer()) {
          if (!vt_b.is_integer())
-            arg = arg.convert_to_integer(vt_t);
+            arg = arg.convert_to_integer(vt_t.as_integral());
       } else if (vt_t.is_floating_point()) {
          if (!vt_b.is_floating_point())
-            arg = arg.convert_to_floating_point(vt_t);
+            arg = arg.convert_to_floating_point(vt_t.as_floating_point());
       }
       
       value out;

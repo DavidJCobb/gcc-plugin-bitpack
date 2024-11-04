@@ -44,7 +44,7 @@ namespace {
       do {
          if (!et.is_array()) {
             if (et == global.types.string_char) {
-               return at.array_extent();
+               return at.extent();
             }
             break;
          }
@@ -461,7 +461,12 @@ namespace bitpacking::member_options {
          return;
       }
       
-      if (!value_type.is_integral()) {
+      if (
+         !value_type.is_boolean() &&
+         !value_type.is_enum()    &&
+         !value_type.is_integer() &&
+         !value_type.is_pointer()
+      ) {
          throw std::runtime_error("unsupported member type");
       }
       

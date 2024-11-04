@@ -19,7 +19,7 @@ namespace gcc_wrappers::flow {
    }
    
    void simple_for_loop::bake(statement_list&& loop_body) {
-      auto counter_type = this->counter.value_type();
+      auto counter_type = this->counter.value_type().as_integral();
       auto statements   = this->enclosing.statements();
       
       /*

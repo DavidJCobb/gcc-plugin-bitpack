@@ -384,7 +384,7 @@ namespace bitpacking::global_options {
          auto _check_integer = [op_name, stream_state_ptr_type, &ty](
             const char*        noun_type,
             gw::decl::function decl,
-            gw::type           result_type
+            gw::type::integral result_type
          ) {
             auto noun_str = lu::strings::printf_string("bitstream %s %s value", op_name, noun_type);
             auto noun = noun_str.c_str();
@@ -421,7 +421,7 @@ namespace bitpacking::global_options {
          auto _check_span = [op_name, stream_state_ptr_type, &ty](
             const char*        noun_type,
             gw::decl::function decl,
-            gw::type           element_type
+            gw::type::base     element_type
          ) {
             auto noun_str = lu::strings::printf_string("bitstream %s function for %s", op_name, noun_type);
             auto noun = noun_str.c_str();
@@ -476,7 +476,7 @@ namespace bitpacking::global_options {
          auto _check_integer = [op_name, stream_state_ptr_type, &ty](
             const char*        noun_type,
             gw::decl::function decl,
-            gw::type           result_type
+            gw::type::integral result_type
          ) {
             auto noun_str = lu::strings::printf_string("bitstream %s %s value", op_name, noun_type);
             auto noun = noun_str.c_str();
@@ -514,7 +514,7 @@ namespace bitpacking::global_options {
          auto _check_span = [op_name, stream_state_ptr_type, &ty](
             const char*        noun_type,
             gw::decl::function decl,
-            gw::type           element_type
+            gw::type::base     element_type
          ) {
             auto noun_str = lu::strings::printf_string("bitstream %s function for %s", op_name, noun_type);
             auto noun = noun_str.c_str();

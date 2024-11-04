@@ -6,7 +6,7 @@ namespace gcc_wrappers::type {
    
    [[nodiscard]] std::vector<enumeration::member> enumeration::all_enum_members() const {
       std::vector<member> list;
-      for_each_enum_member([&list](const enum_member& item) {
+      for_each_enum_member([&list](const member& item) {
          list.push_back(item);
       });
       return list;

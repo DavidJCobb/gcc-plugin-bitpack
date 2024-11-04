@@ -19,12 +19,12 @@ extern int comptypes(tree, tree);
 #include "gcc_wrappers/type/integral.h"
 #include "gcc_wrappers/type/pointer.h"
 #include "gcc_wrappers/type/record.h"
-#include "gcc_wrappers/type/union.h"
+#include "gcc_wrappers/type/untagged_union.h"
 
 namespace gcc_wrappers::type {
    WRAPPED_TREE_NODE_BOILERPLATE(base)
    
-   bool base::operator==(const type other) const {
+   bool base::operator==(const base other) const {
       if (this->_node == other._node)
          return true;
       
@@ -56,21 +56,21 @@ namespace gcc_wrappers::type {
       // Try printing function types and function pointer types.
       //
       {
-         bool is_const_pointer    = false;
-         bool is_function_pointer = false;
-         type ft;
+         bool     is_const_pointer    = false;
+         bool     is_function_pointer = false;
+         function ft;
          if (is_function()) {
-            ft = *this;
+            ft = this->as_function();
          } else if (is_pointer()) {
             auto pt = remove_pointer();
             if (pt.is_function()) {
-               ft = pt;
+               ft = pt.as_function();
                is_function_pointer = true;
                is_const_pointer    = ft.is_const();
             }
          }
          if (!ft.empty()) {
-            out = ft.function_return_type().pretty_print();
+            out = ft.return_type().pretty_print();
             if (is_function_pointer) {
                out += "(*";
                if (is_const_pointer) {
@@ -81,16 +81,16 @@ namespace gcc_wrappers::type {
                out += "(&)"; // not sure if this is correct
             }
             out += '(';
-            if (!ft.is_unprototyped_function()) {
+            if (!ft.is_unprototyped()) {
                bool first   = true;
                bool varargs = true;
-               auto args    = ft.function_arguments();
+               auto args    = ft.arguments();
                args.for_each_value([&first, &out, &varargs](tree raw) {
                   if (raw == void_type_node) {
                      varargs = false;
                      return;
                   }
-                  type t = base::from_untyped(raw);
+                  base t = base::from_untyped(raw);
                   if (first) {
                      first = false;
                   } else {
@@ -108,9 +108,10 @@ namespace gcc_wrappers::type {
       // Try printing array types.
       //
       if (is_array()) {
-         out = array_value_type().pretty_print();
+         auto at = this->as_array();
+         out = at.value_type().pretty_print();
          out += '[';
-         if (auto extent = array_extent(); extent.has_value())
+         if (auto extent = at.extent(); extent.has_value())
             out += *extent; // TODO: stringify number
          out += ']';
          return out;
@@ -155,14 +156,10 @@ namespace gcc_wrappers::type {
    }
    
    base base::canonical() const {
-      type out;
-      out.set_from_untyped(TYPE_CANONICAL(this->_node));
-      return out;
+      return base::from_untyped(TYPE_CANONICAL(this->_node));
    }
    base base::main_variant() const {
-      type out;
-      out.set_from_untyped(TYPE_MAIN_VARIANT(this->_node));
-      return out;
+      return base::from_untyped(TYPE_MAIN_VARIANT(this->_node));
    }
    
    decl::type_def base::declaration() const {
@@ -236,7 +233,8 @@ namespace gcc_wrappers::type {
    //
    
    array base::as_array() {
-      return const_cast<array>(std::as_const(*this).as_array());
+      assert(is_array());
+      return array::from_untyped(this->_node);
    }
    const array base::as_array() const {
       assert(is_array());
@@ -244,7 +242,8 @@ namespace gcc_wrappers::type {
    }
    
    enumeration base::as_enum() {
-      return const_cast<enumeration>(std::as_const(*this).as_enum());
+      assert(is_enum());
+      return enumeration::from_untyped(this->_node);
    }
    const enumeration base::as_enum() const {
       assert(is_enum());
@@ -252,7 +251,8 @@ namespace gcc_wrappers::type {
    }
    
    floating_point base::as_floating_point() {
-      return const_cast<floating_point>(std::as_const(*this).as_floating_point());
+      assert(is_floating_point());
+      return floating_point::from_untyped(this->_node);
    }
    const floating_point base::as_floating_point() const {
       assert(is_floating_point());
@@ -260,7 +260,8 @@ namespace gcc_wrappers::type {
    }
    
    fixed_point base::as_fixed_point() {
-      return const_cast<fixed_point>(std::as_const(*this).as_fixed_point());
+      assert(is_fixed_point());
+      return fixed_point::from_untyped(this->_node);
    }
    const fixed_point base::as_fixed_point() const {
       assert(is_fixed_point());
@@ -268,7 +269,8 @@ namespace gcc_wrappers::type {
    }
          
    function base::as_function() {
-      return const_cast<function>(std::as_const(*this).as_function());
+      assert(is_function());
+      return function::from_untyped(this->_node);
    }
    const function base::as_function() const {
       assert(is_function());
@@ -276,15 +278,17 @@ namespace gcc_wrappers::type {
    }
    
    integral base::as_integral() {
-      return const_cast<integral>(std::as_const(*this).as_integral());
+      assert(is_boolean() || is_enum() || is_integer());
+      return integral::from_untyped(this->_node);
    }
    const integral base::as_integral() const {
-      assert(is_integral());
+      assert(is_boolean() || is_enum() || is_integer());
       return integral::from_untyped(this->_node);
    }
    
    pointer base::as_pointer() {
-      return const_cast<pointer>(std::as_const(*this).as_pointer());
+      assert(is_pointer());
+      return pointer::from_untyped(this->_node);
    }
    const pointer base::as_pointer() const {
       assert(is_pointer());
@@ -292,7 +296,8 @@ namespace gcc_wrappers::type {
    }
    
    record base::as_record() {
-      return const_cast<record>(std::as_const(*this).as_record());
+      assert(is_record());
+      return record::from_untyped(this->_node);
    }
    const record base::as_record() const {
       assert(is_record());
@@ -300,7 +305,8 @@ namespace gcc_wrappers::type {
    }
    
    untagged_union base::as_union() {
-      return const_cast<untagged_union>(std::as_const(*this).as_union());
+      assert(is_union());
+      return untagged_union::from_untyped(this->_node);
    }
    const untagged_union base::as_union() const {
       assert(is_union());
@@ -328,9 +334,9 @@ namespace gcc_wrappers::type {
       return !empty() && TYPE_VOLATILE(this->_node);
    }
    
-   base base::add_pointer() const {
+   pointer base::add_pointer() const {
       gcc_assert(!empty());
-      return base::from_untyped(build_pointer_type(this->_node));
+      return pointer::from_untyped(build_pointer_type(this->_node));
    }
    base base::remove_pointer() const {
       if (!is_pointer())

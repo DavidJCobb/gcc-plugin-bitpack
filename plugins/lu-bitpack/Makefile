@@ -30,10 +30,23 @@ SOURCES=\
         src/gcc_wrappers/expr/string_constant.cpp \
         src/gcc_wrappers/expr/ternary.cpp \
         src/gcc_wrappers/flow/simple_for_loop.cpp \
+        src/gcc_wrappers/type/helpers/lookup_by_name.cpp \
+        src/gcc_wrappers/type/base.cpp \
+        src/gcc_wrappers/type/array.cpp \
+        src/gcc_wrappers/type/container.cpp \
+        src/gcc_wrappers/type/enumeration.cpp \
+        src/gcc_wrappers/type/fixed_point.cpp \
+        src/gcc_wrappers/type/floating_point.cpp \
+        src/gcc_wrappers/type/function.cpp \
+        src/gcc_wrappers/type/integral.cpp \
+        src/gcc_wrappers/type/method.cpp \
+        src/gcc_wrappers/type/numeric.cpp \
+        src/gcc_wrappers/type/pointer.cpp \
+        src/gcc_wrappers/type/record.cpp \
+        src/gcc_wrappers/type/untagged_union.cpp \
         src/gcc_wrappers/builtin_types.cpp \
         src/gcc_wrappers/list_node.cpp \
         src/gcc_wrappers/statement_list.cpp \
-        src/gcc_wrappers/type.cpp \
         src/gcc_wrappers/value.cpp \
         src/lu/strings/handle_kv_string.cpp \
         src/lu/strings/printf_string.cpp \

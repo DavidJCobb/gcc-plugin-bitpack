@@ -11,7 +11,7 @@
 #include "gcc_wrappers/type/method.h"
 #include "gcc_wrappers/type/pointer.h"
 #include "gcc_wrappers/type/record.h"
-#include "gcc_wrappers/type/union.h"
+#include "gcc_wrappers/type/untagged_union.h"
 
 #include "gcc_wrappers/type/helpers/lookup_by_name.h"
 #include "gcc_wrappers/type/helpers/make_function_type.h"

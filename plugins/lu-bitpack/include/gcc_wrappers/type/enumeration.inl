@@ -10,7 +10,7 @@ namespace gcc_wrappers::type {
             .name  = std::string_view(IDENTIFIER_POINTER(TREE_PURPOSE(item))),
             .value = (intmax_t)TREE_INT_CST_LOW(TREE_VALUE(item)),
          };
-         if constexpr (std::is_invocable_r_v<bool, Functor, const enum_member&>) {
+         if constexpr (std::is_invocable_r_v<bool, Functor, const member&>) {
             if (!functor(m))
                break;
          } else {

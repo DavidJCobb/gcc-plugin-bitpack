@@ -16,14 +16,14 @@ namespace gcc_wrappers::type {
    
    base function::nth_argument_type(size_t n) const {
       assert(!empty());
-      return base::from_untyped(function_arguments().untyped_nth_value(n));
+      return base::from_untyped(this->arguments().untyped_nth_value(n));
    }
    
    bool function::is_varargs() const {
       if (empty())
          return false;
       
-      auto list = this->function_arguments();
+      auto list = this->arguments();
       if (list.empty())
          return false; // unprototyped
       
@@ -36,7 +36,7 @@ namespace gcc_wrappers::type {
    
    size_t function::fixed_argument_count() const {
       assert(!empty());
-      auto   list = function_arguments();
+      auto   list = this->arguments();
       size_t size = list.size();
       if (size) {
          if (list.untyped_back() == void_list_node)

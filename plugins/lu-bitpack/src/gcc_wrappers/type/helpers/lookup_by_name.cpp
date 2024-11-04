@@ -1,4 +1,3 @@
-#pragma once
 #include "gcc_wrappers/type/helpers/lookup_by_name.h"
 #include <c-family/c-common.h> // identifier_global_tag, lookup_name
 #include <stringpool.h> // get_identifier

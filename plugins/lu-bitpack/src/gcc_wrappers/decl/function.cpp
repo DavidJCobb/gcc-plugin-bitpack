@@ -23,7 +23,7 @@ namespace gcc_wrappers::decl {
       
       size_t i = 0;
       
-      auto args = this->function_type().function_arguments();
+      auto args = this->function_type().arguments();
       tree prev = NULL_TREE;
       for(auto pair : args) {
          if (pair.second == NULL_TREE) {

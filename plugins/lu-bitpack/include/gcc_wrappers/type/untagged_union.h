@@ -8,7 +8,7 @@ namespace gcc_wrappers::type {
          static bool node_is(tree t) {
             return t != NULL_TREE && TREE_CODE(t) == UNION_TYPE;
          }
-         WRAPPED_TREE_NODE_BOILERPLATE(record)
+         WRAPPED_TREE_NODE_BOILERPLATE(untagged_union)
          
       public:
    };

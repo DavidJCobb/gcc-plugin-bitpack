@@ -37,7 +37,7 @@ namespace gcc_wrappers {
       gcc_assert(!this->uint8.empty());
    }
    
-   type builtin_types::smallest_integral_for(size_t bitcount, bool is_signed) const {
+   type::integral builtin_types::smallest_integral_for(size_t bitcount, bool is_signed) const {
       if (bitcount > 32)
          return is_signed ? int64 : uint64;
       if (bitcount > 16)

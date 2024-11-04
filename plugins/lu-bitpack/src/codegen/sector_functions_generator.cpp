@@ -777,7 +777,7 @@ namespace codegen {
                ));
             }
             
-            const auto* descriptor = this->info_for_struct(type).descriptor.get();
+            const auto* descriptor = this->info_for_struct(type.as_record()).descriptor.get();
             
             serialization_value value;
             value.read = decl.as_value();
