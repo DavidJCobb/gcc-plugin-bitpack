@@ -74,6 +74,12 @@ namespace codegen {
       this->owner.sector_functions.push_back(this->functions);
       ++this->id;
       this->bits_remaining = this->owner.global_options.sectors.size_per * 8;
+      if (this->id >= this->owner.global_options.sectors.max_count) {
+         throw std::runtime_error(lu::strings::printf_string(
+            "reached the sector limit (%u) with data still yet to be serialized",
+            (int)this->id
+         ));
+      }
       this->make_functions();
    }
    
@@ -735,10 +741,27 @@ namespace codegen {
       }
       
       //
-      // Handle indiviisible values. We need to advance to the next sector to fit 
+      // Handle indivisible values. We need to advance to the next sector to fit 
       // them.
       // 
-      sector.next();
+      try {
+         sector.next();
+      } catch (std::runtime_error& ex) {
+         //
+         // Failed to open a new sector: we've hit the max sector count.
+         //
+         // TODO: Report the full path of the failed value.
+         //
+         /*//
+         auto message = lu::strings::printf(
+            "failed to serialize data value: ",
+         );
+         message += ex.what();
+         throw std::runtime_error(message);
+         //*/
+         
+         throw; // for now just rethrow because I'm out of time
+      }
       sector.assert_sane();
       this->_serialize_value_to_sector(sector, object);
       sector.assert_sane();
@@ -777,6 +800,8 @@ namespace codegen {
                   type.pretty_print().c_str()
                ));
             }
+            
+            this->_current_value_path = name;
             
             const auto* descriptor = this->info_for_struct(type.as_record()).descriptor.get();
             
