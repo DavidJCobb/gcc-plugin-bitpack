@@ -20,6 +20,9 @@ namespace gcc_wrappers::type {
          
       public:
          [[nodiscard]] std::vector<member> all_enum_members() const;
+         
+         bool is_opaque() const;
+         bool is_scoped() const;
       
          template<typename Functor>
          void for_each_enum_member(Functor&& functor) const;

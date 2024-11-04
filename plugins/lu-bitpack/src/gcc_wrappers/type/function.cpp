@@ -1,4 +1,5 @@
 #include "gcc_wrappers/type/function.h"
+#include "gcc_helpers/gcc_version_info.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
@@ -22,6 +23,15 @@ namespace gcc_wrappers::type {
    bool function::is_varargs() const {
       if (empty())
          return false;
+      
+      #if GCCPLUGIN_VERSION_MAJOR >= 13
+         //
+         // Check for functions that only take varargs. This was made legal 
+         // in C23 (N2975) and supported from GCC 13 onward.
+         //
+         if (TYPE_NO_NAMED_ARGS_STDARG_P(this->_node))
+            return true;
+      #endif
       
       auto list = this->arguments();
       if (list.empty())

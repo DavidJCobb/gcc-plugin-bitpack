@@ -1,4 +1,5 @@
 #include "gcc_wrappers/type/integral.h"
+#include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
@@ -33,5 +34,9 @@ namespace gcc_wrappers::type {
    }
    integral integral::make_unsigned() const {
       return integral::from_untyped(unsigned_type_for(this->_node)); // tree.h
+   }
+   
+   bool integral::can_hold_value(const expr::integral_constant c) const {
+      return int_fits_type_p(c.as_untyped(), this->as_untyped());
    }
 }

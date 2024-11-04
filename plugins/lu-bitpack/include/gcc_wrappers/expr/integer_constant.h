@@ -54,6 +54,11 @@ namespace gcc_wrappers {
                }
                return (Integer) v;
             }
+            
+            int sign() const;
+            
+            bool operator<(const integer_constant&) const;
+            bool operator==(const integer_constant&) const;
       };
       static_assert(sizeof(integer_constant) == sizeof(value)); // no new fields
    }

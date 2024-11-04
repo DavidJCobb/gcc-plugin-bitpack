@@ -199,6 +199,9 @@ namespace gcc_wrappers::type {
    bool base::is_boolean() const {
       return TREE_CODE(this->_node) == BOOLEAN_TYPE;
    }
+   bool base::is_complex() const {
+      return TREE_CODE(this->_node) == COMPLEX_TYPE;
+   }
    bool base::is_enum() const {
       return TREE_CODE(this->_node) == ENUMERAL_TYPE;
    }

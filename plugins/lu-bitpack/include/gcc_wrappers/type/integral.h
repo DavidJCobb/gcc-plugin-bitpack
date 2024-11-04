@@ -2,6 +2,10 @@
 #include "gcc_wrappers/type/numeric.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
+namespace gcc_wrappers::expr {
+   class integral_constant;
+}
+
 namespace gcc_wrappers::type {
    class integral : public numeric {
       public:
@@ -30,6 +34,8 @@ namespace gcc_wrappers::type {
          
          integral make_signed() const;
          integral make_unsigned() const;
+         
+         bool can_hold_value(const expr::integral_constant) const;
    };
 }
 

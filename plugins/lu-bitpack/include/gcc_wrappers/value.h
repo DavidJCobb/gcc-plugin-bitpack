@@ -5,6 +5,8 @@
 #include "gcc_wrappers/type/floating_point.h"
 #include "gcc_wrappers/type/integral.h"
 
+#include "gcc_wrappers/enums/round_value_toward.h"
+
 namespace gcc_wrappers {
    namespace decl {
       class base;
@@ -124,6 +126,8 @@ namespace gcc_wrappers {
             //  - Explicitly casting away constness of pointers
             //  - Explicit casts between different pointer types
             value conversion_sans_bytecode(type::base);
+            
+            value perform_default_promotions();
          //#pragma endregion
          
          //#pragma region Comparison operators
@@ -143,17 +147,36 @@ namespace gcc_wrappers {
             value arith_abs(); // ABS_EXPR
             value arith_neg(); // NEGATE_EXPR
             
+            value complex_conjugate(); // CONJ_EXPR
+            
+            // Standard increment/decrement operations, applying to integers, 
+            // floats, pointers, and complex numbers as is standard.
+            value decrement_pre();  // PREDECREMENT_EXPR
+            value decrement_post(); // POSTDECREMENT_EXPR
+            value increment_pre();  // PREINCREMENT_EXPR
+            value increment_post(); // POSTINCREMENT_EXPR
+            
+            // Non-standard increment/decrement operations wherein you can 
+            // choose a delta other than 1. Default conversions are not 
+            // performed, and this is not allowed on pointers (because I 
+            // can't be bothered to replicate the behaviors, frankly.)
             value decrement_pre(value by);  // PREDECREMENT_EXPR
             value decrement_post(value by); // POSTDECREMENT_EXPR
             value increment_pre(value by);  // PREINCREMENT_EXPR
             value increment_post(value by); // POSTINCREMENT_EXPR
             
+            // Arithmetic only. Pointer math is not allowed or performed.
             value add(value);
             value sub(value);
             value mul(value);
             value mod(value); // TRUNC_MOD_EXPR
             
-            value div(value); // TRUNC_DIV_EXPR or RDIV_EXPR, depending on this type and other type
+            // Generates different expression types depending on whether `this` is 
+            // an integer or a float. Converts the divisor to match.
+            value div(value divisor, round_value_toward rounding = round_value_toward::zero);
+            
+            value min(value);
+            value max(value);
          //#pragma endregion
          
          //#pragma region Bitwise operators, available only on integers

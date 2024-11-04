@@ -4,6 +4,7 @@
 #include <c-tree.h> // build_component_ref
 #include <convert.h> // convert_to_integer and friends
 #include <stringpool.h> // get_identifier
+#include <c-family/c-common.h> // build_unary_op, lvalue_p
 
 #include "gcc_helpers/gcc_version_info.h"
 
@@ -63,10 +64,11 @@ namespace gcc_wrappers {
    // Returns a value of a POINTER_TYPE.
    value value::address_of() {
       value out;
-      out.set_from_untyped(build1(
+      out.set_from_untyped(build_unary_op(
+         UNKNOWN_LOCATION,
          ADDR_EXPR,
-         this->value_type().add_pointer().as_untyped(),
-         this->_node
+         this->_node,
+         false
       ));
       return out;
    }
@@ -76,10 +78,11 @@ namespace gcc_wrappers {
       assert(vt.is_pointer()); // TODO: allow reference types too
       
       value out;
-      out.set_from_untyped(build1(
+      out.set_from_untyped(build_unary_op(
+         UNKNOWN_LOCATION,
          INDIRECT_REF,
-         this->value_type().remove_pointer().as_untyped(),
-         this->_node
+         this->_node,
+         true
       ));
       return out;
    }
@@ -324,6 +327,12 @@ namespace gcc_wrappers {
          ));
          return out;
       }
+   
+      value value::perform_default_promotions() {
+         value out;
+         out.set_from_untyped(default_conversion(this->_node));
+         return out;
+      }
    //#pragma endregion
    
    value value::_make_cmp2(tree_code expr_type, value other) {
@@ -432,6 +441,60 @@ namespace gcc_wrappers {
       value value::arith_neg() {
          return _make_arith1(NEGATE_EXPR);
       }
+            
+      value value::complex_conjugate() {
+         auto vt = value_type();
+         assert(vt.is_integer() || vt.is_floating_point() || vt.is_complex());
+         
+         value out;
+         out.set_from_untyped(build1(
+            CONJ_EXPR,
+            this->value_type().as_untyped(),
+            this->_node
+         ));
+         return out;
+      }
+      
+      value value::decrement_pre() {
+         value out;
+         out.set_from_untyped(build_unary_op(
+            UNKNOWN_LOCATION,
+            PREDECREMENT_EXPR,
+            this->_node,
+            false
+         ));
+         return out;
+      }
+      value value::decrement_post() {
+         value out;
+         out.set_from_untyped(build_unary_op(
+            UNKNOWN_LOCATION,
+            POSTDECREMENT_EXPR,
+            this->_node,
+            false
+         ));
+         return out;
+      }
+      value value::increment_pre() {
+         value out;
+         out.set_from_untyped(build_unary_op(
+            UNKNOWN_LOCATION,
+            PREINCREMENT_EXPR,
+            this->_node,
+            false
+         ));
+         return out;
+      }
+      value value::increment_post() {
+         value out;
+         out.set_from_untyped(build_unary_op(
+            UNKNOWN_LOCATION,
+            POSTINCREMENT_EXPR,
+            this->_node,
+            false
+         ));
+         return out;
+      }
       
       value value::decrement_pre(value by) {
          return _make_arith2(PREDECREMENT_EXPR, by);
@@ -455,9 +518,90 @@ namespace gcc_wrappers {
       value value::mul(value other) {
          return _make_arith2(MULT_EXPR, other);
       }
-      //value value::mod(value other); // TRUNC_MOD_EXPR
+      value value::mod(value other) {
+         auto vt = this->value_type();
+         assert(vt.is_integer());
+         assert(other.value_type().is_integer());
+         
+         value out;
+         out.set_from_untyped(build2(
+            TRUNC_MOD_EXPR,
+            vt.as_untyped(),
+            this->_node,
+            arg._node
+         ));
+         return out;
+      }
       
-      //value value::div(value other); // TRUNC_DIV_EXPR or RDIV_EXPR, depending on this type and other type
+      value value::div(value other, round_value_toward rounding) {
+         auto vt_a = this->value_type();
+         auto vt_b = other.value_type();
+         if (vt_a.is_floating_point()) {
+            if (!vt_b.is_floating_point())
+               arg = arg.convert_to_floating_point(vt_a.as_floating_point());
+            
+            value out;
+            out.set_from_untyped(build2(
+               RDIV_EXPR,
+               vt_t.as_untyped(),
+               this->_node,
+               arg._node
+            ));
+            return out;
+         } else {
+            if (!vt_b.is_integer())
+               arg = arg.convert_to_integer(vt_a.as_floating_point());
+            
+            tree_code code;
+            switch (rounding) {
+               case round_value_toward::negative_infinity:
+                  code = FLOOR_DIV_EXPR;
+                  break;
+               case round_value_toward::zero:
+               default:
+                  code = TRUNC_DIV_EXPR;
+                  break;
+               case round_value_toward::nearest_integer:
+                  code = ROUND_DIV_EXPR;
+                  break;
+               case round_value_toward::positive_infinity:
+                  code = CEIL_DIV_EXPR;
+                  break;
+            }
+            
+            value out;
+            out.set_from_untyped(build2(
+               code,
+               vt_t.as_untyped(),
+               this->_node,
+               arg._node
+            ));
+            return out;
+         }
+      }
+      
+      value value::min(value other) {
+         value out;
+         out.set_from_untyped(build_binary_op(
+            UNKNOWN_LOCATION,
+            MIN_EXPR,
+            this->_node,
+            other._node,
+            false
+         ));
+         return out;
+      }
+      value value::max(value other) {
+         value out;
+         out.set_from_untyped(build_binary_op(
+            UNKNOWN_LOCATION,
+            MAX_EXPR,
+            this->_node,
+            other._node,
+            false
+         ));
+         return out;
+      }
    //#pragma endregion
    
    //#pragma region Bitwise operators, available only on integers

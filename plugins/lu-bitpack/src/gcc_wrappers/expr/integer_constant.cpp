@@ -36,4 +36,19 @@ namespace gcc_wrappers::expr {
          return {};
       return (host_wide_uint_type) TREE_INT_CST_LOW(this->_node);
    }
+   
+   int integer_constant::sign() const {
+      return tree_int_cst_sgn(this->_node);
+   }
+            
+   bool integer_constant::operator<(const integer_constant& other) const {
+      //
+      // NOTE: This doesn't handle the case of the values having types of 
+      // different signedness.
+      //
+      return tree_int_cst_lt(this->_node, other.node);
+   }
+   bool integer_constant::operator==(const integer_constant& other) const {
+      return tree_int_cst_equal(this->_node, other.node);
+   }
 }

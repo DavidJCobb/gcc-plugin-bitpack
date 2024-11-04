@@ -11,4 +11,11 @@ namespace gcc_wrappers::type {
       });
       return list;
    }
+         
+   bool enumeration::is_opaque() const {
+      return ENUM_IS_OPAQUE(this->_node);
+   }
+   bool enumeration::is_scoped() const {
+      return ENUM_IS_SCOPED(this->_node);
+   }
 }

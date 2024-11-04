@@ -60,6 +60,7 @@ namespace gcc_wrappers::type {
          bool is_arithmetic() const; // INTEGER_TYPE or REAL_TYPE
          bool is_array() const;
          bool is_boolean() const;
+         bool is_complex() const; // COMPLEX_TYPE
          bool is_enum() const; // ENUMERAL_TYPE
          bool is_fixed_point() const;
          bool is_floating_point() const; // REAL_TYPE
