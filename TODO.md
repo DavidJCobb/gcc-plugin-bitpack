@@ -10,9 +10,6 @@
 * Implement the ability to mark a data member to be serialized as an opaque buffer, and then devise a testcase for this.
   * I believe I've already added the attribute, but I don't remember what, if anything, checks it, and I've not tested it.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
-* Devise a testcase for serializing bools (they should default to 1-bit values).
-  * Bools may be defined via a typedef, such that they are canonically equivalent to another type, e.g. `typedef uint8_t bool8`. In such cases, we may need to transitively check the typedef chain for a type to see if it equals the bool type "before" it equals any other type. Given any type, we can obtain its `TYPE_DECL` (if any) as `TYPE_NAME(type_node)` and given any `TYPE_DECL`, we can obtain the original type (`uint8_t` in our example) as `DECL_ORIGINAL_TYPE(decl_node)`.
-* Devise a testcase wherein a struct is split across sector boundaries.
 * Devise a testcase wherein an array is split across sector boundaries.
 * Devise a testcase for anonymous member structs wherein nested members are to be bitpacked.
   * I think we actually would fail to catch these, currently; or we'd treat the anonymous struct as a full nested struct, and end up engaging in shenanigans like giving it a pair of whole-struct functions. The `build_component_ref` function in GCC handles members of anonymous structs; we should look at how they did it, and offer a function on `gw::type` that lets you iterate fields in a similar manner.
