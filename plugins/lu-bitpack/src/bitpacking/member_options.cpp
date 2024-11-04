@@ -316,6 +316,9 @@ namespace bitpacking::member_options {
    ) {
       assert(!src.omit_from_bitpacking);
       
+      this->transforms.pre_pack    = src.transforms.pre_pack;
+      this->transforms.post_unpack = src.transforms.post_unpack;
+      
       const heritable_options* inherit_from = nullptr;
       bool is_integer_h = false;
       bool is_string_h  = false;
@@ -433,6 +436,17 @@ namespace bitpacking::member_options {
          return;
       }
       
+      if (member_type.is_record()) {
+         this->kind = member_kind::structure;
+         
+         //
+         // TODO: pull transform options from the attributes on `member_type`, if 
+         //       they're present.
+         //
+         
+         return;
+      }
+      
       //
       // Assume integral.
       //
@@ -467,7 +481,7 @@ namespace bitpacking::member_options {
          !value_type.is_integer() &&
          !value_type.is_pointer()
       ) {
-         throw std::runtime_error("unsupported member type");
+         throw std::runtime_error("unsupported member type detected while computing final bitpacking options");
       }
       
       this->kind = member_kind::integer;

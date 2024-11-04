@@ -3,6 +3,7 @@
 #include "bitpacking/global_options.h"
 #include <gcc-plugin.h>
 #include <diagnostic.h>
+#include "gcc_wrappers/type/array.h"
 
 namespace {
    namespace gw {
@@ -101,7 +102,7 @@ namespace codegen {
       gw::type::record type
    ) {
       this->type = type;
-      type.for_each_field([this, &global](tree raw_decl) {
+      type.for_each_referenceable_field([this, &global](tree raw_decl) {
          auto decl = gw::decl::field::from_untyped(raw_decl);
          
          bitpacking::member_options::requested options;
@@ -111,7 +112,17 @@ namespace codegen {
          }
          
          bitpacking::member_options::computed computed;
-         computed.resolve(global, options, decl.value_type());
+         try {
+            computed.resolve(global, options, decl.value_type());
+         } catch (std::runtime_error& ex) {
+            auto message = lu::strings::printf_string(
+               "struct data member %<%s::%s%>: ",
+               this->type.pretty_print().c_str(),
+               decl.name().data()
+            );
+            message += ex.what();
+            throw std::runtime_error(message);
+         }
          
          auto& member = this->members.emplace_back();
          member.kind       = computed.kind;

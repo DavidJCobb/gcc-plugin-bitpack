@@ -8,7 +8,11 @@ namespace gcc_wrappers::decl {
    std::string_view base::name() const {
       if (empty())
          return {};
-      return std::string_view(IDENTIFIER_POINTER(DECL_NAME(this->_node)));
+      
+      auto id_node = DECL_NAME(this->_node);
+      if (id_node == NULL_TREE)
+         return {};
+      return std::string_view(IDENTIFIER_POINTER(id_node));
    }
    
    location_t base::source_location() const {

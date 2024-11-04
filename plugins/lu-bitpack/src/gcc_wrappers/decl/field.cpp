@@ -1,4 +1,5 @@
 #include "gcc_wrappers/decl/field.h"
+#include "gcc_wrappers/type/container.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 

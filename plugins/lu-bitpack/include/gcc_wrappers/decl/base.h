@@ -1,7 +1,6 @@
 #pragma once
 #include <string_view>
 #include "gcc_wrappers/_wrapped_tree_node.h"
-#include "gcc_wrappers/type.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {

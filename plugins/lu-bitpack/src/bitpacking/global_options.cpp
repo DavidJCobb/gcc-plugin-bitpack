@@ -6,6 +6,7 @@
 
 #include "lu/strings/printf_string.h"
 #include "gcc_wrappers/builtin_types.h"
+#include "gcc_wrappers/type/helpers/lookup_by_name.h"
 
 namespace bitpacking::global_options {
    void requested::consume_pragma_kv_set(const gcc_helpers::pragma_kv_set& set) {

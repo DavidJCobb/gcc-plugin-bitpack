@@ -1,6 +1,5 @@
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/decl/type_def.h"
-#include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 #include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to
 
@@ -20,6 +19,8 @@ extern int comptypes(tree, tree);
 #include "gcc_wrappers/type/pointer.h"
 #include "gcc_wrappers/type/record.h"
 #include "gcc_wrappers/type/untagged_union.h"
+
+#include "gcc_wrappers/_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
    WRAPPED_TREE_NODE_BOILERPLATE(base)

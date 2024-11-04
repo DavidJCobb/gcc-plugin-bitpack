@@ -45,6 +45,7 @@ SOURCES=\
         src/gcc_wrappers/type/record.cpp \
         src/gcc_wrappers/type/untagged_union.cpp \
         src/gcc_wrappers/builtin_types.cpp \
+        src/gcc_wrappers/chain_node.cpp \
         src/gcc_wrappers/list_node.cpp \
         src/gcc_wrappers/statement_list.cpp \
         src/gcc_wrappers/value.cpp \
@@ -108,6 +109,16 @@ testcase_split_struct: $(PLUGIN)
 .PHONY: testcase_split_array
 testcase_split_array: TESTDIR=testcases/split_array
 testcase_split_array: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
+
+.PHONY: testcase_anon_struct
+testcase_anon_struct: TESTDIR=testcases/anon_struct
+testcase_anon_struct: $(PLUGIN)
 	- rm -f testcases/*.o
 	- rm -f $(TESTDIR)/*.o
 	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases

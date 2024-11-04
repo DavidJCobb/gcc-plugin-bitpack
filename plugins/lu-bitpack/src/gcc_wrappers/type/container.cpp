@@ -4,7 +4,7 @@
 namespace gcc_wrappers::type {
    WRAPPED_TREE_NODE_BOILERPLATE(container)
    
-   list_node container::all_members() const {
-      return list_node(TYPE_FIELDS(this->_node));
+   chain_node container::all_members() const {
+      return chain_node(TYPE_FIELDS(this->_node));
    }
 }

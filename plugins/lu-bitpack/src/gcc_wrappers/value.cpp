@@ -18,6 +18,7 @@ namespace gcc_wrappers {
    }
    
    value value::access_member(const char* name) {
+      assert(name != nullptr);
       auto vt = this->value_type();
       assert(vt.is_record() || vt.is_union());
       

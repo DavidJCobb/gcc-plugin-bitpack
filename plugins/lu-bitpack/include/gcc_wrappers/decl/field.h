@@ -2,8 +2,11 @@
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/list_node.h"
 #include "gcc_wrappers/type/base.h"
-#include "gcc_wrappers/type/container.h"
 #include "gcc_wrappers/_boilerplate.define.h"
+
+namespace gcc_wrappers::type {
+   class container;
+}
 
 namespace gcc_wrappers {
    namespace decl {

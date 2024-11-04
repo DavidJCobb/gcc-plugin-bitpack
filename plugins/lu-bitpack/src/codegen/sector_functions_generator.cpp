@@ -9,6 +9,7 @@
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/ternary.h"
 #include "gcc_wrappers/flow/simple_for_loop.h"
+#include "gcc_wrappers/type/helpers/make_function_type.h"
 #include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/statement_list.h"
 #include "lu/strings/printf_string.h"

@@ -57,6 +57,10 @@ namespace bitpacking::member_options {
             integral_data,
             string_data
          > data;
+         struct {
+            std::string pre_pack;
+            std::string post_unpack;
+         } transforms;
          
          // assert(!src.omit_from_bitpacking);
          void resolve(
