@@ -163,9 +163,8 @@ namespace pragma_handlers {
          if (!gs.xml_output_path.empty()) {
             const auto& path = gs.xml_output_path;
             if (path.ends_with(".xml")) {
-               xmlgen::sector_xml_generator xml_gen(gs.global_options.computed);
-               xml_gen.identifiers_to_serialize = identifier_groups;
-               xml_gen.run();
+               xmlgen::sector_xml_generator xml_gen;
+               xml_gen.run(generator);
                
                std::ofstream stream(path.c_str());
                assert(!!stream);

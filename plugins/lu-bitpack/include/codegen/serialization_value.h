@@ -15,8 +15,11 @@ namespace codegen {
       void assert_valid() const;
       std::string describe() const;
       
+      // accessors on structs:
       serialization_value access_member(const member_descriptor&);
-      serialization_value access_nth(value_pair n);
+      
+      // accessors on arrays:
+      serialization_value access_array_slice(value_pair n);
       serialization_value access_nth(size_t n);
       
       size_t bitcount() const;

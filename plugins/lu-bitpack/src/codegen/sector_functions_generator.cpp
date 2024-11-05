@@ -69,10 +69,23 @@ namespace codegen {
       this->functions.read_root = {};
       this->functions.save_root = {};
    }
-   void sector_functions_generator::in_progress_sector::next() {
+   void sector_functions_generator::in_progress_sector::record_serialized_value_path(const serialization_value_path& path) {
+      this->current_report.serialized_object_paths.push_back(path);
+   }
+   void sector_functions_generator::in_progress_sector::commit_to_owner() {
       this->assert_sane();
+      
+      // Finalize generated data.
       this->functions.commit();
+      
+      // Store generated data.
       this->owner.sector_functions.push_back(this->functions);
+      this->owner.reports.by_sector.push_back(this->current_report);
+   }
+   void sector_functions_generator::in_progress_sector::next() {
+      this->commit_to_owner();
+      
+      // Start next sector.
       ++this->id;
       this->bits_remaining = this->owner.global_options.sectors.size_per * 8;
       if (this->id >= this->owner.global_options.sectors.max_count) {
@@ -81,6 +94,10 @@ namespace codegen {
             (int)this->id
          ));
       }
+      //
+      // ...including starting with fresh data.
+      //
+      this->current_report = {};
       this->make_functions();
    }
    
@@ -234,7 +251,7 @@ namespace codegen {
       
       expr_pair to_append;
       {
-         auto element = value.access_nth(value_pair{
+         auto element = value.access_array_slice(value_pair{
             .read = read_loop.counter.as_value(),
             .save = save_loop.counter.as_value()
          });
@@ -655,8 +672,9 @@ namespace codegen {
    }
    
    void sector_functions_generator::_serialize_value_to_sector(
-      in_progress_sector& sector,
-      serialization_value object
+      in_progress_sector&      sector,
+      serialization_value      object,
+      serialization_value_path object_path
    ) {
       sector.assert_sane();
       
@@ -666,6 +684,7 @@ namespace codegen {
       
       const size_t bitcount = object.bitcount();
       if (bitcount <= sector.bits_remaining) {
+         sector.record_serialized_value_path(object_path);
          sector.functions.append(this->_serialize(state_ptr, object));
          sector.bits_remaining -= bitcount;
          sector.assert_sane();
@@ -685,7 +704,7 @@ namespace codegen {
          assert(info != nullptr);
          for(const auto& m : info->members) {
             auto v = object.access_member(m);
-            this->_serialize_value_to_sector(sector, v);
+            this->_serialize_value_to_sector(sector, v, object_path.to_member(m));
          }
          sector.assert_sane();
          return;
@@ -730,6 +749,7 @@ namespace codegen {
                   auto excess = i + can_fit - extent;
                   can_fit -= excess;
                }
+               sector.record_serialized_value_path(object_path.to_array_slice(i, can_fit));
                sector.functions.append(
                   this->_serialize_array_slice(state_ptr, object, i, can_fit)
                );
@@ -746,7 +766,7 @@ namespace codegen {
             //
             // Split the element that won't fit across a sector boundary.
             //
-            this->_serialize_value_to_sector(sector, object.access_nth(i));
+            this->_serialize_value_to_sector(sector, object.access_nth(i), object_path.to_array_element(i));
             ++i;
             sector.assert_sane();
             //
@@ -796,7 +816,7 @@ namespace codegen {
          //
          throw std::runtime_error(message);
       }
-      this->_serialize_value_to_sector(sector, object);
+      this->_serialize_value_to_sector(sector, object, object_path);
       sector.assert_sane();
    }
    void sector_functions_generator::run() {
@@ -841,11 +861,13 @@ namespace codegen {
             value.save = decl.as_value();
             value.descriptor = descriptor;
             
-            this->_serialize_value_to_sector(sector, value);
+            serialization_value_path value_path;
+            value_path.path = name;
+            
+            this->_serialize_value_to_sector(sector, value, value_path);
          }
       }
-      sector.functions.commit();
-      this->sector_functions.push_back((func_pair)sector.functions); // cast to slice on purpose
+      sector.commit_to_owner();
       
       this->_make_top_level_functions();
    }

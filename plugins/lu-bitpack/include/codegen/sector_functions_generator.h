@@ -11,6 +11,7 @@
 #include "codegen/value_pair.h"
 #include "codegen/in_progress_func_pair.h"
 #include "codegen/serialization_value.h"
+#include "codegen/serialization_value_path.h"
 #include "codegen/descriptors.h"
 
 namespace codegen {
@@ -20,6 +21,9 @@ namespace codegen {
          ~sector_functions_generator();
          
       public:
+         struct sector_report {
+            std::vector<serialization_value_path> serialized_object_paths;
+         };
          struct struct_info {
             std::unique_ptr<struct_descriptor> descriptor;
             func_pair whole_struct_functions;
@@ -39,11 +43,21 @@ namespace codegen {
          // Outputs:
          std::vector<func_pair> sector_functions;
          func_pair top_level_functions; // void read(const buffer_byte_type* src, int sector_id), etc.
+         struct {
+            std::vector<sector_report> by_sector;
+         } reports;
          
       public:
          func_pair get_or_create_whole_struct_functions(const struct_descriptor&);
          
          struct_info& info_for_struct(gcc_wrappers::type::record);
+         
+         template<typename Functor>
+         void for_each_seen_struct_descriptor(Functor&& functor) const {
+            for(auto& pair : this->_struct_info) {
+               functor(std::as_const(*pair.second.descriptor.get()));
+            }
+         }
          
       protected:
          std::unordered_map<gcc_wrappers::type::record, struct_info> _struct_info;
@@ -77,6 +91,8 @@ namespace codegen {
             size_t                id = 0;
             size_t                bits_remaining = 0;
             in_progress_func_pair functions;
+            //
+            sector_report current_report;
             
             // The per-sector read and save functions both use the signature:
             // void f(struct lu_BitstreamState*)
@@ -86,10 +102,16 @@ namespace codegen {
             bool empty() const;
             bool has_functions() const;
             void make_functions();
+            void record_serialized_value_path(const serialization_value_path&);
+            void commit_to_owner();
             void next();
          };
          
-         void _serialize_value_to_sector(in_progress_sector&, serialization_value);
+         void _serialize_value_to_sector(
+            in_progress_sector&,
+            serialization_value,
+            serialization_value_path
+         );
          void _make_top_level_functions();
          
       public:

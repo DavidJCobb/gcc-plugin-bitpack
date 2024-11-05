@@ -1,16 +1,25 @@
 #include "xmlgen/sector_xml_generator.h"
-#include "gcc_wrappers/decl/type_def.h"
-#include "gcc_wrappers/decl/variable.h"
-#include "bitpacking/heritable_options.h"
 #include <charconv> // std::to_chars
+#include "lu/strings/printf_string.h"
+#include "bitpacking/heritable_options.h"
+#include "codegen/descriptors.h"
+#include "codegen/sector_functions_generator.h"
+#include "codegen/serialization_value_path.h"
+
+// For reporting the C types of the to-be-serialized top-level variables:
+#include <gcc-plugin.h>
 #include <c-family/c-common.h> // lookup_name
 #include <stringpool.h> // get_identifier
+
+#include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/record.h"
 namespace {
    namespace gw {
       using namespace gcc_wrappers;
    }
 }
-#include <diagnostic.h> // debug
 
 namespace {
    using heritable_options           = bitpacking::heritable_options;
@@ -141,201 +150,64 @@ namespace xmlgen {
       
       this->heritables[std::string(name)] = std::move(ptr);
    }
-   void sector_xml_generator::_make_heritable_xml(std::string_view name) {
-      const auto* options = heritable_options_stockpile::get_fast().options_by_name(name);
-      assert(options != nullptr);
-      this->_make_heritable_xml(name, *options);
-   }
-   
-   void sector_xml_generator::_on_struct_seen(gcc_wrappers::type::record type) {
-      auto& data = this->whole_struct_xml[type];
-      if (data.descriptor != nullptr) {
-         return;
-      }
-      
-      data.descriptor = std::make_unique<codegen::struct_descriptor>(this->global_options, type);
-      
-      auto* root = (data.root = std::make_unique<xml_element>()).get();
-      auto& desc = *data.descriptor.get();
-      
-      root->node_name = "struct-type";
-      root->set_attribute("name", type.name());
-      root->set_attribute("c-type", type.pretty_print());
-      
-      for(auto& m_descriptor : desc.members) {
-         root->append_child(std::move(_make_whole_data_member(m_descriptor)));
-      }
-   }
-   void sector_xml_generator::_on_struct_seen(const serialization_value& value) {
-      _on_struct_seen(value.as_member().type().as_record());
-   }
-   const codegen::struct_descriptor* sector_xml_generator::_descriptor_for_struct(const serialization_value& value) {
-      assert(value.is_struct());
-      if (value.is_top_level_struct()) {
-         return &value.as_top_level_struct();
-      }
-      return this->whole_struct_xml[value.as_member().type().as_record()].descriptor.get();
-   }
-   
-   std::unique_ptr<xml_element> sector_xml_generator::_serialize_array_slice(
-      const serialization_value& value,
-      size_t start,
-      size_t count
-   ) {
-      // e.g.
-      // <value path="sStructA.elements[0:5]" /> <!-- indices in the range [0, 5) -->
-      // <value path="sStructA.elements[0]" />
-      auto path = value.access_nth(start, count).path;
-      
-      auto ptr = std::make_unique<xml_element>();
-      ptr->node_name = "value";
-      ptr->set_attribute("path", path);
-      return ptr;
-   }
-   std::unique_ptr<xml_element> sector_xml_generator::_serialize(const serialization_value& value) {
-      auto ptr = std::make_unique<xml_element>();
-      ptr->node_name = "value";
-      ptr->set_attribute("path", value.path);
-      return ptr;
-   }
 
-   void sector_xml_generator::_serialize_value_to_sector(
-      in_progress_sector&        sector,
-      const serialization_value& object
-   ) {
-      if (object.is_top_level_struct()) {
-         this->_on_struct_seen(object.as_top_level_struct().type);
-      } else if (object.is_member()) {
-         auto type = object.as_member().type();
-         if (type.is_record())
-            this->_on_struct_seen(type.as_record());
-      }
-      
-      const size_t bitcount = object.bitcount();
-      if (bitcount <= sector.bits_remaining) {
-         sector.root->append_child(this->_serialize(object));
-         sector.bits_remaining -= bitcount;
-         return;
-      }
-      
-      //
-      // The object doesn't fit. We need to serialize it in fragments, 
-      // splitting it across a sector boundary.
-      //
-      
-      //
-      // Handle top-level and nested struct members:
-      //
-      if (object.is_struct()) {
-         const auto* info = _descriptor_for_struct(object);
-         assert(info != nullptr);
-         for(const auto& m : info->members) {
-            auto v = object.access_member(m);
-            this->_serialize_value_to_sector(sector, v);
-         }
-         return;
-      }
-      
-      //
-      // Handle arrays:
-      //
-      if (object.is_array()) {
-         const auto& info = object.as_member();
-         
-         size_t elem_size = info.element_size_in_bits();
-         size_t i         = 0;
-         size_t extent    = info.array_extent();
-         while (i < extent) {
-            //
-            // Generate a loop to serialize as many elements as can fit.
-            //
-            size_t can_fit = sector.bits_remaining / elem_size;
-            if (can_fit > 1) {
-               if (i + can_fit > extent) {
-                  auto excess = i + can_fit - extent;
-                  can_fit -= excess;
-               }
-               sector.root->append_child(
-                  this->_serialize_array_slice(object, i, can_fit)
-               );
-               {
-                  size_t consumed = can_fit * elem_size;
-                  assert(consumed <= sector.bits_remaining);
-                  sector.bits_remaining -= consumed;
-               }
-               i += can_fit;
-               if (i >= extent)
-                  break;
-            }
-            //
-            // Split the element that won't fit across a sector boundary.
-            //
-            this->_serialize_value_to_sector(sector, object.access_nth(i));
-            ++i;
-            //
-            // Repeat this process until the whole array makes it in.
-            //
-         }
-         return;
-      }
-      
-      //
-      // Handle indivisible values. We need to advance to the next sector to fit 
-      // them.
-      // 
-      sector.next();
-      //
-      // Retry in the new sector.
-      //
-      this->_serialize_value_to_sector(sector, object);
-   }
-   void sector_xml_generator::run() {
-      in_progress_sector sector(*this);
-      sector.root = std::make_unique<xml_element>();
-      sector.root->node_name = "sector";
-      sector.root->set_attribute("id", "0");
-      sector.id = 0;
-      sector.bits_remaining = this->global_options.sectors.size_per * 8;
-      
+   void sector_xml_generator::run(const codegen::sector_functions_generator& gen) {
       heritable_options_stockpile::get().for_each_option([this](const std::string& name, const heritable_options& options) {
          this->_make_heritable_xml(name, options);
       });
       
-      for(size_t i = 0; i < this->identifiers_to_serialize.size(); ++i) {
-         auto& list = this->identifiers_to_serialize[i];
-         if (i > 0 && !sector.empty()) {
-            sector.next();
+      gen.for_each_seen_struct_descriptor([this](const codegen::struct_descriptor& descriptor) {
+         auto root = std::make_unique<xml_element>();
+         root->node_name = "struct-type";
+         root->set_attribute("name",   descriptor.type.name());
+         root->set_attribute("c-type", descriptor.type.pretty_print());
+         
+         for(auto& m_descriptor : descriptor.members) {
+            root->append_child(std::move(_make_whole_data_member(m_descriptor)));
          }
          
-         auto& dst_list = this->serialized_identifiers.emplace_back();
-         
-         for(auto& name : list) {
+         this->per_type_xml.push_back(std::move(root));
+      });
+      
+      for(const auto& src_group : gen.identifiers_to_serialize) {
+         auto& dst_group = this->serialized_identifiers.emplace_back();
+         for(const auto& name : src_group) {
             auto node = lookup_name(get_identifier(name.c_str()));
             assert(node != NULL_TREE);
             assert(TREE_CODE(node) == VAR_DECL);
             
             auto decl = gw::decl::variable::from_untyped(node);
             auto type = decl.value_type();
-            {
-               auto elem = std::make_unique<xml_element>();
-               elem->node_name = "variable";
-               elem->set_attribute("name",   name);
-               elem->set_attribute("c-type", type.pretty_print());
-               dst_list.emplace_back() = std::move(elem);
-            }
-            assert(type.is_record());
-            this->_on_struct_seen(type.as_record());
             
-            const auto* descriptor = this->whole_struct_xml[type.as_record()].descriptor.get();
-            
-            serialization_value value;
-            value.descriptor = descriptor;
-            value.path       = name;
-            
-            this->_serialize_value_to_sector(sector, value);
+            auto elem = std::make_unique<xml_element>();
+            elem->node_name = "variable";
+            elem->set_attribute("name",   name);
+            elem->set_attribute("c-type", type.pretty_print());
+            dst_group.push_back(std::move(elem));
          }
       }
-      this->per_sector_xml.push_back(std::move(sector.root));
+      
+      {
+         auto& src_list = gen.reports.by_sector;
+         auto& dst_list = this->per_sector_xml;
+         auto  size     = src_list.size();
+         dst_list.reserve(size);
+         for(size_t i = 0; i < size; ++i) {
+            const auto& report = src_list[i];
+            
+            auto root = std::make_unique<xml_element>();
+            root->node_name = "sector";
+            root->set_attribute("id", lu::strings::printf_string("%u", (int)i));
+            
+            for(const auto& path : report.serialized_object_paths) {
+               auto ptr = std::make_unique<xml_element>();
+               ptr->node_name = "value";
+               ptr->set_attribute("path", path.path);
+               root->append_child(std::move(ptr));
+            }
+            dst_list.push_back(std::move(root));
+         }
+      }
    }
 
    std::string sector_xml_generator::bake() const {
@@ -352,11 +224,11 @@ namespace xmlgen {
          }
       }
       {
-         auto& list = this->whole_struct_xml;
+         auto& list = this->per_type_xml;
          if (!list.empty()) {
             out += "   <types>\n";
-            for(const auto& pair : list) {
-               out += pair.second.root->to_string(2);
+            for(const auto& node : list) {
+               out += node->to_string(2);
                out += '\n';
             }
             out += "   </types>\n";
@@ -394,23 +266,5 @@ namespace xmlgen {
       }
       out += "</data>";
       return out;
-   }
-   
-   //
-   // sector_xml_generator::in_progress_sector
-   //
-   
-   bool sector_xml_generator::in_progress_sector::empty() const {
-      return this->bits_remaining == this->owner.global_options.sectors.size_per * 8;
-   }
-   void sector_xml_generator::in_progress_sector::next() {
-      this->owner.per_sector_xml.push_back(std::move(this->root));
-      ++this->id;
-      this->bits_remaining = this->owner.global_options.sectors.size_per * 8;
-      assert(this->id < this->owner.global_options.sectors.max_count);
-      //
-      this->root = std::make_unique<xml_element>();
-      this->root->node_name = "sector";
-      this->root->set_attribute("id", _to_chars(this->id));
    }
 }

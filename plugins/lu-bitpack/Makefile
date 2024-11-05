@@ -8,6 +8,7 @@ SOURCES=\
         src/codegen/in_progress_func_pair.cpp \
         src/codegen/sector_functions_generator.cpp \
         src/codegen/serialization_value.cpp \
+        src/codegen/serialization_value_path.cpp \
         src/gcc_helpers/dump_function.cpp \
         src/gcc_helpers/extract_pragma_kv_args.cpp \
         src/gcc_helpers/stringify_fully_qualified_accessor.cpp \

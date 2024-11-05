@@ -34,7 +34,7 @@ namespace codegen {
       out.assert_valid();
       return out;
    }
-   serialization_value serialization_value::access_nth(value_pair n) {
+   serialization_value serialization_value::access_array_slice(value_pair n) {
       assert(is_array());
       assert(is_member());
       
@@ -48,10 +48,12 @@ namespace codegen {
    }
    serialization_value serialization_value::access_nth(size_t n) {
       const auto& ty = gw::builtin_types::get();
-      return access_nth(value_pair{
-         .read = gw::expr::integer_constant(ty.basic_int, n),
-         .save = gw::expr::integer_constant(ty.basic_int, n),
-      });
+      return access_array_slice(
+         value_pair{
+            .read = gw::expr::integer_constant(ty.basic_int, n),
+            .save = gw::expr::integer_constant(ty.basic_int, n),
+         }
+      );
    }
    
    size_t serialization_value::bitcount() const {
