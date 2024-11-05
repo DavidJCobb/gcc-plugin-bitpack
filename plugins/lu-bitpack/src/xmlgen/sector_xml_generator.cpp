@@ -91,7 +91,7 @@ namespace xmlgen {
             {
                auto& options = computed.string_options();
                ptr->set_attribute("length", _to_chars(options.length));
-               ptr->set_attribute("with_terminator", options.with_terminator ? "true" : "false");
+               ptr->set_attribute("with-terminator", options.with_terminator ? "true" : "false");
             }
             break;
          case bitpacking::member_kind::structure:
@@ -108,6 +108,16 @@ namespace xmlgen {
          default:
             assert(false && "unreachable");
       }
+      {
+         auto& xfrm = member.bitpacking_options.requested.transforms;
+         if (auto& v = xfrm.pre_pack; !v.empty()) {
+            ptr->set_attribute("pre-pack-transform", v);
+         }
+         if (auto& v = xfrm.post_unpack; !v.empty()) {
+            ptr->set_attribute("post-unpack-transform", v);
+         }
+      }
+      
       for(auto extent : member.array_extents) {
          auto rank_elem = std::make_unique<xml_element>();
          rank_elem->node_name = "array-rank";

@@ -41,6 +41,82 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 
 ### Generated XML
 
-* The serialized sectors contain `value` elements whose `path` attributes indicate the value being serialized. These are *mostly* in C syntax (e.g. `foo.bar[3]`), except that for array slices, we use Python slice notation (i.e. `foo[start:end]` to indicate serialization of all array elements in the range `[start, end)`).
-  * All struct types have their members listed as `struct-type` elements and their children. You can correlate the `value` nodes in the sectors with the struct definitions to know what's being serialized when.
-* TODO: document everything else
+When running the plug-in, you can specify the path to an XML file as `-fplugin-arg-lu_bitpack-xml-out=$(DESIRED_PATH)/test.xml`. If you do so, then every time the plug-in generates serialization code, it will write information about the computed bitpacking format to the specified XML file. (Note that the `.xml` file extension is required and case-sensitive.)
+
+The XML data has a single root `data` node which may contain the following children: `heritables`, `types`, `variables`, and `sectors`.
+
+#### Heritables
+
+All sets of heritable options are output as `heritable` elements within the `data>heritables` element. The following attributes are present on all such elements:
+
+<dl>
+   <dt><code>name</code></dt>
+      <dd>The name of this set of heritable options. Must be unique.</dd>
+   <dt><code>type</code></dt>
+      <dd>The type of this set of heritable options: <code>integer</code> or <code>string</code>.</dd>
+</dl>
+
+The following attributes may also be present on all such elements:
+
+<dl>
+   <dt><code>pre-pack-transform</code></dt>
+      <dd>The identifier of a function that should be used to transform the value before it is packed and serialized.</dd>
+   <dt><code>post-unpack-transform</code></dt>
+      <dd>The identifier of a function that should be used to transform the value after it is unpacked and before it is stored.</dd>
+</dl>
+
+For integer-type options, the following attributes may be present:
+
+<dl>
+   <dt><code>bitcount</code></dt>
+      <dd>An integer constant representing the requested bitcount for fields inheriting these options.</dd>
+   <dt><code>min</code></dt>
+      <dd>An integer constant representing the minimum value for fields inheriting these options.</dd>
+   <dt><code>max</code></dt>
+      <dd>An integer constant representing the maximum value for fields inheriting these options.</dd>
+</dl>
+
+For string-type options, the following attributes may be present:
+
+<dl>
+   <dt><code>length</code></dt>
+      <dd>An integer constant representing the expected length of string fields inheriting these options.</dd>
+   <dt><code>with-terminator</code></dt>
+      <dd>The value <code>true</code> or <code>false</code>, indicating whether a string field must have a null terminator. (If so, the null terminator is not counted in the <code>length</code>.)</dd>
+</dl>
+
+#### Types
+
+A `struct-type` element denotes any non-anonymous `struct`-keyword type seen during code generation, and will have the following attributes:
+
+<dl>
+   <dt><code>name</code></dt>
+      <dd>The unqualified name of the type.</dd>
+   <dt><code>c-type</code></dt>
+      <dd>The name of the type as produced by <code>gcc_wrappers::type::base::pretty_print</code>. This could potentially include qualifiers such as <code>volatile</code>.</dd>
+</dl>
+
+A `struct-type` element's children represent an ordered list of the struct's members. If the struct has an anonymous struct member, then the anonymous struct won't be listed; rather, its children are transitively included.
+
+All member elements possess a `name` attribute indicating the field name, and a `c-type` attribute indicating the field's C language type.
+
+Members that inherit any set of heritable options will have an `inherit` attribute indicating the name of the heritable option set. Members whose bitpacking options indicate pre-pack or post-unpack transform functions may have `pre-pack-transform` and `post-unpack-transform` attributes noting the identifiers of those functions.
+
+Additionally, if a member is an array, it will possess at least one `array-rank` child element, whose `extent` attribute indicates the array extent; for multi-dimensional arrays, these child elements are ordered matching left-to-right ordering of the array extents. (If a field is marked to be serialized as a string, then the deepest-nested array rank is not considered "an array." For example, if `char names[5][10]` is marked as a string, then this is considered a one-dimensional array, extent five, of ten-character strings; not a two-dimensional array.)
+
+The node name of a member element varies depending on its type, and some attributes are also type-specific:
+
+* `boolean` elements represent fields that are serialized as 1-bit booleans.
+* `integer` elements represent fields that are serialized as integer values.
+  * The `bitcount` attribute indicates the final used bitcount.
+  * The `min` attribute indices the final used minimum value, such that in a bitstream, the serialized value will be *v - min*.
+* `opaque-buffer` elements represent fields that are serialized as opaque buffers.
+  * The `bytecount` attribute indicates the buffer size in bytes.
+* `pointer` elements represent pointer fields.
+  * The `bitcount` attribute indicates the final used bitcount.
+* `string` elements represent string fields.
+  * The `length` attribute indicates the final serialized length in characters.
+  * The `with-terminator` attribute indicates whether the string requires a null terminator in memory. The null terminator is only serialized into the bitstream if it comes early (i.e. if a string's max length is 5, then "Lucia" does not serialize an 0x00 byte).
+* `struct` elements represent nested structs.
+* `union` elements represent tagged unions. (Support for these is not implemented yet.)
+  * The `tag-type` attribute is either `external` or `internal`.
