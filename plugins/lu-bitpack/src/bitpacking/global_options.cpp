@@ -7,6 +7,8 @@
 #include "lu/strings/printf_string.h"
 #include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/type/helpers/lookup_by_name.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/array.h"
 
 namespace bitpacking::global_options {
    void requested::consume_pragma_kv_set(const gcc_helpers::pragma_kv_set& set) {
@@ -543,5 +545,52 @@ namespace bitpacking::global_options {
       }
       
       // Done.
+   }
+   
+   //
+   // Helpers:
+   //
+   
+   bool computed::type_is_boolean(const gw::type::base type) const {
+      return type.is_type_or_transitive_typedef_thereof(this->types.boolean);
+   }
+   bool computed::type_is_string(const gw::type::base type) const {
+      if (!type.is_array())
+         return false;
+      return type.as_array().value_type() == this->types.string_char;
+   }
+   bool computed::type_is_string_or_array_thereof(const gw::type::base type) const {
+      if (!type.is_array())
+         return false;
+      gw::type::array at = type.as_array();
+      gw::type::base  et = at.value_type();
+      do {
+         if (!et.is_array()) {
+            if (et == this->types.string_char) {
+               return true;
+            }
+            break;
+         }
+         at = et.as_array();
+         et = at.value_type();
+      } while (true);
+      return false;
+   }
+   
+   std::optional<size_t> computed::string_extent_for_type(const gw::type::base type) const {
+      assert(type.is_array() && "invalid argument");
+      auto at = type.as_array();
+      auto et = at.value_type();
+      do {
+         if (!et.is_array()) {
+            if (et == global.types.string_char) {
+               return at.extent();
+            }
+            break;
+         }
+         at = et.as_array();
+         et = at.value_type();
+      } while (true);
+      assert(false && "invalid argument");
    }
 }

@@ -45,10 +45,15 @@ namespace gcc_wrappers {
          
          size_t size() const;
          
-         tree untyped_back();
+         tree untyped_back(); // last k/v pair
          tree untyped_nth_kv_pair(size_t n);
          tree untyped_nth_key(size_t n);
          tree untyped_nth_value(size_t n);
+         
+         // Returns NULL_TREE on failure or if it's the actual value.
+         tree untyped_value_by_untyped_key(tree);
+         
+         tree untyped_kv_pair_for_untyped_value(tree);
          
          // run the functor for each item's TREE_PURPOSE
          template<typename Functor>
@@ -61,6 +66,19 @@ namespace gcc_wrappers {
          // run the functor for each item's TREE_PURPOSE and TREE_VALUE
          template<typename Functor>
          void for_each_kv_pair(Functor&&);
+         
+         //
+         // Functions for mutating a list:
+         //
+         
+         void concat(list_node);
+         
+         // Only call this on the list head. Sets `this->_node` to the 
+         // newly-created pair node.
+         void insert_at_head(tree key, tree value);
+         
+         // assert(!empty());
+         void insert_after(tree key, tree value);
    };
 }
 

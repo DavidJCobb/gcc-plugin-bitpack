@@ -124,13 +124,14 @@ gw::decl::function make_function(gw::type type) {
 
 ## Classes offered
 
-* `list_node` is a wrapper around tree lists &mdash; not to be confused with tree chains. "Lists" in this context are key/value maps wherein each list node has a key (`TREE_PURPOSE(node)`) and a value (`TREE_VALUE(node)`).
+* `chain_node` is a wrapper around tree chains, which act as linked lists.
+* `list_node` is a wrapper around tree lists, which, despite the name, act as key/value maps. (They are linked lists of "pair" nodes.)
 * `statement_list` is a wrapper around statement lists, with helper functions for appending expressions and other lists.
 * `value` is an abstraction for any node that can be used in expressions. This can include expressions themselves, or it can include certain kinds of declarations, such as variable and function-parameter declarations.
 * `decl::base` represents any `*_DECL` node. Subclasses exist for some declaration types. Declarations that can be used as values offer an `as_value()` member function which converts them to a `value`.
 * `expr::base` represents any `*_EXPR` node. Subclasses exist for some expression types. All expressions are considered usable as values, so `expr::base` subclasses `value`.
 * `type::base` represents any `*_TYPE` node. Subclasses exist for specific varieties.
-* Structures in the `flow` namespace exist as helpers to generate things like `for` loops.
+* Structures in the `flow` namespace exist as helpers to generate things like `for` loops. They are not wrappers in themselves, but do use the wrappers.
 
 The wrappers for types, values, declarations, and expressions should be treated similarly to pointers: you can use them to wrap arbitrary nodes (e.g. `decl::base::from_untyped(node)`), and they will assert that the node is either `NULL_TREE` or a node of the correct `TREE_CODE`. You can check if a wrapper is empty by calling `empty()` on it.
 

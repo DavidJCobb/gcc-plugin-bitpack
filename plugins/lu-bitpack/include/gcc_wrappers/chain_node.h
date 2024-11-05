@@ -49,6 +49,15 @@ namespace gcc_wrappers {
          
          template<typename Functor>
          void for_each(Functor&&);
+         
+         bool contains_untyped(tree) const;
+         
+         //
+         // Functions for mutating a chain:
+         //
+         
+         void concat(chain_node);
+         void reverse();
    };
 }
 

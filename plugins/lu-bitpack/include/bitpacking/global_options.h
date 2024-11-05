@@ -1,5 +1,6 @@
 #pragma once
 #include <limits>
+#include <optional>
 #include <string>
 #include "gcc_helpers/extract_pragma_kv_args.h"
 #include "gcc_wrappers/decl/function.h"
@@ -79,6 +80,23 @@ namespace bitpacking {
             } types;
             
             void resolve(const requested&);
+            
+            //
+            // Helpers:
+            //
+            
+            bool type_is_boolean(const gcc_wrappers::type::base) const;
+            bool type_is_string(const gcc_wrappers::type::base) const;
+            bool type_is_string_or_array_thereof(const gcc_wrappers::type::base) const;
+            
+            // For any type that would pass `type_is_string_or_array_thereof`, 
+            // finds the underlying "string" type and returns its extent (which 
+            // will be its length if it requires a null terminator). For example, 
+            // given `char names[5][10]` and `char` as our string character type, 
+            // this returns 10.
+            //
+            // Fails an assertion if the type is not a string or array thereof.
+            std::optional<size_t> string_extent_for_type(const gcc_wrappers::type::base) const;
       };
    }
 }

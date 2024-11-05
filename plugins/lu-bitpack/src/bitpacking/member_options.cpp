@@ -15,44 +15,6 @@ namespace {
    namespace gw {
       using namespace gcc_wrappers;
    }
-   
-   static bool type_is_string_or_array_thereof(
-      const bitpacking::global_options::computed& global,
-      gw::type::array type
-   ) {
-      gw::type::array at = type;
-      gw::type::base  et = at.value_type();
-      do {
-         if (!et.is_array()) {
-            if (et == global.types.string_char) {
-               return true;
-            }
-            break;
-         }
-         at = et.as_array();
-         et = at.value_type();
-      } while (true);
-      return false;
-   }
-   
-   static std::optional<size_t> string_length(
-      const bitpacking::global_options::computed& global,
-      gw::type::array type
-   ) {
-      auto at = type;
-      auto et = at.value_type();
-      do {
-         if (!et.is_array()) {
-            if (et == global.types.string_char) {
-               return at.extent();
-            }
-            break;
-         }
-         at = et.as_array();
-         et = at.value_type();
-      } while (true);
-      return false;
-   }
 }
 
 namespace bitpacking::member_options {
@@ -362,10 +324,7 @@ namespace bitpacking::member_options {
             }
             throw std::runtime_error("contradictory bitpacking options (opaque buffer AND string)");
          }
-         if (
-            !member_type.is_array() ||
-            !type_is_string_or_array_thereof(global, member_type.as_array())
-         ) {
+         if (!global.type_is_string_or_array_thereof(member_type)) {
             throw std::runtime_error("string bitpacking options applied to a data member that is not a string or array thereof");
          }
          
@@ -389,7 +348,7 @@ namespace bitpacking::member_options {
             }
          }
          {
-            auto opt = string_length(global, member_type.as_array());
+            auto opt = global.string_extent_for_type(member_type);
             if (!opt.has_value()) {
                throw std::runtime_error("string bitpacking options applied to a variable-length array; VLAs are not supported");
             }
@@ -531,7 +490,7 @@ namespace bitpacking::member_options {
          }
          return;
       } else {
-         if (value_type.is_type_or_transitive_typedef_thereof(global.types.boolean)) {
+         if (global.type_is_boolean(value_type)) {
             if (!opt_min.has_value() && !opt_max.has_value()) {
                this->kind = member_kind::boolean;
                dst.min      = 0;

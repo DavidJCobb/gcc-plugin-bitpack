@@ -39,22 +39,11 @@ namespace gcc_wrappers {
    }
    
    size_t list_node::size() const {
-      size_t i = 0;
-      for(auto item = this->_node; item != NULL_TREE; item = TREE_CHAIN(item))
-         ++i;
-      return i;
+      return list_length(this->_node);
    }
    
    tree list_node::untyped_back() {
-      if (empty())
-         return NULL_TREE;
-      tree item = this->_node;
-      tree next = TREE_CHAIN(item);
-      while (next != NULL_TREE) {
-         item = next;
-         next = TREE_CHAIN(next);
-      }
-      return item;
+      return tree_last(this->_node);
    }
    tree list_node::untyped_nth_kv_pair(size_t n) {
       if (empty())
@@ -72,5 +61,29 @@ namespace gcc_wrappers {
    }
    tree list_node::untyped_nth_value(size_t n) {
       return TREE_VALUE(untyped_nth_kv_pair(n));
+   }
+   
+   tree list_node::untyped_value_by_untyped_key(tree key) {
+      return purpose_member(key, this->_node);
+   }
+   tree list_node::untyped_kv_pair_for_untyped_value(tree value) {
+      return value_member(value, this->_node);
+   }
+   
+   //
+   // Functions for mutating a list:
+   //
+   
+   void list_node::concat(list_node other) {
+      this->_node = chainon(this->_node, other._node);
+   }
+   
+   void list_node::insert_at_head(tree key, tree value) {
+      this->_node = tree_cons(key, value, this->_node);
+   }
+   void list_node::insert_after(tree key, tree value) {
+      assert(!empty());
+      auto item = tree_cons(key, value, TREE_CHAIN(this->_node));
+      TREE_CHAIN(this->_node) = item;
    }
 }
