@@ -1,4 +1,4 @@
-PLUGIN=lu-bitpack.so
+PLUGIN=lu_bitpack.so
 INCDIR=include
 SOURCES=\
         src/bitpacking/global_options.cpp \
@@ -58,6 +58,13 @@ SOURCES=\
         src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/heritable.cpp \
         src/pragma_handlers/set_options.cpp \
+        src/xmlgen/is_valid_name.cpp \
+        src/xmlgen/sector_xml_generator.cpp \
+        src/xmlgen/serialization_value.cpp \
+        src/xmlgen/string_as_cdata.cpp \
+        src/xmlgen/write_string_as_attribute_value.cpp \
+        src/xmlgen/write_string_as_text_content.cpp \
+        src/xmlgen/xml_element.cpp \
         src/lu-bitpack.cpp \
 		$(END)
 
@@ -165,4 +172,15 @@ testcase_insufficient_sector_count: $(PLUGIN)
 	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
 	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
 	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
+
+.PHONY: testcase_xml
+testcase_xml: TESTDIR=testcases/xml
+testcase_xml: PLUGINARGS=-fplugin-arg-lu_bitpack-xml-out=$(TESTDIR)/test.xml
+testcase_xml: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
 	$(TESTDIR)/test

@@ -191,9 +191,11 @@ static void register_pragmas(void* event_data, void* data) {
    );
 }
 
+#include "basic_global_state.h"
+
 int plugin_init (
-   struct plugin_name_args *plugin_info,
-   struct plugin_gcc_version *version
+   struct plugin_name_args*   plugin_info,
+   struct plugin_gcc_version* version
 ) {
    if (!plugin_default_version_check(version, &gcc_version)) {
       std::cerr << "This plug-in is for version " <<
@@ -210,6 +212,20 @@ int plugin_init (
    );
    
    std::cerr << "Loaded plug-in: " << plugin_info->base_name << ".\n";
+   
+   for(int i = 0; i < plugin_info->argc; ++i) {
+      const auto& arg = plugin_info->argv[i];
+      if (std::string_view(arg.key) == "xml-out") {
+         auto& dst = basic_global_state::get().xml_output_path;
+         dst = arg.value;
+         if (dst.ends_with(".xml")) {
+            std::cerr << "lu-bitpack: XML output path set:\n   " << arg.value << "\n";
+         } else {
+            std::cerr << "lu-bitpack: invalid XML output path (" << arg.value << "); must end in .xml; rejected\n";
+         }
+         continue;
+      }
+   }
    
    register_callback(
       plugin_info->base_name,

@@ -30,6 +30,12 @@ namespace gcc_wrappers::decl {
       return DECL_SOURCE_LINE(this->_node);
    }
    
+   bool base::is_at_file_scope() const {
+      auto scope = DECL_CONTEXT(this->_node);
+      if (scope == NULL_TREE)
+         return false;
+      return TREE_CODE(scope) == TRANSLATION_UNIT_DECL;
+   }
    bool base::linkage_status_unknown() const {
       if (empty())
          return false;

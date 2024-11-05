@@ -696,7 +696,27 @@ namespace codegen {
       //
       if (object.is_array()) {
          const auto& info = object.as_member();
-         
+         //
+         // We want to serialize the array in as many contiguous blocks as 
+         // possible, using for-loops for those slices that will fit rather 
+         // than serializing each element one at a time.
+         //
+         // NOTE: There's a bit of an edge-case here, if the first array 
+         // element can't fit entirely in the current sector. If it's an 
+         // indivisible object, then we'll end up generating code that looks 
+         // like this after we split to the next sector:
+         //
+         //    __Lu_bitpack_read_T(state, arr[0]);
+         //    for(int i = 1; i < SIZE; ++i) {
+         //       __Lu_bitpack_read_T(state, arr[i]);
+         //    }
+         //
+         // This isn't ideal if T is an indivisible type, but we don't really 
+         // have a super convenient way to check that from here. (The current 
+         // operational definition of an "indivisible type" is any type that 
+         // we haven't handled by the time we reach the end of this function, 
+         // below this whole branch for handling arrays.)
+         //
          size_t elem_size = info.element_size_in_bits();
          size_t i         = 0;
          size_t extent    = info.array_extent();
@@ -706,6 +726,10 @@ namespace codegen {
             //
             size_t can_fit = sector.bits_remaining / elem_size;
             if (can_fit > 1) {
+               if (i + can_fit > extent) {
+                  auto excess = i + can_fit - extent;
+                  can_fit -= excess;
+               }
                sector.functions.append(
                   this->_serialize_array_slice(state_ptr, object, i, can_fit)
                );
@@ -745,7 +769,7 @@ namespace codegen {
       // Handle indivisible values. We need to advance to the next sector to fit 
       // them.
       // 
-      if (bitcount >= this->global_options.sectors.size_per) {
+      if (bitcount >= this->global_options.sectors.size_per * 8) {
          auto described = gcc_helpers::stringify_fully_qualified_accessor(object.read);
          auto message   = lu::strings::printf_string(
             "failed to serialize data value %<%s%>: the object is too large to fit in any sector, and is not of a type that can be split across multiple sectors",
@@ -758,6 +782,7 @@ namespace codegen {
       //
       try {
          sector.next();
+         sector.assert_sane();
       } catch (std::runtime_error& ex) {
          //
          // Failed to open a new sector: we've hit the max sector count.
@@ -771,7 +796,6 @@ namespace codegen {
          //
          throw std::runtime_error(message);
       }
-      sector.assert_sane();
       this->_serialize_value_to_sector(sector, object);
       sector.assert_sane();
    }

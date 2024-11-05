@@ -23,6 +23,7 @@ namespace gcc_wrappers {
             std::string_view source_file() const;
             int source_line() const;
             
+            bool is_at_file_scope() const;
             bool linkage_status_unknown() const;
             
             bool is_artificial() const;

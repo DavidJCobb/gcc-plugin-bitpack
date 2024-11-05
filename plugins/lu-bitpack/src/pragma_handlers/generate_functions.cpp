@@ -11,6 +11,10 @@
 
 #include "gcc_wrappers/builtin_types.h"
 
+// for generating XML output:
+#include "xmlgen/sector_xml_generator.h"
+#include <fstream>
+
 namespace pragma_handlers {
    extern void generate_functions(cpp_reader* reader) {
    
@@ -155,6 +159,19 @@ namespace pragma_handlers {
             .save = save_name,
          };
          generator.run();
+         
+         if (!gs.xml_output_path.empty()) {
+            const auto& path = gs.xml_output_path;
+            if (path.ends_with(".xml")) {
+               xmlgen::sector_xml_generator xml_gen(gs.global_options.computed);
+               xml_gen.identifiers_to_serialize = identifier_groups;
+               xml_gen.run();
+               
+               std::ofstream stream(path.c_str());
+               assert(!!stream);
+               stream << xml_gen.bake();
+            }
+         }
       } catch (std::runtime_error& ex) {
          std::string message = "%<#pragma lu_bitpack generate_functions%>: ";
          message += ex.what();

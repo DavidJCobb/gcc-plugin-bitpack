@@ -9,6 +9,7 @@ namespace {
    namespace gw {
       using namespace gcc_wrappers;
    }
+   using _bp_options = bitpacking::member_options::computed;
 }
 
 namespace codegen {
@@ -18,6 +19,14 @@ namespace codegen {
    //
    
    size_t member_descriptor::size_in_bits() const {
+      const auto& o = this->bitpacking_options;
+      if (o.is_buffer()) {
+         return o.buffer_options().bytecount * 8;
+      } else if (o.is_integral()) {
+         return o.integral_options().bitcount;
+      } else if (o.is_string()) {
+         return o.string_options().length * 8;
+      }
       return this->value_type.size_in_bits();
    }
    
@@ -47,7 +56,7 @@ namespace codegen {
       return this->target->value_type;
    }
    
-   const bitpacking::member_options::computed& member_descriptor_view::bitpacking_options() const {
+   const _bp_options& member_descriptor_view::bitpacking_options() const {
       return this->target->bitpacking_options;
    }
 
