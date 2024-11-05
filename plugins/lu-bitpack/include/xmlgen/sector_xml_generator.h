@@ -10,6 +10,10 @@
 #include "xmlgen/serialization_value.h"
 #include "xmlgen/xml_element.h"
 
+namespace bitpacking {
+   class heritable_options;
+}
+
 namespace xmlgen {
    //
    // The general behavior of this class should mirror `codegen::sector_functions_generator` 
@@ -27,6 +31,7 @@ namespace xmlgen {
          
          std::unique_ptr<xml_element> _make_whole_data_member(const codegen::member_descriptor&);
          
+         void _make_heritable_xml(std::string_view, const bitpacking::heritable_options&);
          void _make_heritable_xml(std::string_view);
          
          void _on_struct_seen(gcc_wrappers::type::record);
@@ -45,7 +50,7 @@ namespace xmlgen {
          };
          
          std::unique_ptr<xml_element> _serialize_array_slice(
-            const serialization_value&,
+            const  serialization_value&,
             size_t start,
             size_t count
          );
@@ -61,6 +66,9 @@ namespace xmlgen {
          std::vector<std::vector<std::string>> identifiers_to_serialize;
          
          // outputs
+         std::vector<
+            std::vector<std::unique_ptr<xml_element>>
+         > serialized_identifiers;
          std::vector<std::unique_ptr<xml_element>> per_sector_xml;
          std::unordered_map<std::string, std::unique_ptr<xml_element>> heritables;
          std::unordered_map<gcc_wrappers::type::record, whole_struct_data> whole_struct_xml;

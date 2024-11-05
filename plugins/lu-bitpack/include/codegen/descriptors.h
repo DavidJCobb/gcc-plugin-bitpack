@@ -24,7 +24,10 @@ namespace codegen {
          // for arrays only. given `int foo[4][3][2]`, this would be `{ 4, 3, 2 }`.
          std::vector<size_t> array_extents;
          
-         bitpacking::member_options::computed bitpacking_options;
+         struct {
+            bitpacking::member_options::requested requested;
+            bitpacking::member_options::computed  computed;
+         } bitpacking_options;
          
          size_t size_in_bits() const; // given int foo[4][3][2], this is the bitcount of any foo[x][y][z]
    };

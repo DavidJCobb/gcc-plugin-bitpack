@@ -45,6 +45,12 @@ namespace xmlgen {
             ptr->set_attribute("c-type-defined-via-typedef", "true");
          }
       }
+      {
+         auto& inh = member.bitpacking_options.requested.inherit_from;
+         if (!inh.empty())
+            ptr->set_attribute("inherit", inh);
+      }
+      const auto& computed = member.bitpacking_options.computed;
       switch (member.kind) {
          case bitpacking::member_kind::boolean:
             ptr->node_name = "boolean";
@@ -52,14 +58,14 @@ namespace xmlgen {
          case bitpacking::member_kind::buffer:
             ptr->node_name = "opaque-buffer";
             {
-               auto& options = member.bitpacking_options.buffer_options();
+               auto& options = computed.buffer_options();
                ptr->set_attribute("bytecount", _to_chars(options.bytecount));
             }
             break;
          case bitpacking::member_kind::integer:
             ptr->node_name = "integer";
             {
-               auto& options = member.bitpacking_options.integral_options();
+               auto& options = computed.integral_options();
                ptr->set_attribute("bitcount", _to_chars(options.bitcount));
                ptr->set_attribute("min",      _to_chars(options.min));
             }
@@ -67,14 +73,14 @@ namespace xmlgen {
          case bitpacking::member_kind::pointer:
             ptr->node_name = "pointer";
             {
-               auto& options = member.bitpacking_options.integral_options();
+               auto& options = computed.integral_options();
                ptr->set_attribute("bitcount", _to_chars(options.bitcount));
             }
             break;
          case bitpacking::member_kind::string:
             ptr->node_name = "string";
             {
-               auto& options = member.bitpacking_options.string_options();
+               auto& options = computed.string_options();
                ptr->set_attribute("length", _to_chars(options.length));
                ptr->set_attribute("with_terminator", options.with_terminator ? "true" : "false");
             }
@@ -103,15 +109,14 @@ namespace xmlgen {
       return ptr;
    }
    
-   void sector_xml_generator::_make_heritable_xml(std::string_view name) {
-      const auto* options = heritable_options_stockpile::get_fast().options_by_name(name);
-      assert(options != nullptr);
+   void sector_xml_generator::_make_heritable_xml(std::string_view name, const heritable_options& options) {
+      assert(!name.empty());
       
       auto ptr = std::make_unique<xml_element>();
       ptr->node_name = "heritable";
       ptr->set_attribute("name", name);
       
-      if (auto* casted = std::get_if<heritable_options::integral_data>(&options->data)) {
+      if (auto* casted = std::get_if<heritable_options::integral_data>(&options.data)) {
          ptr->set_attribute("type", "integer");
          if (auto& opt = casted->bitcount; opt.has_value())
             ptr->set_attribute("bitcount", _to_chars(*opt));
@@ -119,7 +124,7 @@ namespace xmlgen {
             ptr->set_attribute("min", _to_chars(*opt));
          if (auto& opt = casted->max; opt.has_value())
             ptr->set_attribute("max", _to_chars(*opt));
-      } else if (auto* casted = std::get_if<heritable_options::string_data>(&options->data)) {
+      } else if (auto* casted = std::get_if<heritable_options::string_data>(&options.data)) {
          ptr->set_attribute("type", "string");
          if (auto& opt = casted->length; opt.has_value())
             ptr->set_attribute("length", _to_chars(*opt));
@@ -127,14 +132,19 @@ namespace xmlgen {
             ptr->set_attribute("with-terminator", *opt ? "true" : "false");
       }
       
-      if (auto& v = options->transforms.pre_pack; !v.empty()) {
+      if (auto& v = options.transforms.pre_pack; !v.empty()) {
          ptr->set_attribute("pre-pack-transform", v);
       }
-      if (auto& v = options->transforms.post_unpack; !v.empty()) {
+      if (auto& v = options.transforms.post_unpack; !v.empty()) {
          ptr->set_attribute("post-unpack-transform", v);
       }
       
       this->heritables[std::string(name)] = std::move(ptr);
+   }
+   void sector_xml_generator::_make_heritable_xml(std::string_view name) {
+      const auto* options = heritable_options_stockpile::get_fast().options_by_name(name);
+      assert(options != nullptr);
+      this->_make_heritable_xml(name, *options);
    }
    
    void sector_xml_generator::_on_struct_seen(gcc_wrappers::type::record type) {
@@ -287,11 +297,17 @@ namespace xmlgen {
       sector.id = 0;
       sector.bits_remaining = this->global_options.sectors.size_per * 8;
       
+      heritable_options_stockpile::get().for_each_option([this](const std::string& name, const heritable_options& options) {
+         this->_make_heritable_xml(name, options);
+      });
+      
       for(size_t i = 0; i < this->identifiers_to_serialize.size(); ++i) {
-         auto& list = identifiers_to_serialize[i];
+         auto& list = this->identifiers_to_serialize[i];
          if (i > 0 && !sector.empty()) {
             sector.next();
          }
+         
+         auto& dst_list = this->serialized_identifiers.emplace_back();
          
          for(auto& name : list) {
             auto node = lookup_name(get_identifier(name.c_str()));
@@ -300,6 +316,13 @@ namespace xmlgen {
             
             auto decl = gw::decl::variable::from_untyped(node);
             auto type = decl.value_type();
+            {
+               auto elem = std::make_unique<xml_element>();
+               elem->node_name = "variable";
+               elem->set_attribute("name",   name);
+               elem->set_attribute("c-type", type.pretty_print());
+               dst_list.emplace_back() = std::move(elem);
+            }
             assert(type.is_record());
             this->_on_struct_seen(type.as_record());
             
@@ -337,6 +360,25 @@ namespace xmlgen {
                out += '\n';
             }
             out += "   </types>\n";
+         }
+      }
+      {
+         auto& list_outer = this->serialized_identifiers;
+         if (!list_outer.empty()) {
+            out += "   <variables>\n";
+            for(const auto& list_inner : list_outer) {
+               if (list_inner.empty()) {
+                  out += "      <group />\n";
+                  continue;
+               }
+               out += "      <group>\n";
+               for(const auto& node : list_inner) {
+                  out += node->to_string(3);
+                  out += '\n';
+               }
+               out += "      </group>\n";
+            }
+            out += "   </variables>\n";
          }
       }
       {

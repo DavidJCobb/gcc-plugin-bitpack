@@ -12,7 +12,8 @@
 #include <stdio.h>
 #include <string.h> // memset
 
-#define LU_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
+#define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
+#define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
 
 #pragma lu_bitpack set_options ( \
    sector_count=9, \
@@ -44,19 +45,21 @@
    func_write_buffer = lu_BitstreamWrite_buffer \
 )
 
+#pragma lu_bitpack heritable integer "$24bit" ( bitcount = 24 )
+
 static struct TestStruct {
    bool8 a;
    bool8 b;
    bool8 c;
    bool8 d;
    bool8 e;
-   LU_BITCOUNT(5)  u8  f;
-   LU_BITCOUNT(3)  u8  g;
-   LU_BITCOUNT(12) u16 h;
-   LU_BITCOUNT(24) u32 i;
-   LU_BITCOUNT(24) u32 j;
-   LU_BITCOUNT(24) u32 k;
-   LU_BITCOUNT(7)  u8  l[7];
+   LU_BP_BITCOUNT(5)  u8  f;
+   LU_BP_BITCOUNT(3)  u8  g;
+   LU_BP_BITCOUNT(12) u16 h;
+   LU_BP_INHERIT("$24bit") u32 i;
+   LU_BP_INHERIT("$24bit") u32 j;
+   LU_BP_BITCOUNT(24) u32 k;
+   LU_BP_BITCOUNT(7)  u8  l[7];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);

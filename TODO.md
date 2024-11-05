@@ -5,10 +5,6 @@
 
 ### Short-term
 
-* XML export: if any given struct member inherits from a set of heritable options, we should reflect that in the XML output. Currently, we output the heritables themselves, but not any record of what uses them. This is because we don't retain that information on `codegen::member_descriptor`s.
-  * We could have the member descriptors retain both the requested and the computed bitpacking options, perhaps.
-* XML export: We need to serialize elements describing the top-level structs, so that when you see `<value path="sTestStruct.a" />`, you have some way of knowing that `sTestStruct` is an instance of the `TestStruct` type.
-  * Goal: `<top-level-variables> <variable identifier="sTestStruct" c-type="TestStruct" /> </top-level-variables>`
 * When a data member doesn't specify a pre-pack or post-unpack function, but its type does (i.e. the type is a struct and contains the appropriate attribute), pull the values from that.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
   * Most bitpacking options apply to the most deeply nested value when used on an array of any rank. For defaults, though, you'd need to at least be able to specify whether the value is per-element or for the entire member; and you'd then also need a syntax to provide values for (potentially nested) arrays. (We should support whatever initializer syntax C supports.)

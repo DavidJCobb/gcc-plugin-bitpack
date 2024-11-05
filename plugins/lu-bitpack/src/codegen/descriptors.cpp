@@ -9,7 +9,6 @@ namespace {
    namespace gw {
       using namespace gcc_wrappers;
    }
-   using _bp_options = bitpacking::member_options::computed;
 }
 
 namespace codegen {
@@ -19,7 +18,7 @@ namespace codegen {
    //
    
    size_t member_descriptor::size_in_bits() const {
-      const auto& o = this->bitpacking_options;
+      const auto& o = this->bitpacking_options.computed;
       if (o.is_buffer()) {
          return o.buffer_options().bytecount * 8;
       } else if (o.is_integral()) {
@@ -56,8 +55,8 @@ namespace codegen {
       return this->target->value_type;
    }
    
-   const _bp_options& member_descriptor_view::bitpacking_options() const {
-      return this->target->bitpacking_options;
+   const bitpacking::member_options::computed& member_descriptor_view::bitpacking_options() const {
+      return this->target->bitpacking_options.computed;
    }
 
    size_t member_descriptor_view::size_in_bits() const {
@@ -138,6 +137,7 @@ namespace codegen {
          member.type       = decl.value_type();
          member.decl       = decl;
          member.value_type = member.type;
+         member.bitpacking_options.requested = options;
          if (member.type.is_array()) {
             auto array_type = member.type.as_array();
             auto value_type = array_type.value_type();
@@ -169,7 +169,7 @@ namespace codegen {
             } while (true);
             member.value_type = value_type;
          }
-         member.bitpacking_options = computed;
+         member.bitpacking_options.computed = computed;
          
          switch (member.kind) {
             case bitpacking::member_kind::buffer:

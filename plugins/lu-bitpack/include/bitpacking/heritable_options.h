@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <type_traits>
 #include <variant>
 #include "lu/singleton.h"
 #include "bitpacking/member_options.h"
@@ -50,6 +51,13 @@ namespace bitpacking {
          
       public:
          const heritable_options* options_by_name(std::string_view) const;
+         
+         template<typename Functor> requires std::is_invocable_v<Functor, const std::string&, const heritable_options&>
+         void for_each_option(Functor&& functor) const {
+            for(auto& pair : this->_heritables) {
+               functor(pair.first, pair.second);
+            }
+         }
          
          void handle_pragma(cpp_reader* reader);
    };
