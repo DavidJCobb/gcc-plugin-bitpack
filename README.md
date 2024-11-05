@@ -35,3 +35,12 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 ## Non-goals
 
 * Presence bits (think "`std::optional`"): the ability to pack data using the smallest possible representation. My current use case entails packing data into a limited storage space in such a manner that the largest possible data must fit; ergo bitpacked data must always be uniform in size, so we can check statically whether we have enough room.
+
+
+## Documentation
+
+### Generated XML
+
+* The serialized sectors contain `value` elements whose `path` attributes indicate the value being serialized. These are *mostly* in C syntax (e.g. `foo.bar[3]`), except that for array slices, we use Python slice notation (i.e. `foo[start:end]` to indicate serialization of all array elements in the range `[start, end)`).
+  * All struct types have their members listed as `struct-type` elements and their children. You can correlate the `value` nodes in the sectors with the struct definitions to know what's being serialized when.
+* TODO: document everything else

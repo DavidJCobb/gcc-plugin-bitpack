@@ -11,6 +11,13 @@
 #include "xmlgen/xml_element.h"
 
 namespace xmlgen {
+   //
+   // The general behavior of this class should mirror `codegen::sector_functions_generator` 
+   // very, very closely. We want to generate XML that exactly matches the code we generate, 
+   // but it's easier to do that separately rather than doing XML and code in tandem. (Maybe 
+   // I can still look into merging the two processes in the future, now that I've got both 
+   // processes working and know what's even there *to* merge.)
+   //
    class sector_xml_generator {
       protected:
          struct whole_struct_data {
