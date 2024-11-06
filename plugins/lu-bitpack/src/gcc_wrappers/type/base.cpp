@@ -152,8 +152,8 @@ namespace gcc_wrappers::type {
       return out;
    }
    
-   list_node base::attributes() const {
-      return list_node(TYPE_ATTRIBUTES(this->_node));
+   attribute_list base::attributes() const {
+      return attribute_list::from_untyped(TYPE_ATTRIBUTES(this->_node));
    }
    
    base base::canonical() const {

@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <variant>
 #include "lu/singleton.h"
-#include "bitpacking/member_options.h"
+#include "bitpacking/in_progress_options.h"
 
 #include <gcc-plugin.h>
 #include <plugin-version.h>
@@ -19,22 +19,12 @@ namespace bitpacking {
    */
    class heritable_options {
       public:
-         struct integral_data {
-            std::optional<size_t> bitcount;
-            std::optional<size_t> min;
-            std::optional<size_t> max;
-         };
-         struct string_data {
-            std::optional<size_t> length;
-            std::optional<bool>   with_terminator;
-         };
+         using integral_data = in_progress_options::integral;
+         using string_data   = in_progress_options::string;
       
       public:
-         std::variant<
-            std::monostate,
-            integral_data,
-            string_data
-         > data;
+         std::string name;
+         in_progress_options::variant data;
          //
          // Options common to, and heritable for, all data types:
          //

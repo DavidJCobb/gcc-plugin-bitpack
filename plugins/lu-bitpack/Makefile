@@ -1,9 +1,12 @@
 PLUGIN=lu_bitpack.so
 INCDIR=include
 SOURCES=\
+        src/bitpacking/data_options.cpp \
         src/bitpacking/global_options.cpp \
+        src/bitpacking/in_progress_options.cpp \
         src/bitpacking/heritable_options.cpp \
         src/bitpacking/member_options.cpp \
+        src/bitpacking/typed_data_options.cpp \
         src/codegen/descriptors.cpp \
         src/codegen/in_progress_func_pair.cpp \
         src/codegen/sector_functions_generator.cpp \

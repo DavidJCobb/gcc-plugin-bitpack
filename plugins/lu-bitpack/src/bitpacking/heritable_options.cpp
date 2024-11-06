@@ -163,6 +163,7 @@ namespace bitpacking {
             return;
          }
       }
+      loaded.name = std::move(loaded_name);
       item = loaded;
    }
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include "gcc_wrappers/_wrapped_tree_node.h"
-#include "gcc_wrappers/list_node.h"
+#include "gcc_wrappers/attribute.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers::decl {
@@ -35,7 +35,7 @@ namespace gcc_wrappers::type {
          std::string name() const;
          std::string pretty_print() const;
          
-         list_node attributes() const;
+         attribute_list attributes() const;
          
          base canonical() const;
          base main_variant() const;
