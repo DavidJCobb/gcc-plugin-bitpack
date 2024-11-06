@@ -1,6 +1,8 @@
 PLUGIN=lu_bitpack.so
 INCDIR=include
 SOURCES=\
+        src/attribute_handlers/generic_type_or_decl.cpp \
+        src/attribute_handlers/no_op.cpp \
         src/bitpacking/data_options/loader.cpp \
         src/bitpacking/data_options/requested_via_attributes.cpp \
         src/bitpacking/data_options/x_options.cpp \
@@ -183,6 +185,17 @@ testcase_insufficient_sector_count: $(PLUGIN)
 testcase_xml: TESTDIR=testcases/xml
 testcase_xml: PLUGINARGS=-fplugin-arg-lu_bitpack-xml-out=$(TESTDIR)/test.xml
 testcase_xml: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
+
+.PHONY: testcase_type_options
+testcase_type_options: TESTDIR=testcases/type_options
+testcase_type_options: PLUGINARGS=-fplugin-arg-lu_bitpack-xml-out=$(TESTDIR)/test.xml
+testcase_type_options: $(PLUGIN)
 	- rm -f testcases/*.o
 	- rm -f $(TESTDIR)/*.o
 	$(CCPLUGIN) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases

@@ -39,5 +39,11 @@ namespace pragma_handlers {
          return;
       }
       debug_tree(decl);
+      if (TREE_CODE(decl) == TYPE_DECL) {
+         auto type = TREE_TYPE(decl);
+         if (type != NULL_TREE) {
+            debug_tree(type);
+         }
+      }
    }
 }

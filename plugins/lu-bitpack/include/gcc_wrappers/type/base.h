@@ -37,6 +37,10 @@ namespace gcc_wrappers::type {
          std::string name() const;
          std::string pretty_print() const;
          
+         // NOTE: This only includes attributes that GCC has decided to apply directly 
+         // to the type (generally done when it's a struct or union). It notably does 
+         // not include attributes applied to a `typedef`; those exist on the TYPE_DECL, 
+         // not on the *_TYPE that the TYPE_DECL creates.
          attribute_list attributes();
          const attribute_list attributes() const;
          

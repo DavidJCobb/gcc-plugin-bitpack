@@ -27,6 +27,9 @@ namespace {
    std::string _name_of(tree node) {
       assert(node != NULL_TREE);
       std::string result;
+      if (TREE_CODE(node) == TYPE_DECL) { // `typedef` declarations in specific
+         node = TREE_TYPE(node);
+      }
       if (gw::type::base::node_is(node)) {
          result = "type %<";
          result += gw::type::base::from_untyped(node).pretty_print();

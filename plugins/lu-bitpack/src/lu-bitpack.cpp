@@ -18,34 +18,8 @@ static plugin_info _my_plugin_info = {
    .help    = "there is no help",
 };
 
-static tree handle_user_attribute(tree* node, tree name, tree args, int flags, bool* no_add_attrs) {
-   //
-   // The `node` is the node to which the attribute has been applied. If 
-   // it's a DECL, you should modify it in place; if it's a TYPE, you 
-   // should create a copy (and do what with it?).
-   //
-   // The `name` is the canonical name of the attribute, i.e. with any 
-   // leading or trailing underscores stripped out.
-   //
-   // The `flags` gives information about the context in which the 
-   // attribute was used. The flags are defined in the `attribute_flags` 
-   // enum in `tree-core.h`, and are used to indicate what tree type(s) 
-   // the attribute is being applied to.
-   //
-   // If you set `no_add_attrs` to true, then your attribute will not be 
-   // added to the DECL_ATTRIBUTES or TYPE_ATTRIBUTES of the target node. 
-   // Do this on error or in any other case where your attribute shouldn't 
-   // get added.
-   //
-   // "Depending on FLAGS, any attributes to be applied to another type or 
-   // DECL later may be returned; otherwise the return value should be 
-   // NULL_TREE.  This pointer may beNULL if no special handling is 
-   // required beyond the checks implied by the rest of this structure." 
-   // Quoted verbatim because I have no idea what that means.
-   //
-   *no_add_attrs = false;
-   return NULL_TREE;
-}
+#include "attribute_handlers/generic_type_or_decl.h"
+#include "attribute_handlers/no_op.h"
 
 namespace _attributes {
    static struct attribute_spec test_attribute = {
@@ -60,7 +34,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler    = handle_user_attribute,
+      .handler    = &attribute_handlers::no_op,
       
       // Can be an array of `attribute_spec::exclusions` objects, which describe 
       // attributes that this attribute is mutually exclusive with. (How do you 
@@ -71,77 +45,77 @@ namespace _attributes {
       .name = "lu_bitpack_bitcount",
       .min_length = 1, // min argcount
       .max_length = 1, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_funcs = {
       .name = "lu_bitpack_funcs",
       .min_length = 1, // min argcount
       .max_length = 1, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_inherit = {
       .name = "lu_bitpack_inherit",
       .min_length = 1, // min argcount
       .max_length = 1, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_range = {
       .name = "lu_bitpack_range",
       .min_length = 2, // min argcount
       .max_length = 2, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_string = {
       .name = "lu_bitpack_string",
       .min_length = 0, // min argcount
       .max_length = 1, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_omit = {
       .name = "lu_bitpack_omit",
       .min_length = 0, // min argcount
       .max_length = 0, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_as_opaque_buffer = {
       .name = "lu_bitpack_as_opaque_buffer",
       .min_length = 0, // min argcount
       .max_length = 0, // max argcount
-      .decl_required = true,
+      .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = handle_user_attribute,
+      .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
 }

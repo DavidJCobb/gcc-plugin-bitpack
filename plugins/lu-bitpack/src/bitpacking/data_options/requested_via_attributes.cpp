@@ -420,7 +420,14 @@ namespace bitpacking::data_options {
    }
    bool requested_via_attributes::load(gcc_wrappers::type::base type) {
       auto errors_prior = errorcount; // diagnostic.h
+      
       _load_impl(type.as_untyped(), type.attributes());
+      {
+         auto type_def = type.declaration();
+         if (!type_def.empty())
+            _load_impl(type.as_untyped(), type_def.attributes());
+      }
+      
       auto errors_after = errorcount;
       return errors_prior == errors_after;
    }
