@@ -1,5 +1,6 @@
 <data>
    <heritables>
+      <heritable bitcount="23" type="integer" name="$23bit" />
       <heritable bitcount="24" type="integer" name="$24bit" />
    </heritables>
    <types>
@@ -21,12 +22,14 @@
          <integer min="0" bitcount="3" c-type="u8" name="g" />
          <integer min="0" bitcount="12" c-type="u16" name="h" />
          <integer min="0" bitcount="24" c-type="u32" inherit="$24bit" name="i" />
-         <integer min="0" bitcount="24" c-type="u32_packed_24" name="j" />
+         <integer min="0" bitcount="23" c-type="u32_packed_23" name="j" />
          <integer min="0" bitcount="24" c-type="u32" name="k" />
          <integer min="0" bitcount="7" c-type="u8" name="l">
             <array-rank extent="7" />
          </integer>
          <struct c-type="NestedStruct" name="inventory" />
+         <integer min="0" bitcount="32" c-type="u32" name="m" />
+         <integer min="0" bitcount="23" c-type="transitive_u23" name="n" />
       </struct-type>
    </types>
    <variables>
@@ -74,6 +77,10 @@
       <sector id="7">
          <value path="sTestStruct.inventory.armor[3]" />
          <value path="sTestStruct.inventory.armor[4]" />
+      </sector>
+      <sector id="8">
+         <value path="sTestStruct.m" />
+         <value path="sTestStruct.n" />
       </sector>
    </sectors>
 </data>

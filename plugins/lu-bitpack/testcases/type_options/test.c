@@ -50,10 +50,12 @@
    func_write_buffer = lu_BitstreamWrite_buffer \
 )
 
+#pragma lu_bitpack heritable integer "$23bit" ( bitcount = 23 )
 #pragma lu_bitpack heritable integer "$24bit" ( bitcount = 24 )
 
-LU_BP_INHERIT("$24bit") typedef u32 u32_packed_24;
-#pragma lu_bitpack debug_dump_identifier u32_packed_24
+LU_BP_INHERIT("$23bit") typedef u32 u32_packed_23;
+typedef u32_packed_23 transitive_u23;
+//#pragma lu_bitpack debug_dump_identifier u32_packed_23
 
 enum ItemType {
    kItem_None = 0,
@@ -128,10 +130,12 @@ static struct TestStruct {
    LU_BP_BITCOUNT(3)  u8  g;
    LU_BP_BITCOUNT(12) u16 h;
    LU_BP_INHERIT("$24bit") u32 i;
-   u32_packed_24 j;
+   u32_packed_23 j;
    LU_BP_BITCOUNT(24) u32 k;
    LU_BP_BITCOUNT(7)  u8  l[7];
    struct NestedStruct inventory;
+   u32 m; // test to ensure that `u32_packed_23` doesn't influence `u32` generally
+   transitive_u23 n;
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);

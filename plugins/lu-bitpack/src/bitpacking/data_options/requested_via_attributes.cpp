@@ -1,5 +1,6 @@
 #include "bitpacking/data_options/requested_via_attributes.h"
 #include <stdexcept>
+#include <vector>
 #include "lu/strings/handle_kv_string.h"
 #include "bitpacking/heritable_options.h"
 #include "bitpacking/transform_function_validation_helpers.h"
@@ -421,11 +422,30 @@ namespace bitpacking::data_options {
    bool requested_via_attributes::load(gcc_wrappers::type::base type) {
       auto errors_prior = errorcount; // diagnostic.h
       
-      _load_impl(type.as_untyped(), type.attributes());
-      {
-         auto type_def = type.declaration();
-         if (!type_def.empty())
-            _load_impl(type.as_untyped(), type_def.attributes());
+      auto decl = type.declaration();
+      if (!decl.empty() && !decl.is_synonym_of().empty()) {
+         //
+         // Handle transitive typedefs. For example, given `typedef a b`, we want 
+         // to apply bitpacking options for `a` when we see `b`, before we apply 
+         // any bitpacking options for `b`.
+         //
+         std::vector<gw::type::base> transitives;
+         transitives.push_back(type);
+         do {
+            auto tran = decl.is_synonym_of();
+            if (tran.empty())
+               break;
+            transitives.push_back(tran);
+            decl = tran.declaration();
+         } while (!decl.empty());
+         for(auto it = transitives.rbegin(); it != transitives.rend(); ++it) {
+            auto tran = *it;
+            auto decl = tran.declaration();
+            _load_impl(tran.as_untyped(), tran.attributes());
+            _load_impl(tran.as_untyped(), decl.attributes());
+         }
+      } else {
+         _load_impl(type.as_untyped(), type.attributes());
       }
       
       auto errors_after = errorcount;
