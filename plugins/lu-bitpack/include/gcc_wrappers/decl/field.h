@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/list_node.h"
 #include "gcc_wrappers/type/base.h"
@@ -27,6 +28,8 @@ namespace gcc_wrappers {
             // Indicates whether this field is a bitfield. If so, 
             // `size_in_bits` is the field width.
             bool is_bitfield() const;
+            
+            std::string pretty_print() const;
       };
    }
 }

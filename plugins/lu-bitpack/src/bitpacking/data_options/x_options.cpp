@@ -98,7 +98,7 @@ namespace bitpacking::data_options::requested_x_options {
             }
          }
          if (min > max) {
-            throw std::runtime_error(lu::strings::printf_string("the member's minimum value ("PRIdMAX") is greater than its maximum value ("PRIdMAX")", min, max));
+            throw std::runtime_error(lu::strings::printf_string("the member's minimum value (%" PRIdMAX ") is greater than its maximum value (%" PRIdMAX ")", min, max));
          }
          dst.min      = min;
          dst.bitcount = std::bit_width((uintmax_t)(max - min));

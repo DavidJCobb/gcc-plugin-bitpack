@@ -18,6 +18,8 @@ static plugin_info _my_plugin_info = {
    .help    = "there is no help",
 };
 
+#include "attribute_handlers/bitpack_bitcount.h"
+#include "attribute_handlers/bitpack_range.h"
 #include "attribute_handlers/generic_type_or_decl.h"
 #include "attribute_handlers/no_op.h"
 
@@ -49,7 +51,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::bitpack_bitcount,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_funcs = {
@@ -82,7 +84,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::bitpack_range,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_string = {

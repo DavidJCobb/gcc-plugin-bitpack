@@ -12,7 +12,7 @@ namespace attribute_handlers {
          }
          if (flags & ATTR_FLAG_DECL_NEXT) {
             *no_add_attrs = true;
-            return *node;
+            return tree_cons(name, args, NULL_TREE);
          }
          *no_add_attrs = false;
          return NULL_TREE;

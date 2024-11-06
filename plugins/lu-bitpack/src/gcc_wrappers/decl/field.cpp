@@ -1,4 +1,5 @@
 #include "gcc_wrappers/decl/field.h"
+#include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/type/container.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
@@ -25,7 +26,13 @@ namespace gcc_wrappers::decl {
       if (empty())
          return {};
       auto ctxt = DECL_CONTEXT(this->_node);
-      assert(TREE_CODE(ctxt) == RECORD_TYPE || TREE_CODE(ctxt) == UNION_TYPE);
+      if (ctxt != NULL_TREE) {
+         //
+         // A FIELD_DECL may lack a DECL_CONTEXT if it's still being 
+         // built by the compiler internals.
+         //
+         assert(TREE_CODE(ctxt) == RECORD_TYPE || TREE_CODE(ctxt) == UNION_TYPE);
+      }
       
       return type::container::from_untyped(ctxt);
    }
@@ -44,6 +51,38 @@ namespace gcc_wrappers::decl {
    
    bool field::is_bitfield() const {
       return _GCC_DECL_IS_BITFIELD(this->_node);
+   }
+   
+   std::string field::pretty_print() const {
+      std::string out;
+      
+      auto container = this->member_of();
+      while (!container.empty() && container.name().empty()) {
+         //
+         // Contained in an anonymous struct?
+         //
+         auto type_decl = container.declaration();
+         container = {};
+         if (type_decl.empty())
+            break;
+         auto context = type_decl.context();
+         if (context.empty())
+            break;
+         switch (context.code()) {
+            case RECORD_TYPE:
+            case UNION_TYPE:
+               container = decltype(container)::from_untyped(context.as_untyped());
+               break;
+            default:
+               break;
+         }
+      }
+      if (!container.empty()) {
+         out = container.pretty_print() + "::";
+      }
+      out += this->name();
+      
+      return out;
    }
 }
 

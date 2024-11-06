@@ -5,12 +5,26 @@
 
 ### Short-term
 
-* When loading attributes for a type, we should reject any that don't make sense for that type (e.g. integral options on a struct; string options on a non-array).
-* Bitpacking options that make sense for struct types should appear in the XML output.
 * When computing bitpacking options for a member, if pre-pack and post-unpack functions are specified, we need to verify that their "normal type" argument matches the innermost value type of the data member.
+* Some of our attributes now have specific handlers that issue diagnostics; however, I'm not 100% sure that this is a good idea. We already issue errors when we actually perform codegen, and some of our code relies on the fact of errors being issued to know whether any bitpacking options failed to load. Plus, even if we perform diagnostics within attributes, we still have to run the same checks during codegen in order to make codegen fail. **I need to decide on whether to do as much validation as possible within the argument handlers, or only do validation at codegen time; and if I go the former route, then I need to remove redundant error messaging from codegen, adjusting how we compute bitpack options so that we can signal failure explicitly rather than relying on the fact of error messages having been emitted.**
+  * If I can use an attribute handler to mark an annotated type or member as "invalid for bitpacking due to a bad attribute," then I can wholly move some checks from codegen into attribute handlers, instead of just moving the error reporting and having to run the checks in both places. (For example, we could add a `lu_bitpack_invalid(some_flags_mask_here)` attribute from the handler for `lu_bitpack_bitcount`; and since attributes can have arguments, `lu_bitpack_invalid`, if already present, could be given as many attributes as we need it to have.) Looking at GCC's codebase, it appears to be possible for an attribute handler to actually trigger the addition of a wholly new attribute to the to-be-annotated node, but I don't fully understand how it's done. It's legal for attribute handlers to call `decl_attributes` (the very same function that invoked the handler in the first place) to trigger the addition of new attributes, but I can't tell what the handlers are supposed to return after doing so.
+    * [Example 1.](https://codebrowser.dev/gcc/gcc/c-family/c-attribs.cc.html#3272)
+    * [Example 2, copying pre-existing attributes from a node located elsewhere to the to-be-annotated node.](https://codebrowser.dev/gcc/gcc/c-family/c-attribs.cc.html#3308)
+    * [Example 3.](https://codebrowser.dev/gcc/gcc/c-family/c-attribs.cc.html#3678)
+    * [Example 4.](https://codebrowser.dev/gcc/gcc/c-family/c-attribs.cc.html#3748)
+  * Doing checks within the attribute handlers means that if a member never ends up being serialized, we still validate its arguments.
+  * Doing some checks within the attribute handlers would make the ordering of definitions, attributes, and pragmas more strict.
+    * Validating `lu_bitpack_inherit` would mean that the heritables have to be defined before any references to them. But then, this feels sensible anyway.
+    * Validating string options requires us to know what type we'll be using as the character type. This is something that is specified as a global option via a pragma, so validating string options in the attribute handler means that the pragma must precede all to-be-bitpacked types. This seems... unsound.
+      * But then, shouldn't the character type be specified as a bitpacking option (per data and/or in heritables), defaulting to `char` when unspecified? Like, maybe this shouldn't be global.
+    * Validating the pre-pack/post-unpack functions can be partially done: we can validate that they exist, are functions, return void, take two pointer arguments, and don't mark the "out" argument as `const`. However, validating them in the argument handler would mean that the functions need to be declared before the argument is seen. Validating them at codegen time means they can be declared anywhere relative to all referencing types and data members, so long as they are declared by the time codegen happens. If we do move basic validation and error reporting for the transform options into the attribute handler, then we'll want to test that things work sanely (particularly in the case of transform options being applied directly to the in situ type definition) before we fully commit to it.
+  * Some checks can only be done at codegen time.
+    * Validating the pre-pack/post-unpack functions can only be fully done at codegen time: a type or a data member could inherit each function from different places, or could specify just one function while inheriting the other, and we don't currently require heritable options to be defined before they are referenced in attributes. We have to wait until we've coalesced all the options before we can verify that the pre-pack/post-unpack functions have matching argument types.
+* When loading attributes for a type, we should reject any that don't make sense for that type (e.g. integral options on a struct; string options on a non-array).
+* Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
 * The XML output has no way of knowing or reporting what bitpacking options are applied to integral types. The final used bitcounts (and other associated options) should still be emitted per member, but this still reflects a potential loss of information. Can we fix this?
   * Do we want to restrict bitpacking options to only be specifiable on struct types?
-* Bitpacking options applied to a type are only detected when that exact type is used; given `typedef original_name new_name`, an object of type `new_name` will not benefit from any bitpacking options applied to `original_name`. Do we want to do something about this?
+    * No. I feel it's useful to be able to `typedef` an integral type and then put bitpacking options on it.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
   * Most bitpacking options apply to the most deeply nested value when used on an array of any rank. For defaults, though, you'd need to at least be able to specify whether the value is per-element or for the entire member; and you'd then also need a syntax to provide values for (potentially nested) arrays. (We should support whatever initializer syntax C supports.)
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
@@ -125,8 +139,9 @@ This in turn means that we need to infer the type of `__v` from the types used i
 
 Other support requirements:
 
-* When generating a to-be-bitpacked data member's computed bitpacking options, if the data member's type is a `struct`, then we must check for and apply `lu_bitpack_funcs` when it is present on the data member's type.
 * We should rename `lu_bitpack_funcs` to `lu_bitpack_transform`.
+* When using transformation functions, the `member_kind` of a to-be-serialized member should depend on the transformed type, not the in situ type.
+  * ...*but* we should still enforce per-type limits based on the data member's original type. That is: a struct-type data member is forbidden from specifying integer-type bitpacking options *even if* it uses transformation functions to be serialized as an integer. Those options should instead be specified on the integer type (and if it's a built-in e.g. `uint8_t`, then use a typedef and put the options on that typedef; I've already implemented error messaging in the `lu_bitpack_range` attribute handler instructing users to do this).
 
 
 #### Union support

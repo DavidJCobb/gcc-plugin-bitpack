@@ -1,0 +1,27 @@
+<data>
+   <heritables>
+      <heritable bitcount="23" type="integer" name="$23bit" />
+      <heritable bitcount="24" type="integer" name="$24bit" />
+   </heritables>
+   <types>
+      <struct-type c-type="TestStruct" name="TestStruct">
+         <integer min="0" bitcount="32" c-type="u32" name="a" />
+         <integer min="0" bitcount="32" c-type="u32" name="b" />
+         <integer min="0" bitcount="1" c-type="u32" name="c" />
+      </struct-type>
+   </types>
+   <variables>
+      <group>
+         <variable c-type="TestStruct" name="sTestStruct" />
+      </group>
+   </variables>
+   <sectors>
+      <sector id="0">
+         <value path="sTestStruct.a" />
+         <value path="sTestStruct.b" />
+      </sector>
+      <sector id="1">
+         <value path="sTestStruct.c" />
+      </sector>
+   </sectors>
+</data>
