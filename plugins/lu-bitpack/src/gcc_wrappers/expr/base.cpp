@@ -6,7 +6,17 @@ namespace gcc_wrappers::expr {
    WRAPPED_TREE_NODE_BOILERPLATE(base)
    
    location_t base::source_location() const {
+      if (empty())
+         return UNKNOWN_LOCATION;
       return EXPR_LOCATION(this->_node);
+   }
+   void base::set_source_location(location_t loc, bool wrap_if_necessary) {
+      assert(!empty());
+      if (!CAN_HAVE_LOCATION_P(this->_node)) {
+         this->_node = maybe_wrap_with_location(this->_node, loc);
+         return;
+      }
+      protected_set_expr_location(this->_node, loc);
    }
    
    bool base::suppresses_unused_warnings() {

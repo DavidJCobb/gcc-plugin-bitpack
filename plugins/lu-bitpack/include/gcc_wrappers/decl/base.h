@@ -1,6 +1,7 @@
 #pragma once
 #include <string_view>
 #include "gcc_wrappers/_wrapped_tree_node.h"
+#include "gcc_wrappers/attribute.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -14,6 +15,8 @@ namespace gcc_wrappers {
             
          public:
             std::string_view name() const;
+            
+            attribute_list attributes();
             
             // If the declaration appears in multiple places (e.g. a 
             // forward-declared entity that is later defined), this 

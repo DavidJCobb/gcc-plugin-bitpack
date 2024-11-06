@@ -15,7 +15,9 @@ namespace gcc_wrappers {
             WRAPPED_TREE_NODE_BOILERPLATE(label)
          
          public:
-            label(decl::label&);
+            label(decl::label);
+            
+            decl::label declaration() const;
       };
       static_assert(sizeof(label) == sizeof(value)); // no new fields
    }

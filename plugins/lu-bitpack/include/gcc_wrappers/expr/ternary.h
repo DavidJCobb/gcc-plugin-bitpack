@@ -20,6 +20,10 @@ namespace gcc_wrappers {
                expr::base if_false
             );
             
+            base get_condition();
+            base get_true_branch();
+            base get_false_branch();
+            
             void set_true_branch(expr::base);
             void set_false_branch(expr::base);
       };

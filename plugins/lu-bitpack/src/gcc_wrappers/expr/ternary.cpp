@@ -19,12 +19,25 @@ namespace gcc_wrappers::expr {
       );
    }
    
+   base ternary::get_condition() {
+      assert(!empty());
+      return base::from_untyped(COND_EXPR_COND(this->_node));
+   }
+   base ternary::get_true_branch() {
+      assert(!empty());
+      return base::from_untyped(COND_EXPR_THEN(this->_node));
+   }
+   base ternary::get_false_branch() {
+      assert(!empty());
+      return base::from_untyped(COND_EXPR_ELSE(this->_node));
+   }
+   
    void ternary::set_true_branch(expr::base e) {
       assert(!empty());
-      TREE_OPERAND(this->_node, 1) = e.as_untyped();
+      COND_EXPR_THEN(this->_node) = e.as_untyped();
    }
    void ternary::set_false_branch(expr::base e) {
       assert(!empty());
-      TREE_OPERAND(this->_node, 2) = e.as_untyped();
+      COND_EXPR_ELSE(this->_node) = e.as_untyped();
    }
 }

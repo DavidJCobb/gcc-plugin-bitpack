@@ -9,6 +9,7 @@
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/type/array.h"
+#include "gcc_wrappers/attribute.h"
 #include <diagnostic.h> // warning(), error(), etc.
 
 namespace {
@@ -21,26 +22,35 @@ namespace bitpacking::member_options {
    void requested::from_field(gcc_wrappers::decl::field decl) {
       auto list = decl.attributes();
       
+      auto _report_warning = [&decl]<typename... Args>(const char* fmt, Args&&... args) {
+         std::string message = lu::strings::printf_string(
+            "unusual bitpacking options for field %%<%s%%>: ",
+            decl.name().data()
+         ) + fmt;
+         warning_at(
+            decl.source_location(),
+            OPT_Wpragmas,
+            message.c_str(),
+            args...
+         );
+      };
       auto _report_error = [&decl]<typename... Args>(const char* fmt, Args&&... args) {
          std::string message = lu::strings::printf_string(
             "invalid bitpacking options for field %%<%s%%>: ",
             decl.name().data()
-         );
-         message += lu::strings::printf_string(fmt, args...);
-         
-         error_at(decl.source_location(), message.c_str());
+         ) + fmt;
+         error_at(decl.source_location(), message.c_str(), args...);
       };
       
-      for(const auto pair : list) {
-         auto args = gw::list_node(pair.second);
+      for(auto attr : list) {
+         auto key  = attr.name();
+         auto args = attr.arguments();
          
-         std::string_view key;
-         {
-            if (pair.first == NULL_TREE)
-               continue;
-            if (TREE_CODE(pair.first) != IDENTIFIER_NODE)
-               continue;
-            key = IDENTIFIER_POINTER(pair.first);
+         if (args.has_leading_identifier()) {
+            _report_error(
+               "%<%s%> attribute must not have an identifier as its first argument.",
+               key.data()
+            );
          }
          
          if (key == "lu_bitpack_omit") {
@@ -52,17 +62,17 @@ namespace bitpacking::member_options {
             continue;
          }
          if (key == "lu_bitpack_bitcount") {
+            if (args.empty()) {
+               _report_error(
+                  "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter "
+                  "indicating the number of bits to pack the field into."
+               );
+               continue;
+            }
             int v;
             {
-               auto arg = args.untyped_nth_value(0);
-               if (arg == NULL_TREE || !gw::expr::integer_constant::node_is(arg)) {
-                  _report_error(
-                     "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter "
-                     "indicating the number of bits to pack the field into."
-                  );
-                  continue;
-               }
-               auto opt = gw::expr::integer_constant::from_untyped(arg).try_value_signed();
+               auto arg = args.front().as<gw::expr::integer_constant>();
+               auto opt = arg.try_value_signed();
                if (!opt.has_value()) {
                   _report_error(
                      "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter "
@@ -74,19 +84,15 @@ namespace bitpacking::member_options {
             }
             if (v <= 0) {
                _report_error(
-                  "%<lu_bitpack_bitcount%> attribute must specifyh a positive non-zero "
+                  "%<lu_bitpack_bitcount%> attribute must specify a positive non-zero "
                   "bitcount (seen: %d)",
                   (int)v
                );
                continue;
             }
             if (v > (int)sizeof(size_t) * 8) {
-               warning_at(
-                  decl.source_location(),
-                  1,
-                  "unusual bitpacking options for field %<%s%>: %<lu_bitpack_bitcount%> attribute "
-                  "specifies an unusually large bitcount; is this intentional? (seen: %<%d%>)",
-                  decl.name().data(),
+               _report_warning(
+                  "%<lu_bitpack_bitcount%> attribute specifies an unusually large bitcount; is this intentional? (seen: %<%d%>)",
                   (int)v
                );
             }
@@ -98,15 +104,15 @@ namespace bitpacking::member_options {
             std::string post_unpack;
             
             if (!args.empty()) {
-               auto arg = args.untyped_nth_value(0);
-               if (TREE_CODE(arg) != STRING_CST) {
+               auto arg = args.front().as<gw::expr::string_constant>();
+               if (arg.empty()) {
                   _report_error(
                      "%<lu_bitpack_funcs%> attribute argument must be a string literal of "
                      "the form \"pre_pack=identifier,post_unpack=identifier\""
                   );
                   continue;
                }
-               auto data = gw::expr::string_constant::from_untyped(arg).value();
+               auto data = arg.value();
                try {
                   lu::strings::handle_kv_string(data, std::array{
                      lu::strings::kv_string_param{
@@ -141,65 +147,42 @@ namespace bitpacking::member_options {
                _report_error("%<lu_bitpack_inherit%> attribute: string literal argument required");
                continue;
             }
-            auto arg = args.untyped_nth_value(0);
-            if (TREE_CODE(arg) != STRING_CST) {
+            auto arg = args.front().as<gw::expr::string_constant>();
+            if (arg.empty()) {
                _report_error("%<lu_bitpack_inherit%> attribute: string literal argument required");
                continue;
             }
-            this->inherit_from = gw::expr::string_constant::from_untyped(arg).value();
+            this->inherit_from = arg.value();
             continue;
          }
          if (key == "lu_bitpack_range") {
-            if (args.empty()) {
-               _report_error(
-                  "%<lu_bitpack_range%> attribute must specify two arguments (the minimum "
-                  "and maximum possible values of the field); no arguments given"
-               );
-               continue;
-            } else {
-               auto size = args.size();
-               if (size < 2) {
-                  _report_error(
-                     "%<lu_bitpack_range%> attribute must specify two arguments (the minimum "
-                     "and maximum possible values of the field); only one argument given"
-                  );
-                  continue;
-               } else if (size > 2) {
-                  warning_at(
-                     decl.source_location(),
-                     1,
-                     "unusual bitpacking options for field %s: %<lu_bitpack_range%> attribute "
-                     "specifies more (%u) arguments than expected (2)",
-                     decl.name().data(),
-                     (int)size
-                  );
+            if (args.size() < 2) {
+               if (args.empty()) {
+                  _report_error("%<lu_bitpack_range%> attribute must specify two arguments (the minimum and maximum possible values of the field); no arguments given");
+               } else {
+                  _report_error("%<lu_bitpack_range%> attribute must specify two arguments (the minimum and maximum possible values of the field); only one argument given");
                }
+               continue;
+            } else if (auto size = args.size(); size > 2) {
+               _report_warning(
+                  "%<lu_bitpack_range%> attribute specifies more (%u) arguments than expected (2)",
+                  (int)size
+               );
             }
             
-            auto arg_a = args.untyped_nth_value(0);
-            auto arg_b = args.untyped_nth_value(1);
-            {
-               auto opt = gw::expr::integer_constant::from_untyped(arg_a).try_value_signed();
-               if (!opt.has_value()) {
-                  _report_error(
-                     "%<lu_bitpack_range%> first argument doesn't appear to be an integer "
-                     "constant"
-                  );
-                  continue;
+            auto opt_a = args[0].as<gw::expr::integer_constant>().try_value_signed();
+            auto opt_b = args[1].as<gw::expr::integer_constant>().try_value_signed();
+            if (!opt_a.has_value() || !opt_b.has_value()) {
+               if (!opt_a.has_value()) {
+                  _report_error("%<lu_bitpack_range%> first argument doesn't appear to be an integer constant");
                }
-               this->integral.min = *opt;
-            }
-            {
-               auto opt = gw::expr::integer_constant::from_untyped(arg_b).try_value_signed();
-               if (!opt.has_value()) {
-                  _report_error(
-                     "%<lu_bitpack_range%> second argument doesn't appear to be an integer "
-                     "constant"
-                  );
-                  continue;
+               if (!opt_b.has_value()) {
+                  _report_error("%<lu_bitpack_range%> second argument doesn't appear to be an integer constant");
                }
-               this->integral.max = *opt;
+               continue;
             }
+            this->integral.min = *opt_a;
+            this->integral.max = *opt_b;
             continue;
          }
          if (key == "lu_bitpack_string") {
@@ -210,18 +193,14 @@ namespace bitpacking::member_options {
                );
                continue;
             }
-            //
-            // TODO: Validate that the array is of the right type? Requires having access to 
-            // the global bitpacking options from here.
-            //
             this->is_explicit_string = true;
             if (!args.empty()) {
-               auto arg = args.untyped_nth_value(0);
-               if (arg == NULL_TREE || TREE_CODE(arg) != STRING_CST) {
+               auto arg = args.front().as<gw::expr::string_constant>();
+               if (arg.empty()) {
                   _report_error("%<lu_bitpack_string%> attribute argument must be a string literal");
                   continue;
                }
-               auto data = gw::expr::string_constant::from_untyped(arg).value();
+               auto data = arg.value();
                try {
                   std::optional<int> length;
                   bool null_terminated = false;
@@ -268,13 +247,7 @@ namespace bitpacking::member_options {
          }
          
          if (key.starts_with("lu_bitpack_")) {
-            warning_at(
-               decl.source_location(),
-               1,
-               "unrecognized bitpacking attribute %<%s%> on field %<%s%>",
-               key.data(),
-               decl.name().data()
-            );
+            _report_warning("unrecognized bitpacking attribute %<%s%>", key.data());
          }
          
          // Done.

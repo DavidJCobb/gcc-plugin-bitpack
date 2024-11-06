@@ -10,8 +10,15 @@ namespace gcc_wrappers {
                return TREE_CODE(t) == STRING_CST;
             }
             WRAPPED_TREE_NODE_BOILERPLATE(string_constant)
+            
+         public:
+            // CAN_HAVE_LOCATION_P is false for all nodes of this type, so calls 
+            // to this member function would replace `this->_node` with a pointer 
+            // of a different type.
+            void set_source_location(location_t, bool wrap_if_necessary = false);
          
          public:
+            string_constant() {}
             string_constant(std::string_view);
             
             std::string value() const;

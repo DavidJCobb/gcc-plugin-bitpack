@@ -16,8 +16,15 @@ namespace gcc_wrappers {
             
             using host_wide_int_type  = HOST_WIDE_INT;
             using host_wide_uint_type = std::make_unsigned_t<host_wide_int_type>;
+            
+         public:
+            // CAN_HAVE_LOCATION_P is false for all nodes of this type, so calls 
+            // to this member function would replace `this->_node` with a pointer 
+            // of a different type.
+            void set_source_location(location_t, bool wrap_if_necessary = false);
          
          public:
+            integer_constant() {}
             integer_constant(type::integral, int);
             
             type::integral value_type() const;

@@ -583,7 +583,7 @@ namespace bitpacking::global_options {
       auto et = at.value_type();
       do {
          if (!et.is_array()) {
-            if (et == global.types.string_char) {
+            if (et == this->types.string_char) {
                return at.extent();
             }
             break;

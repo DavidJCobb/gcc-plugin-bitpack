@@ -18,7 +18,6 @@ namespace gcc_wrappers {
             WRAPPED_TREE_NODE_BOILERPLATE(field)
             
          public:
-            list_node       attributes() const;
             type::container member_of() const; // RECORD_TYPE or UNION_TYPE
             type::base      value_type() const;
             

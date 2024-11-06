@@ -46,6 +46,7 @@ SOURCES=\
         src/gcc_wrappers/type/pointer.cpp \
         src/gcc_wrappers/type/record.cpp \
         src/gcc_wrappers/type/untagged_union.cpp \
+        src/gcc_wrappers/attribute.cpp \
         src/gcc_wrappers/builtin_types.cpp \
         src/gcc_wrappers/chain_node.cpp \
         src/gcc_wrappers/list_node.cpp \
@@ -61,11 +62,11 @@ SOURCES=\
         src/pragma_handlers/set_options.cpp \
         src/xmlgen/is_valid_name.cpp \
         src/xmlgen/sector_xml_generator.cpp \
-        src/xmlgen/serialization_value.cpp \
         src/xmlgen/string_as_cdata.cpp \
         src/xmlgen/write_string_as_attribute_value.cpp \
         src/xmlgen/write_string_as_text_content.cpp \
         src/xmlgen/xml_element.cpp \
+        src/debugprint.cpp \
         src/lu-bitpack.cpp \
 		$(END)
 

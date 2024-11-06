@@ -142,6 +142,7 @@ The wrappers for types, values, declarations, and expressions should be treated 
 * `gw::value` should use the GCC function `build_binary_op` to generate all binary operators that `build_binary_op` supports. That function handles integer promotions, type validation, C pointer arithmetic, and so on. We currently avoid it in most places because it can emit user-visible warnings and errors (I would prefer assertions since the use case here is code generation under the hood).
 * Similarly, `gw::value` should use `build_unary_op` for more unary operations. I currently only use it where I know it to be needed for correctness deep inside the compiler (e.g. `ADDR_EXPR`, to properly update things like `TREE_ADDRESSABLE` on the operands).
   * Not all unary operations are safe to use with `build_unary_op`; for example, `INDIRECT_REF`, the pointer-dereferencing operator, isn't compatible and will cause assertion failures or crashes if built via `build_unary_op`.
+* It would probably be more appropriate to have `gw::constant::base` as the base class for `gw::expr::integer_constant` and `gw::expr::string_constant`, with the base class for constants subclassing `gw::value` as `gw::expr::base` currently does.
 
 
 ## Potential future plans

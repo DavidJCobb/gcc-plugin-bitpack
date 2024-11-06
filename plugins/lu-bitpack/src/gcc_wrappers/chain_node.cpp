@@ -57,7 +57,7 @@ namespace gcc_wrappers {
       throw std::out_of_range("out-of-bounds indexed access to `chain_node`");
    }
    
-   bool chain_node::contains_untyped(tree t) {
+   bool chain_node::contains_untyped(tree t) const {
       return chain_member(t, this->_node);
    }
    

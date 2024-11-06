@@ -21,9 +21,6 @@
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(field)
    
-   list_node field::attributes() const {
-      return list_node(DECL_ATTRIBUTES(this->_node));
-   }
    type::container field::member_of() const {
       if (empty())
          return {};

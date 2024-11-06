@@ -1,6 +1,7 @@
 #pragma once
 #include <cassert>
 #include <concepts>
+#include <string_view>
 #include <type_traits>
 // GCC:
 #include <gcc-plugin.h>
@@ -51,6 +52,11 @@ namespace gcc_wrappers {
          
          int code() const {
             return TREE_CODE(this->_node); // TODO: do we need to null check here?
+         }
+         const std::string_view code_name() const noexcept {
+            if (empty())
+               return "<null>";
+            return get_tree_code_name(TREE_CODE(this->_node));
          }
          
          constexpr const tree& as_untyped() const {

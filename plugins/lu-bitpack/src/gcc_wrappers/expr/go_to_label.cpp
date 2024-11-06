@@ -10,4 +10,9 @@ namespace gcc_wrappers::expr {
    ) {
       this->_node = build1(GOTO_EXPR, void_type_node, decl.as_untyped());
    }
+   
+   decl::label go_to_label::destination() const {
+      assert(!empty());
+      return decl::label::from_untyped(GOTO_DESTINATION(this->_node));
+   }
 }

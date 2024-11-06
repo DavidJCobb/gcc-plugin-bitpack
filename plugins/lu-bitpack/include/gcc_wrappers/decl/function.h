@@ -51,6 +51,8 @@ namespace gcc_wrappers {
             param nth_parameter(size_t) const;
             result result_variable() const;
             
+            bool is_versioned() const; // DECL_FUNCTION_VERSIONED
+            
             // DECL_PRESERVE_P
             bool is_always_emitted() const;
             void make_always_emitted();

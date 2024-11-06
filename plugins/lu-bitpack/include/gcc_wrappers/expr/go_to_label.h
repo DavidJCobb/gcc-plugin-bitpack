@@ -16,6 +16,8 @@ namespace gcc_wrappers {
          
          public:
             go_to_label(decl::label&);
+            
+            decl::label destination() const;
       };
       static_assert(sizeof(go_to_label) == sizeof(value)); // no new fields
    }

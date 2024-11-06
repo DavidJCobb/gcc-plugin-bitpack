@@ -95,6 +95,12 @@ namespace gcc_wrappers::decl {
       return result::from_untyped(DECL_RESULT(this->_node));
    }
 
+   bool function::is_versioned() const {
+      if (empty())
+         return false;
+      return DECL_FUNCTION_VERSIONED(this->_node);
+   }
+
    bool function::is_always_emitted() const {
       if (empty())
          return false;
