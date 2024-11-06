@@ -123,14 +123,18 @@ namespace gcc_wrappers {
          iterator end();
          iterator at(size_t n); // may throw std::out_of_range
       
+         // Returns the first attribute whose name starts with the given substring.
          attribute first_attribute_with_prefix(lu::strings::zview);
          const attribute first_attribute_with_prefix(lu::strings::zview) const;
       
+         // Returns the first attribute with the given name.
          attribute get_attribute(lu::strings::zview);
          const attribute get_attribute(lu::strings::zview) const;
       
          bool has_attribute(lu::strings::zview) const;
          
+         // Removes the attribute. Note that GCC never bothers to delete attribute 
+         // nodes, so this will leak.
          void remove_attribute(lu::strings::zview);
          
          bool operator==(const attribute_list) const noexcept;

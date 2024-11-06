@@ -48,6 +48,10 @@ namespace lu::strings {
          constexpr operator std::string_view() const noexcept {
             return std::string_view(this->_data, this->_size);
          }
+         constexpr bool operator==(const zview&) const noexcept = default;
+         constexpr bool operator==(const std::string_view& sv) const noexcept {
+            return data() == sv.data() && size() == sv.size();
+         }
          
          constexpr const value_type& operator[](size_t n) const noexcept {
             return this->_data[n];
