@@ -152,7 +152,10 @@ namespace gcc_wrappers::type {
       return out;
    }
    
-   attribute_list base::attributes() const {
+   attribute_list base::attributes() {
+      return attribute_list::from_untyped(TYPE_ATTRIBUTES(this->_node));
+   }
+   const attribute_list base::attributes() const {
       return attribute_list::from_untyped(TYPE_ATTRIBUTES(this->_node));
    }
    

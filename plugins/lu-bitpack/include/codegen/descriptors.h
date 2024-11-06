@@ -4,6 +4,7 @@
 #include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/type/record.h"
+#include "bitpacking/data_options/computed.h"
 #include "bitpacking/member_kind.h"
 #include "bitpacking/member_options.h"
 
@@ -24,10 +25,7 @@ namespace codegen {
          // for arrays only. given `int foo[4][3][2]`, this would be `{ 4, 3, 2 }`.
          std::vector<size_t> array_extents;
          
-         struct {
-            bitpacking::member_options::requested requested;
-            bitpacking::member_options::computed  computed;
-         } bitpacking_options;
+         bitpacking::data_options::computed bitpacking_options;
          
          size_t size_in_bits() const; // given int foo[4][3][2], this is the bitcount of any foo[x][y][z]
    };
@@ -55,12 +53,14 @@ namespace codegen {
          
       public:
          member_descriptor_view(const member_descriptor&);
+         
+         const member_descriptor& innermost_member() const noexcept { return *this->target; }
       
          bitpacking::member_kind kind() const;
          gcc_wrappers::type::base type() const;
          gcc_wrappers::type::base innermost_value_type() const;
          
-         const bitpacking::member_options::computed& bitpacking_options() const;
+         const bitpacking::data_options::computed& bitpacking_options() const;
       
          size_t size_in_bits() const; // given int foo[4][3][2], this is the bitcount of foo as a whole
          size_t element_size_in_bits() const; // given int foo[4][3][2], this is the bitcount of foo[x][y][z]

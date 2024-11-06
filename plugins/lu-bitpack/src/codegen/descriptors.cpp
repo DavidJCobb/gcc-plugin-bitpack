@@ -1,5 +1,6 @@
 #include "codegen/descriptors.h"
 #include "lu/strings/printf_string.h"
+#include "bitpacking/data_options/loader.h"
 #include "bitpacking/global_options.h"
 #include <gcc-plugin.h>
 #include <diagnostic.h>
@@ -18,7 +19,7 @@ namespace codegen {
    //
    
    size_t member_descriptor::size_in_bits() const {
-      const auto& o = this->bitpacking_options.computed;
+      const auto& o = this->bitpacking_options;
       if (o.is_buffer()) {
          return o.buffer_options().bytecount * 8;
       } else if (o.is_integral()) {
@@ -55,8 +56,8 @@ namespace codegen {
       return this->target->value_type;
    }
    
-   const bitpacking::member_options::computed& member_descriptor_view::bitpacking_options() const {
-      return this->target->bitpacking_options.computed;
+   const bitpacking::data_options::computed& member_descriptor_view::bitpacking_options() const {
+      return this->target->bitpacking_options;
    }
 
    size_t member_descriptor_view::size_in_bits() const {
@@ -113,31 +114,35 @@ namespace codegen {
       type.for_each_referenceable_field([this, &global](tree raw_decl) {
          auto decl = gw::decl::field::from_untyped(raw_decl);
          
-         bitpacking::member_options::requested options;
-         options.from_field(decl);
-         if (options.omit_from_bitpacking) {
-            return;
+         bitpacking::data_options::computed computed;
+         {
+            using result_code = bitpacking::data_options::loader::result_code;
+            
+            bitpacking::data_options::loader loader(global);
+            loader.field = decl;
+            auto result = loader.go();
+            if (result == result_code::field_is_omitted) {
+               return;
+            } else if (result == result_code::success) {
+               assert(loader.result.has_value());
+               computed = *loader.result;
+            } else {
+               auto message = lu::strings::printf_string(
+                  "unable to continue: a problem occurred while processing bitpacking options for struct data member %<%s::%s%>",
+                  this->type.pretty_print().c_str(),
+                  decl.name().data()
+               );
+               throw std::runtime_error(message);
+            }
          }
-         
-         bitpacking::member_options::computed computed;
-         try {
-            computed.resolve(global, options, decl.value_type());
-         } catch (std::runtime_error& ex) {
-            auto message = lu::strings::printf_string(
-               "struct data member %<%s::%s%>: ",
-               this->type.pretty_print().c_str(),
-               decl.name().data()
-            );
-            message += ex.what();
-            throw std::runtime_error(message);
-         }
+         assert(computed.kind != bitpacking::member_kind::none);
+         assert(computed.kind != bitpacking::member_kind::array && "this value should only be used by member_descriptor_view");
          
          auto& member = this->members.emplace_back();
          member.kind       = computed.kind;
          member.type       = decl.value_type();
          member.decl       = decl;
          member.value_type = member.type;
-         member.bitpacking_options.requested = options;
          if (member.type.is_array()) {
             auto array_type = member.type.as_array();
             auto value_type = array_type.value_type();
@@ -169,7 +174,7 @@ namespace codegen {
             } while (true);
             member.value_type = value_type;
          }
-         member.bitpacking_options.computed = computed;
+         member.bitpacking_options = computed;
          
          switch (member.kind) {
             case bitpacking::member_kind::buffer:

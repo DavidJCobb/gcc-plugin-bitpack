@@ -64,6 +64,8 @@ namespace gcc_wrappers {
                
                expr::base front();
                expr::base back();
+               const expr::base front() const;
+               const expr::base back() const;
          
                iterator begin();
                iterator end();
@@ -79,6 +81,7 @@ namespace gcc_wrappers {
          bool compare_values(const attribute) const;
          
          arguments_wrapper arguments();
+         const arguments_wrapper arguments() const;
    };
    
    class attribute_list {
@@ -121,8 +124,10 @@ namespace gcc_wrappers {
          iterator at(size_t n); // may throw std::out_of_range
       
          attribute first_attribute_with_prefix(lu::strings::zview);
+         const attribute first_attribute_with_prefix(lu::strings::zview) const;
       
          attribute get_attribute(lu::strings::zview);
+         const attribute get_attribute(lu::strings::zview) const;
       
          bool has_attribute(lu::strings::zview) const;
          

@@ -17,6 +17,9 @@ namespace gcc_wrappers::decl {
    attribute_list base::attributes() {
       return attribute_list::from_untyped(DECL_ATTRIBUTES(this->_node));
    }
+   const attribute_list base::attributes() const {
+      return attribute_list::from_untyped(DECL_ATTRIBUTES(this->_node));
+   }
    
    location_t base::source_location() const {
       return DECL_SOURCE_LOCATION(this->_node);

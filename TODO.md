@@ -5,7 +5,12 @@
 
 ### Short-term
 
-* When a data member doesn't specify a pre-pack or post-unpack function, but its type does (i.e. the type is a struct and contains the appropriate attribute), pull the values from that.
+* When loading attributes for a type, we should reject any that don't make sense for that type (e.g. integral options on a struct; string options on a non-array).
+* Bitpacking options that make sense for struct types should appear in the XML output.
+* When computing bitpacking options for a member, if pre-pack and post-unpack functions are specified, we need to verify that their "normal type" argument matches the innermost value type of the data member.
+* The XML output has no way of knowing or reporting what bitpacking options are applied to integral types. The final used bitcounts (and other associated options) should still be emitted per member, but this still reflects a potential loss of information. Can we fix this?
+  * Do we want to restrict bitpacking options to only be specifiable on struct types?
+* Bitpacking options applied to a type are only detected when that exact type is used; given `typedef original_name new_name`, an object of type `new_name` will not benefit from any bitpacking options applied to `original_name`. Do we want to do something about this?
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
   * Most bitpacking options apply to the most deeply nested value when used on an array of any rank. For defaults, though, you'd need to at least be able to specify whether the value is per-element or for the entire member; and you'd then also need a syntax to provide values for (potentially nested) arrays. (We should support whatever initializer syntax C supports.)
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.

@@ -143,6 +143,8 @@ The wrappers for types, values, declarations, and expressions should be treated 
 * Similarly, `gw::value` should use `build_unary_op` for more unary operations. I currently only use it where I know it to be needed for correctness deep inside the compiler (e.g. `ADDR_EXPR`, to properly update things like `TREE_ADDRESSABLE` on the operands).
   * Not all unary operations are safe to use with `build_unary_op`; for example, `INDIRECT_REF`, the pointer-dereferencing operator, isn't compatible and will cause assertion failures or crashes if built via `build_unary_op`.
 * It would probably be more appropriate to have `gw::constant::base` as the base class for `gw::expr::integer_constant` and `gw::expr::string_constant`, with the base class for constants subclassing `gw::value` as `gw::expr::base` currently does.
+* The codebase isn't consistently const-correct.
+* Const-correctness doesn't work super well since these are structs rather than pointers or references: even if you have a `const gw::type::base`, it's trivial to un-const it by just assigning it to a non-const `gw::type::base`. The same thing applies to when a const wrapper tries to return another const wrapper.
 
 
 ## Potential future plans

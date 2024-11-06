@@ -5,10 +5,9 @@
 #include <type_traits>
 #include <variant>
 #include "lu/singleton.h"
-#include "bitpacking/in_progress_options.h"
+#include "bitpacking/data_options/x_options.h"
 
 #include <gcc-plugin.h>
-#include <plugin-version.h>
 #include <c-family/c-pragma.h>
 
 namespace bitpacking {
@@ -19,12 +18,12 @@ namespace bitpacking {
    */
    class heritable_options {
       public:
-         using integral_data = in_progress_options::integral;
-         using string_data   = in_progress_options::string;
+         using integral_data = data_options::requested_x_options::integral;
+         using string_data   = data_options::requested_x_options::string;
       
       public:
          std::string name;
-         in_progress_options::variant data;
+         data_options::requested_x_options::variant data;
          //
          // Options common to, and heritable for, all data types:
          //

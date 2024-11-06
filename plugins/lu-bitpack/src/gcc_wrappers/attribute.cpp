@@ -85,12 +85,18 @@ namespace gcc_wrappers {
       }
       return expr::base::from_untyped(TREE_VALUE(node));
    }
-
+   
    expr::base attribute::arguments_wrapper::front() {
       assert(!empty());
       return *begin();
    }
    expr::base attribute::arguments_wrapper::back() {
+      return std::as_const(*this).back();
+   }
+   const expr::base attribute::arguments_wrapper::front() const {
+      return const_cast<arguments_wrapper&>(*this).front();
+   }
+   const expr::base attribute::arguments_wrapper::back() const {
       assert(!empty());
       auto node = this->_node;
       if (has_leading_identifier())
@@ -168,8 +174,11 @@ namespace gcc_wrappers {
          return false;
       return attribute_value_equal(this->as_untyped(), other.as_untyped());
    }
-         
+   
    attribute::arguments_wrapper attribute::arguments() {
+      return std::as_const(*this).arguments();
+   }
+   const attribute::arguments_wrapper attribute::arguments() const {
       return arguments_wrapper(empty() ? NULL_TREE : TREE_VALUE(this->_node));
    }
    
@@ -230,10 +239,16 @@ namespace gcc_wrappers {
    }
    
    attribute attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) {
+      return std::as_const(*this).first_attribute_with_prefix(prefix);
+   }
+   const attribute attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) const {
       return attribute::from_untyped(lookup_attribute_by_prefix(prefix.c_str(), this->_node));
    }
    
    attribute attribute_list::get_attribute(lu::strings::zview name) {
+      return std::as_const(*this).get_attribute(name);
+   }
+   const attribute attribute_list::get_attribute(lu::strings::zview name) const {
       return attribute::from_untyped(lookup_attribute(name.c_str(), this->_node));
    }
    

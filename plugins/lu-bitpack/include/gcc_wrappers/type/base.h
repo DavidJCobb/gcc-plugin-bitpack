@@ -1,22 +1,24 @@
 #pragma once
 #include <string>
 #include "gcc_wrappers/_wrapped_tree_node.h"
-#include "gcc_wrappers/attribute.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
-namespace gcc_wrappers::decl {
-   class type_def;
-}
-namespace gcc_wrappers::type {
-   class array;
-   class enumeration;
-   class fixed_point;
-   class floating_point;
-   class function;
-   class integral;
-   class pointer;
-   class record;
-   class untagged_union;
+namespace gcc_wrappers {
+   namespace decl {
+      class type_def;
+   }
+   namespace type {
+      class array;
+      class enumeration;
+      class fixed_point;
+      class floating_point;
+      class function;
+      class integral;
+      class pointer;
+      class record;
+      class untagged_union;
+   }
+   class attribute_list;
 }
 
 namespace gcc_wrappers::type {
@@ -35,7 +37,8 @@ namespace gcc_wrappers::type {
          std::string name() const;
          std::string pretty_print() const;
          
-         attribute_list attributes() const;
+         attribute_list attributes();
+         const attribute_list attributes() const;
          
          base canonical() const;
          base main_variant() const;

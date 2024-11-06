@@ -13,6 +13,7 @@
 
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/type/record.h"
 namespace {
@@ -55,11 +56,19 @@ namespace xmlgen {
          }
       }
       {
-         auto& inh = member.bitpacking_options.requested.inherit_from;
-         if (!inh.empty())
-            ptr->set_attribute("inherit", inh);
+         auto list = member.decl.attributes();
+         auto attr = list.get_attribute("lu_bitpack_inherit");
+         if (!attr.empty()) {
+            //
+            // If this attribute is present, we know it must be valid, or bitpacking 
+            // would've failed and we wouldn't have anything to write out to XML. 
+            // Don't bother doing any correctness checks now.
+            //
+            auto value = attr.arguments().front().as<gw::expr::string_constant>().value();
+            ptr->set_attribute("inherit", value);
+         }
       }
-      const auto& computed = member.bitpacking_options.computed;
+      const auto& computed = member.bitpacking_options;
       switch (member.kind) {
          case bitpacking::member_kind::boolean:
             ptr->node_name = "boolean";
@@ -109,12 +118,12 @@ namespace xmlgen {
             assert(false && "unreachable");
       }
       {
-         auto& xfrm = member.bitpacking_options.requested.transforms;
+         auto& xfrm = member.bitpacking_options.transforms;
          if (auto& v = xfrm.pre_pack; !v.empty()) {
-            ptr->set_attribute("pre-pack-transform", v);
+            ptr->set_attribute("pre-pack-transform", v.name());
          }
          if (auto& v = xfrm.post_unpack; !v.empty()) {
-            ptr->set_attribute("post-unpack-transform", v);
+            ptr->set_attribute("post-unpack-transform", v.name());
          }
       }
       
@@ -171,6 +180,19 @@ namespace xmlgen {
          root->node_name = "struct-type";
          root->set_attribute("name",   descriptor.type.name());
          root->set_attribute("c-type", descriptor.type.pretty_print());
+         {
+            auto list = descriptor.type.attributes();
+            auto attr = list.get_attribute("lu_bitpack_inherit");
+            if (!attr.empty()) {
+               //
+               // If this attribute is present, we know it must be valid, or bitpacking 
+               // would've failed and we wouldn't have anything to write out to XML. 
+               // Don't bother doing any correctness checks now.
+               //
+               auto value = attr.arguments().front().as<gw::expr::string_constant>().value();
+               root->set_attribute("inherit", value);
+            }
+         }
          
          for(auto& m_descriptor : descriptor.members) {
             root->append_child(std::move(_make_whole_data_member(m_descriptor)));

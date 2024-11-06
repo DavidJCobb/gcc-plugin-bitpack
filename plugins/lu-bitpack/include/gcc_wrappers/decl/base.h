@@ -17,6 +17,7 @@ namespace gcc_wrappers {
             std::string_view name() const;
             
             attribute_list attributes();
+            const attribute_list attributes() const;
             
             // If the declaration appears in multiple places (e.g. a 
             // forward-declared entity that is later defined), this 
