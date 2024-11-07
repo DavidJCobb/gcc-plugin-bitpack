@@ -21,6 +21,6 @@ namespace gcc_wrappers::expr {
       auto size_of = TREE_STRING_LENGTH(this->_node); // includes null
       if (size_of == 0)
          return {};
-      return std::string(TREE_STRING_POINTER(this->_node), size_of - 1);
+      return std::string_view(TREE_STRING_POINTER(this->_node), size_of - 1);
    }
 }

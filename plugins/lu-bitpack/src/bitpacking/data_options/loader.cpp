@@ -331,7 +331,7 @@ namespace bitpacking::data_options {
          auto& src = *casted;
          auto& dst = dst_result.data.emplace<computed_x_options::string>();
          try {
-            dst = src.bake(global, this->field, type);
+            dst = src.bake(global, this->field, this->field.value_type());
          } catch (std::runtime_error& ex) {
             _report_error(this->field.as_untyped(), ex.what());
          }

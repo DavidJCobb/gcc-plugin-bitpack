@@ -12,6 +12,15 @@
 #include <stdio.h>
 #include <string.h> // memset
 
+#pragma lu_bitpack enable
+
+//
+// START OF BITPACKING OPTIONS
+//
+
+void MapNestedStructForSave(const struct NestedStruct* src, struct PackedNestedStruct* dst);
+void MapNestedStructForLoad(struct NestedStruct* dst, const struct PackedNestedStruct* src);
+
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
 #define LU_BP_MINMAX(x,y)   __attribute__((lu_bitpack_range(x, y)))
@@ -53,6 +62,10 @@
 #pragma lu_bitpack heritable integer "$23bit" ( bitcount = 23 )
 #pragma lu_bitpack heritable integer "$24bit" ( bitcount = 24 )
 
+//
+// END OF BITPACKING OPTIONS
+//
+
 LU_BP_INHERIT("$23bit") typedef u32 u32_packed_23;
 typedef u32_packed_23 transitive_u23;
 //#pragma lu_bitpack debug_dump_identifier u32_packed_23
@@ -88,7 +101,8 @@ const char* all_item_names[] = {
    "Diamond Armor",
 };
 
-LU_BP_TRANSFORM(MapNestedStructForSave,MapNestedStructForLoad) struct NestedStruct {
+LU_BP_TRANSFORM(MapNestedStructForSave,MapNestedStructForLoad)
+struct NestedStruct {
    enum ItemType weapons[5];
    enum ItemType armor[5];
 };

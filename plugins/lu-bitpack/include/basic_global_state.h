@@ -11,4 +11,8 @@ class basic_global_state : public lu::singleton<basic_global_state> {
          bitpacking::global_options::computed  computed;
       } global_options;
       std::string xml_output_path;
+      
+      bool any_attributes_seen   = false;
+      bool any_attributes_missed = false;
+      bool enabled = false;
 };

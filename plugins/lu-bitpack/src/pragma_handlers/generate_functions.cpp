@@ -150,6 +150,11 @@ namespace pragma_handlers {
       
       try {
          auto& gs = basic_global_state::get();
+         if (gs.any_attributes_missed) {
+            error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: in order to run code generation, you must use %<#pragma lu_bitpack enable%> before the compiler sees any bitpacking attributes");
+            return;
+         }
+         
          gs.global_options.computed.resolve(gs.global_options.requested);
          
          codegen::sector_functions_generator generator(gs.global_options.computed);

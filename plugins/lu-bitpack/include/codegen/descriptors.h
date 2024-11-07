@@ -6,7 +6,6 @@
 #include "gcc_wrappers/type/record.h"
 #include "bitpacking/data_options/computed.h"
 #include "bitpacking/member_kind.h"
-#include "bitpacking/member_options.h"
 
 namespace bitpacking {
    namespace global_options {

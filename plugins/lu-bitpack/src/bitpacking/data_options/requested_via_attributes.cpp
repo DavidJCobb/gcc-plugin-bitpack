@@ -1,5 +1,4 @@
 #include "bitpacking/data_options/requested_via_attributes.h"
-#include "bitpacking/data_options/processed_bitpack_attributes.h"
 #include <stdexcept>
 #include <vector>
 #include "lu/strings/handle_kv_string.h"
@@ -185,7 +184,7 @@ namespace bitpacking::data_options {
          _report_error(
             subject,
             "%<lu_bitpack_funcs%> attribute specifies a pre-pack identifier %<%s%> that "
-            "either doesn't or is not a function",
+            "either doesn't exist or is not a function",
             id_pre_pack.c_str()
          );
       } else {
@@ -199,7 +198,7 @@ namespace bitpacking::data_options {
          _report_error(
             subject,
             "%<lu_bitpack_funcs%> attribute specifies a post-unpack identifier %<%s%> that "
-            "either doesn't or is not a function",
+            "either doesn't exist or is not a function",
             id_post_unpack.c_str()
          );
       } else {
@@ -224,130 +223,16 @@ namespace bitpacking::data_options {
          _report_error(subject, problem.c_str());
       }
    }
-   void requested_via_attributes::_load_string(tree subject, gw::attribute attr) {
-      gw::type::base type;
-      if (TYPE_P(subject)) {
-         type = gw::type::base::from_untyped(subject);
-      } else if (TREE_CODE(subject) == FIELD_DECL) {
-         type = gw::decl::field::from_untyped(subject).value_type();
-      }
-      
-      auto args = attr.arguments();
-      if (!type.is_array()) {
-         _report_error(subject, "%<lu_bitpack_string%> used on a field that isn't a string (array of char)");
-         return;
-      }
-      auto& dst_opt  = this->x_options.string;
-      auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
-      if (args.empty())
-         return;
-      _warn_on_extra_attribute_args(subject, attr, 1);
-      
-      auto arg = args.front().as<gw::expr::string_constant>();
-      if (arg.empty()) {
-         _report_error(subject, "%<lu_bitpack_string%> attribute argument must be a string literal");
-         return;
-      }
-      
-      std::optional<int>  length;
-      std::optional<bool> null_terminated = false;
-      
-      auto data = arg.value();
-      try {
-         lu::strings::handle_kv_string(data, std::array{
-            lu::strings::kv_string_param{
-               .name      = "length",
-               .has_param = true,
-               .int_param = true,
-               .handler   = [&length](std::string_view v, int vi) {
-                  length = vi;
-               },
-            },
-            lu::strings::kv_string_param{
-               .name      = "with-terminator",
-               .has_param = false,
-               .handler   = [&null_terminated](std::string_view v, int vi) {
-                  null_terminated = true;
-               },
-            },
-         });
-      } catch (std::runtime_error& ex) {
-         _report_error(
-               subject,
-            "%<lu_bitpack_string%> attribute failed to parse: %s",
-            ex.what()
-         );
-         return;
-      }
-      
-      if (length.has_value()) {
-         auto v = *length;
-         if (v <= 0) {
-            _report_error(
-               subject,
-               "%<lu_bitpack_string%> attribute must specify a positive non-zero "
-               "string length (seen: %d)",
-               (int)v
-            );
-            return;
-         }
-         dst_data.length = v;
-      }
-      if (null_terminated.has_value())
-         dst_data.with_terminator = *null_terminated;
-   }
    
    void requested_via_attributes::_load_impl(tree subject, gw::attribute_list attributes) {
-      using error_type = processed_bitpack_attributes::invalid_tag;
-      auto  processed  = TYPE_P(subject) ?
-         processed_bitpack_attributes(gw::type::base::from_untyped(subject))
-      :
-         processed_bitpack_attributes(gw::decl::field::from_untyped(subject))
-      ;
-      
       {
-         using param_type = std::string;
-         auto  variant    = processed.get_inherit();
-         
-         if (std::holds_alternative<error_type>(variant)) {
-            this->failed = true;
-         } else if (std::holds_alternative<param_type>(variant)) {
-            auto  name = std::get<param_type>(variant);
-            auto* o    = heritable_options_stockpile::get().options_by_name(name);
+         auto name = _pull_heritable_name(subject, attributes);
+         if (!name.empty()) {
+            auto* o = heritable_options_stockpile::get().options_by_name(name);
             if (!o) {
                _report_error(subject, "%<lu_bitpack_inherit%>: no heritable option set exists with the name %<%s%>", name.c_str());
             }
             this->inherit = o;
-         }
-      }
-      {
-         using param_type = size_t;
-         auto  variant    = processed.get_bitcount();
-         
-         if (std::holds_alternative<param_type>(variant)) {
-            this->x_options.integral.bitcount = std::get<param_type>(variant);
-         } else if (std::holds_alternative<error_type>(variant)) {
-            this->failed = true;
-         }
-      }
-      {
-         using param_type = intmax_t;
-         auto  variant    = processed.get_min();
-         
-         if (std::holds_alternative<param_type>(variant)) {
-            this->x_options.integral.min = std::get<param_type>(variant);
-         } else if (std::holds_alternative<error_type>(variant)) {
-            this->failed = true;
-         }
-      }
-      {
-         using param_type = intmax_t;
-         auto  variant    = processed.get_max();
-         
-         if (std::holds_alternative<param_type>(variant)) {
-            this->x_options.integral.max = std::get<param_type>(variant);
-         } else if (std::holds_alternative<error_type>(variant)) {
-            this->failed = true;
          }
       }
       
@@ -360,10 +245,39 @@ namespace bitpacking::data_options {
             continue;
          }
          
+         if (key == "lu bitpack invalid attributes") {
+            this->failed = true;
+            continue;
+         }
+         if (key == "lu bitpack computed string length") {
+            auto& dst_opt  = this->x_options.string;
+            auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
+            
+            dst_data.length = attr.arguments().front().as<gw::expr::integer_constant>().value<size_t>();
+            continue;
+         }
+         if (key == "lu bitpack computed string with-terminator") {
+            auto& dst_opt  = this->x_options.string;
+            auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
+            
+            auto node = attr.arguments().front().as_untyped();
+            if (node == boolean_true_node) {
+               dst_data.with_terminator = true;
+            }
+            continue;
+         }
+         
          if (attr.arguments().has_leading_identifier()) {
             _report_error(subject, "%<%s%> attribute has an identifier as its leading argument; this is invalid", key.data());
             continue;
          }
+         
+         //
+         // Attribute arguments will have been validated in advance: GCC 
+         // verified that the attributes have the right number of args, 
+         // and our attribute handlers rejected any obviously malformed 
+         // args. We can just access things blindly.
+         //
          
          if (key == "lu_bitpack_omit") {
             this->omit = true;
@@ -374,6 +288,7 @@ namespace bitpacking::data_options {
             continue;
          }
          if (key == "lu_bitpack_bitcount") {
+            this->x_options.integral.bitcount = attr.arguments().front().as<gw::expr::integer_constant>().value<intmax_t>();
             continue;
          }
          if (key == "lu_bitpack_funcs") {
@@ -381,10 +296,15 @@ namespace bitpacking::data_options {
             continue;
          }
          if (key == "lu_bitpack_range") {
+            auto args = attr.arguments();
+            this->x_options.integral.min = args[0].as<gw::expr::integer_constant>().value<intmax_t>();
+            this->x_options.integral.max = args[1].as<gw::expr::integer_constant>().value<intmax_t>();
             continue;
          }
          if (key == "lu_bitpack_string") {
-            this->_load_string(subject, attr);
+            auto& dst_opt = this->x_options.string;
+            if (!dst_opt.has_value())
+               dst_opt.emplace();
             continue;
          }
          

@@ -19,7 +19,10 @@ static plugin_info _my_plugin_info = {
 };
 
 #include "attribute_handlers/bitpack_bitcount.h"
+#include "attribute_handlers/bitpack_inherit.h"
 #include "attribute_handlers/bitpack_range.h"
+#include "attribute_handlers/bitpack_string.h"
+#include "attribute_handlers/generic_bitpacking_data_option.h"
 #include "attribute_handlers/generic_type_or_decl.h"
 #include "attribute_handlers/no_op.h"
 
@@ -45,6 +48,17 @@ namespace _attributes {
    };
    
    // internal use
+   static struct attribute_spec internal_invalid = {
+      .name = "lu bitpack invalid attributes",
+      .min_length = 0, // min argcount
+      .max_length = 0, // max argcount
+      .decl_required = false,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::no_op,
+      .exclude = NULL
+   };
    static struct attribute_spec internal_computed = {
       .name = "lu bitpack computed",
       .min_length =  1, // min argcount
@@ -62,6 +76,29 @@ namespace _attributes {
       .max_length = 0, // max argcount
       .decl_required = false,
       .type_required = true,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::no_op,
+      .exclude = NULL
+   };
+   
+   static struct attribute_spec internal_computed_string_length = {
+      .name = "lu bitpack computed string length",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = false,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::no_op,
+      .exclude = NULL
+   };
+   static struct attribute_spec internal_computed_string_wt = {
+      .name = "lu bitpack computed string with-terminator",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = false,
+      .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
       .handler = &attribute_handlers::no_op,
@@ -87,7 +124,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::generic_bitpacking_data_option,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_inherit = {
@@ -98,7 +135,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::bitpack_inherit,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_range = {
@@ -120,7 +157,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::bitpack_string,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_omit = {
@@ -131,7 +168,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::generic_bitpacking_data_option,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_as_opaque_buffer = {
@@ -142,14 +179,17 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_type_or_decl,
+      .handler = &attribute_handlers::generic_bitpacking_data_option,
       .exclude = NULL
    };
 }
 
 static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::test_attribute);
+   register_attribute(&_attributes::internal_invalid);
    register_attribute(&_attributes::internal_computed);
+   register_attribute(&_attributes::internal_computed_string_length);
+   register_attribute(&_attributes::internal_computed_string_wt);
    register_attribute(&_attributes::internal_sentinel_bad_type_reported);
    register_attribute(&_attributes::bitpack_bitcount);
    register_attribute(&_attributes::bitpack_funcs);
@@ -162,26 +202,12 @@ static void register_attributes(void* event_data, void* data) {
 
 #include "pragma_handlers/debug_dump_function.h"
 #include "pragma_handlers/debug_dump_identifier.h"
+#include "pragma_handlers/enable.h"
 #include "pragma_handlers/generate_functions.h"
 #include "pragma_handlers/heritable.h"
 #include "pragma_handlers/set_options.h"
 
 static void register_pragmas(void* event_data, void* data) {
-   c_register_pragma_with_expansion(
-      "lu_bitpack",
-      "set_options",
-      &pragma_handlers::set_options
-   );
-   c_register_pragma_with_expansion(
-      "lu_bitpack",
-      "heritable",
-      &pragma_handlers::heritable
-   );
-   c_register_pragma_with_expansion(
-      "lu_bitpack",
-      "generate_functions",
-      &pragma_handlers::generate_functions
-   );
    c_register_pragma_with_expansion(
       "lu_bitpack",
       "debug_dump_function",
@@ -191,6 +217,26 @@ static void register_pragmas(void* event_data, void* data) {
       "lu_bitpack",
       "debug_dump_identifier",
       &pragma_handlers::debug_dump_identifier
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "enable",
+      &pragma_handlers::enable
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "generate_functions",
+      &pragma_handlers::generate_functions
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "heritable",
+      &pragma_handlers::heritable
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "set_options",
+      &pragma_handlers::set_options
    );
 }
 

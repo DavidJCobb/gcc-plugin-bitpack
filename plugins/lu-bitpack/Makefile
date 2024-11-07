@@ -3,11 +3,13 @@ INCDIR=include
 SOURCES=\
         src/attribute_handlers/helpers/bp_attr_context.cpp \
         src/attribute_handlers/bitpack_bitcount.cpp \
+        src/attribute_handlers/bitpack_inherit.cpp \
         src/attribute_handlers/bitpack_range.cpp \
+        src/attribute_handlers/bitpack_string.cpp \
+        src/attribute_handlers/generic_bitpacking_data_option.cpp \
         src/attribute_handlers/generic_type_or_decl.cpp \
         src/attribute_handlers/no_op.cpp \
         src/bitpacking/data_options/loader.cpp \
-        src/bitpacking/data_options/processed_bitpack_attributes.cpp \
         src/bitpacking/data_options/requested_via_attributes.cpp \
         src/bitpacking/data_options/x_options.cpp \
         src/bitpacking/global_options.cpp \
@@ -66,6 +68,7 @@ SOURCES=\
         src/lu/strings/trim.cpp \
         src/pragma_handlers/debug_dump_function.cpp \
         src/pragma_handlers/debug_dump_identifier.cpp \
+        src/pragma_handlers/enable.cpp \
         src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/heritable.cpp \
         src/pragma_handlers/set_options.cpp \

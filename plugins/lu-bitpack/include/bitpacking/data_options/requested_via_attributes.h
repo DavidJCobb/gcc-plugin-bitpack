@@ -33,7 +33,6 @@ namespace bitpacking::data_options {
          
       protected:
          void _load_transforms(tree report_errors_on, gcc_wrappers::attribute);
-         void _load_string(tree report_errors_on, gcc_wrappers::attribute);
          
          void _load_impl(tree, gcc_wrappers::attribute_list);
          

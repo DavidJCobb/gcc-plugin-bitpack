@@ -12,8 +12,12 @@
 #include <stdio.h>
 #include <string.h> // memset
 
+#pragma lu_bitpack enable
+
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
+#define LU_BP_STRING(info)  __attribute__((lu_bitpack_string(info)))
+#define LU_BP_STRING_WT     __attribute__((lu_bitpack_string("with-terminator")))
 
 #pragma lu_bitpack set_options ( \
    sector_count=9, \
@@ -60,6 +64,7 @@ static struct TestStruct {
    LU_BP_INHERIT("$24bit") u32 j;
    LU_BP_BITCOUNT(24)      u32 k;
    LU_BP_BITCOUNT(7)       u8  l[7];
+   LU_BP_STRING_WT         u8  name[6];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);
