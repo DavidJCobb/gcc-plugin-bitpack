@@ -1,11 +1,13 @@
 PLUGIN=lu_bitpack.so
 INCDIR=include
 SOURCES=\
+        src/attribute_handlers/helpers/bp_attr_context.cpp \
         src/attribute_handlers/bitpack_bitcount.cpp \
         src/attribute_handlers/bitpack_range.cpp \
         src/attribute_handlers/generic_type_or_decl.cpp \
         src/attribute_handlers/no_op.cpp \
         src/bitpacking/data_options/loader.cpp \
+        src/bitpacking/data_options/processed_bitpack_attributes.cpp \
         src/bitpacking/data_options/requested_via_attributes.cpp \
         src/bitpacking/data_options/x_options.cpp \
         src/bitpacking/global_options.cpp \

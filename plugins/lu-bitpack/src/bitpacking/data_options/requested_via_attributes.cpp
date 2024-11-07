@@ -1,4 +1,5 @@
 #include "bitpacking/data_options/requested_via_attributes.h"
+#include "bitpacking/data_options/processed_bitpack_attributes.h"
 #include <stdexcept>
 #include <vector>
 #include "lu/strings/handle_kv_string.h"
@@ -123,41 +124,6 @@ namespace {
 }
 
 namespace bitpacking::data_options {
-   void requested_via_attributes::_load_bitcount(tree subject, gw::attribute attr) {
-      auto args = attr.arguments();
-      if (args.empty()) {
-         _report_error(subject, "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter indicating the number of bits to pack the field into.");
-         return;
-      }
-      _warn_on_extra_attribute_args(subject, attr, 1);
-      int v;
-      {
-         auto arg = args.front().as<gw::expr::integer_constant>();
-         auto opt = arg.try_value_signed();
-         if (!opt.has_value()) {
-            _report_error(subject, "%<lu_bitpack_bitcount%> attribute must have an integer constant parameter indicating the number of bits to pack the field into.");
-            return;
-         }
-         v = (int) *opt;
-      }
-      if (v <= 0) {
-         _report_error(
-            subject,
-            "%<lu_bitpack_bitcount%> attribute must specify a positive non-zero "
-            "bitcount (seen: %d)",
-            (int)v
-         );
-         return;
-      }
-      if (v > (int)sizeof(size_t) * 8) {
-         _report_warning(
-            subject,
-            "%<lu_bitpack_bitcount%> attribute specifies an unusually large bitcount; is this intentional? (seen: %<%d%>)",
-            (int)v
-         );
-      }
-      this->x_options.integral.bitcount = v;
-   }
    void requested_via_attributes::_load_transforms(tree subject, gw::attribute attr) {
       std::string id_pre_pack;
       std::string id_post_unpack;
@@ -258,32 +224,6 @@ namespace bitpacking::data_options {
          _report_error(subject, problem.c_str());
       }
    }
-   void requested_via_attributes::_load_range(tree subject, gw::attribute attr) {
-      auto args = attr.arguments();
-      if (args.size() < 2) {
-         if (args.empty()) {
-            _report_error(subject, "%<lu_bitpack_range%> attribute must specify two arguments (the minimum and maximum possible values of the field); no arguments given");
-         } else {
-            _report_error(subject, "%<lu_bitpack_range%> attribute must specify two arguments (the minimum and maximum possible values of the field); only one argument given");
-         }
-         return;
-      }
-      _warn_on_extra_attribute_args(subject, attr, 2);
-      
-      auto opt_a = args[0].as<gw::expr::integer_constant>().try_value_signed();
-      auto opt_b = args[1].as<gw::expr::integer_constant>().try_value_signed();
-      if (!opt_a.has_value() || !opt_b.has_value()) {
-         if (!opt_a.has_value()) {
-            _report_error(subject, "%<lu_bitpack_range%> first argument doesn't appear to be an integer constant");
-         }
-         if (!opt_b.has_value()) {
-            _report_error(subject, "%<lu_bitpack_range%> second argument doesn't appear to be an integer constant");
-         }
-         return;
-      }
-      this->x_options.integral.min = *opt_a;
-      this->x_options.integral.max = *opt_b;
-   }
    void requested_via_attributes::_load_string(tree subject, gw::attribute attr) {
       gw::type::base type;
       if (TYPE_P(subject)) {
@@ -358,13 +298,57 @@ namespace bitpacking::data_options {
    }
    
    void requested_via_attributes::_load_impl(tree subject, gw::attribute_list attributes) {
-      auto heritable_name = _pull_heritable_name(subject, attributes);
-      if (!heritable_name.empty()) {
-         auto* o = heritable_options_stockpile::get().options_by_name(heritable_name);
-         if (!o) {
-            _report_error(subject, "%<lu_bitpack_inherit%>: no heritable option set exists with the name %<%s%>", heritable_name.c_str());
+      using error_type = processed_bitpack_attributes::invalid_tag;
+      auto  processed  = TYPE_P(subject) ?
+         processed_bitpack_attributes(gw::type::base::from_untyped(subject))
+      :
+         processed_bitpack_attributes(gw::decl::field::from_untyped(subject))
+      ;
+      
+      {
+         using param_type = std::string;
+         auto  variant    = processed.get_inherit();
+         
+         if (std::holds_alternative<error_type>(variant)) {
+            this->failed = true;
+         } else if (std::holds_alternative<param_type>(variant)) {
+            auto  name = std::get<param_type>(variant);
+            auto* o    = heritable_options_stockpile::get().options_by_name(name);
+            if (!o) {
+               _report_error(subject, "%<lu_bitpack_inherit%>: no heritable option set exists with the name %<%s%>", name.c_str());
+            }
+            this->inherit = o;
          }
-         this->inherit = o;
+      }
+      {
+         using param_type = size_t;
+         auto  variant    = processed.get_bitcount();
+         
+         if (std::holds_alternative<param_type>(variant)) {
+            this->x_options.integral.bitcount = std::get<param_type>(variant);
+         } else if (std::holds_alternative<error_type>(variant)) {
+            this->failed = true;
+         }
+      }
+      {
+         using param_type = intmax_t;
+         auto  variant    = processed.get_min();
+         
+         if (std::holds_alternative<param_type>(variant)) {
+            this->x_options.integral.min = std::get<param_type>(variant);
+         } else if (std::holds_alternative<error_type>(variant)) {
+            this->failed = true;
+         }
+      }
+      {
+         using param_type = intmax_t;
+         auto  variant    = processed.get_max();
+         
+         if (std::holds_alternative<param_type>(variant)) {
+            this->x_options.integral.max = std::get<param_type>(variant);
+         } else if (std::holds_alternative<error_type>(variant)) {
+            this->failed = true;
+         }
       }
       
       for(auto attr : attributes) {
@@ -390,7 +374,6 @@ namespace bitpacking::data_options {
             continue;
          }
          if (key == "lu_bitpack_bitcount") {
-            this->_load_bitcount(subject, attr);
             continue;
          }
          if (key == "lu_bitpack_funcs") {
@@ -398,7 +381,6 @@ namespace bitpacking::data_options {
             continue;
          }
          if (key == "lu_bitpack_range") {
-            this->_load_range(subject, attr);
             continue;
          }
          if (key == "lu_bitpack_string") {
@@ -416,7 +398,7 @@ namespace bitpacking::data_options {
       auto errors_prior = errorcount; // diagnostic.h
       _load_impl(decl.as_untyped(), decl.attributes());
       auto errors_after = errorcount;
-      return errors_prior == errors_after;
+      return !this->failed && errors_prior == errors_after;
       
    }
    bool requested_via_attributes::load(gcc_wrappers::type::base type) {
@@ -449,6 +431,6 @@ namespace bitpacking::data_options {
       }
       
       auto errors_after = errorcount;
-      return errors_prior == errors_after;
+      return !this->failed && errors_prior == errors_after;
    }
 }

@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <string_view>
 #include "gcc_wrappers/expr/base.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
@@ -22,6 +24,7 @@ namespace gcc_wrappers {
             string_constant(std::string_view);
             
             std::string value() const;
+            std::string_view value_view() const;
       };
       static_assert(sizeof(string_constant) == sizeof(value)); // no new fields
    }

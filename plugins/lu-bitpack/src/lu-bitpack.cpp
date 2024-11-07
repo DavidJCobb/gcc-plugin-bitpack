@@ -43,6 +43,31 @@ namespace _attributes {
       // mark the end of the array?)
       .exclude = NULL
    };
+   
+   // internal use
+   static struct attribute_spec internal_computed = {
+      .name = "lu bitpack computed",
+      .min_length =  1, // min argcount
+      .max_length = -1, // max argcount
+      .decl_required = false,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::no_op,
+      .exclude = NULL
+   };
+   static struct attribute_spec internal_sentinel_bad_type_reported = {
+      .name = "lu bitpack already reported application to bad type",
+      .min_length = 0, // min argcount
+      .max_length = 0, // max argcount
+      .decl_required = false,
+      .type_required = true,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::no_op,
+      .exclude = NULL
+   };
+   
    static struct attribute_spec bitpack_bitcount = {
       .name = "lu_bitpack_bitcount",
       .min_length = 1, // min argcount
@@ -50,7 +75,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::bitpack_bitcount,
       .exclude = NULL
    };
@@ -61,7 +86,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
@@ -72,7 +97,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
@@ -83,7 +108,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::bitpack_range,
       .exclude = NULL
    };
@@ -94,7 +119,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
@@ -105,7 +130,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
@@ -116,7 +141,7 @@ namespace _attributes {
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
-      .affects_type_identity  = false,
+      .affects_type_identity  = true,
       .handler = &attribute_handlers::generic_type_or_decl,
       .exclude = NULL
    };
@@ -124,6 +149,8 @@ namespace _attributes {
 
 static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::test_attribute);
+   register_attribute(&_attributes::internal_computed);
+   register_attribute(&_attributes::internal_sentinel_bad_type_reported);
    register_attribute(&_attributes::bitpack_bitcount);
    register_attribute(&_attributes::bitpack_funcs);
    register_attribute(&_attributes::bitpack_inherit);

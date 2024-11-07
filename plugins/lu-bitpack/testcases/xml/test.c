@@ -53,13 +53,13 @@ static struct TestStruct {
    bool8 c;
    bool8 d;
    bool8 e;
-   LU_BP_BITCOUNT(5)  u8  f;
-   LU_BP_BITCOUNT(3)  u8  g;
-   LU_BP_BITCOUNT(12) u16 h;
+   LU_BP_BITCOUNT(5)       u8  f;
+   LU_BP_BITCOUNT(3)       u8  g;
+   LU_BP_BITCOUNT(12)      u16 h;
    LU_BP_INHERIT("$24bit") u32 i;
    LU_BP_INHERIT("$24bit") u32 j;
-   LU_BP_BITCOUNT(24) u32 k;
-   LU_BP_BITCOUNT(7)  u8  l[7];
+   LU_BP_BITCOUNT(24)      u32 k;
+   LU_BP_BITCOUNT(7)       u8  l[7];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);

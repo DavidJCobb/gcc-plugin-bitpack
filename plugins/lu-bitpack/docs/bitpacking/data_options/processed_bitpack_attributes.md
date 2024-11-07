@@ -56,3 +56,6 @@ Another advantage of a "lightswitch" pragma is that it'd allow us to keep proces
 
 **Strength:** This would move the actual work of parsing the attribute out of the code to coalesce data options, and into the attribute handlers themselves: the handlers would do the work of, uh, handling the attribute and just provide a normalized result for codegen to consume.
 
+
+## Implementation
+

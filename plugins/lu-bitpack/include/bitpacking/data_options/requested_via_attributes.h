@@ -29,10 +29,10 @@ namespace bitpacking::data_options {
             std::optional<requested_x_options::string> string;
          } x_options;
          
+         bool failed = false;
+         
       protected:
-         void _load_bitcount(tree report_errors_on, gcc_wrappers::attribute);
          void _load_transforms(tree report_errors_on, gcc_wrappers::attribute);
-         void _load_range(tree report_errors_on, gcc_wrappers::attribute);
          void _load_string(tree report_errors_on, gcc_wrappers::attribute);
          
          void _load_impl(tree, gcc_wrappers::attribute_list);

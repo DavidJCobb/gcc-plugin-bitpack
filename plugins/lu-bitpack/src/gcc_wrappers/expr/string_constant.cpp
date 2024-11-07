@@ -9,6 +9,9 @@ namespace gcc_wrappers::expr {
    }
    
    std::string string_constant::value() const {
+      return std::string(value_view());
+   }
+   std::string_view string_constant::value_view() const {
       if (empty())
          return {};
       assert(node_is(this->_node));

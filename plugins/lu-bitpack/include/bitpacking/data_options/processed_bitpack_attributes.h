@@ -1,10 +1,15 @@
 #pragma once
+#include <concepts>
+#include <cstdint>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <variant>
 #include "lu/strings/zview.h"
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/attribute.h"
+#include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/list_node.h"
 
 namespace bitpacking::data_options {
@@ -19,20 +24,33 @@ namespace bitpacking::data_options {
          tree _node = NULL_TREE; // TYPE or DECL
          
       protected:
-         gcc_wrappers::attribute _get_attribute();
+         gcc_wrappers::attribute _get_attribute() const;
          gcc_wrappers::attribute _get_or_create_attribute();
          
-         tree _get_map(gcc_wrappers::attribute);
+         tree _get_map(gcc_wrappers::attribute) const;
          
          // read-only access
          tree _get_value_node(std::string_view key) const;
          
-         tree _get_or_create_map_pair(std::string_view key);
+         tree _get_or_create_map_pair(lu::strings::zview key);
          void _set_item(gcc_wrappers::attribute, lu::strings::zview key, tree value);
+         
+      private:
+         template<std::integral Integral>
+         specified<Integral> _get_integral_property(std::string_view name) const;
+         
+         template<typename Integral>
+         void _set_integral_property(lu::strings::zview, specified<Integral>) requires gcc_wrappers::builtin_types::integer_type_ready_for<Integral>;
+         
+         specified<std::string> _get_identifier_property(std::string_view name) const;
+         void _set_identifier_property(lu::strings::zview name, specified<std::string>);
          
       public:
          processed_bitpack_attributes(gcc_wrappers::decl::base);
          processed_bitpack_attributes(gcc_wrappers::type::base);
+         
+         tree get_raw_property(std::string_view name) const;
+         void set_raw_property(lu::strings::zview name, tree);
       
          specified<size_t> get_bitcount() const;
          void set_bitcount(specified<size_t>);
@@ -44,7 +62,8 @@ namespace bitpacking::data_options {
          void set_max(specified<intmax_t>);
          
          specified<std::string> get_inherit() const;
-         void set_inherit(specified<std::string>);
+         void set_inherit(invalid_tag);
+         void set_inherit(tree null_or_string_cst);
          
          specified<std::string> get_transform_pre_pack() const;
          void set_transform_pre_pack(specified<std::string>);
