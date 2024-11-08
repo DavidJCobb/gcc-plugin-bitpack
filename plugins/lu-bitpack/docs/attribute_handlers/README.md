@@ -22,7 +22,12 @@ A pointer to up to three tree nodes:
 * `node_ptr[1]` is the last pushed/merged declaration, if one exists.
 * `node_ptr[2]` may be the declaration of `node_ptr[0]`, if `node_ptr[0]` is not itself a declaration.
 
-Note that not all of the node's data will be ready yet. For example, as of this writing, a `FIELD_DECL` only has its `DECL_CONTEXT` set after attributes are applied.
+Note that not all of the node's data will be ready yet, and some data will be actively wrong in implementation-defined ways. For example, as of this writing, a `FIELD_DECL` only has its `DECL_CONTEXT` set after attributes are applied.
+
+* `FIELD_DECL`
+  * `DECL_CONTEXT` isn't set until after attributes are applied.
+* `TYPE_DECL`
+  * `TREE_TYPE` and `DECL_ORIGINAL_TYPE` are actively wrong until after attributes are set. When a `typedef` is initially parsed, its `TREE_TYPE` is actually the *original* type. Only after attributes are applied does GCC eventually clone the original type, name the new clone after the `TYPE_DECL`, and set the final properties on the `TYPE_DECL`.
 
 Some attributes are meant to make changes to the nodes they apply to, beyond simply being added to those nodes' attribute lists. If you need to alter a `*_DECL` node, then you should make your changes to the node directly. However, if you need to alter a `*_TYPE` node, then you should instead create a copy of the type, modify the copy, and overwrite `*node_ptr` with the copy.
 
@@ -97,7 +102,7 @@ If the attribute should be applied at a later stage (for example, if you've been
 
 To add an attribute to a given node, whether from an attribute handler or generally, call:
 
-```c
+```c++
 auto attr_name = get_identifier("attr_name");
 auto attr_args = NULL_TREE;
 auto attr_next = NULL_TREE;
@@ -106,7 +111,32 @@ auto attr_node = tree_cons(attr_name, attr_args, attr_next);
 
 int flags = 0;
 
-decl_attributes(&target_node, attr_node, flags, nullptr);
+decl_attributes(&node_ptr[0], attr_node, flags, node_ptr[1]);
 ```
 
 If you need to add multiple attributes at a time, then connect them via a `TREE_CHAIN`. The third argument to the `tree_cons` function (`attr_next` in our code snippet) is a chain node to prepend to (such that the newly-created `attr_node` is the head of the chain).
+
+
+### Adding the attribute, but with different arguments
+
+```c++
+tree handler(tree* node_ptr, tree name, tree args, int flags, bool* no_add_attrs) {
+   if (flags & ATTR_FLAG_INTERNAL) {
+      //
+      // We're recursing with the corrected arguments.
+      //
+      *no_add_attrs = false;
+      return NULL_TREE;
+   }
+
+   *no_add_attrs = true;
+   
+   // You'd want to create a new set of arguments here.
+   tree replacement_args = copy_list(args);
+   
+   auto attr_node = tree_cons(name, replacement_args, NULL_TREE);
+   decl_attributes(&node_ptr[0], attr_node, flags | ATTR_FLAG_INTERNAL, node_ptr[1]);
+   
+   return NULL_TREE;
+}
+```

@@ -13,6 +13,7 @@ namespace gcc_wrappers {
             WRAPPED_TREE_NODE_BOILERPLATE(type_def)
             
          public:
+            type_def() {}
             type::base declared() const;      // `b` in `typedef a b`
             type::base is_synonym_of() const; // `a` in `typedef a b`. return value may be empty().
       };

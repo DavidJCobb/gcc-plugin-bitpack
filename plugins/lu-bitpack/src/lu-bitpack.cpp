@@ -22,6 +22,7 @@ static plugin_info _my_plugin_info = {
 #include "attribute_handlers/bitpack_inherit.h"
 #include "attribute_handlers/bitpack_range.h"
 #include "attribute_handlers/bitpack_string.h"
+#include "attribute_handlers/bitpack_transforms.h"
 #include "attribute_handlers/generic_bitpacking_data_option.h"
 #include "attribute_handlers/generic_type_or_decl.h"
 #include "attribute_handlers/no_op.h"
@@ -59,46 +60,12 @@ namespace _attributes {
       .handler = &attribute_handlers::no_op,
       .exclude = NULL
    };
-   static struct attribute_spec internal_computed = {
-      .name = "lu bitpack computed",
-      .min_length =  1, // min argcount
-      .max_length = -1, // max argcount
-      .decl_required = false,
-      .type_required = false,
-      .function_type_required = false,
-      .affects_type_identity  = true,
-      .handler = &attribute_handlers::no_op,
-      .exclude = NULL
-   };
    static struct attribute_spec internal_sentinel_bad_type_reported = {
       .name = "lu bitpack already reported application to bad type",
       .min_length = 0, // min argcount
       .max_length = 0, // max argcount
       .decl_required = false,
       .type_required = true,
-      .function_type_required = false,
-      .affects_type_identity  = true,
-      .handler = &attribute_handlers::no_op,
-      .exclude = NULL
-   };
-   
-   static struct attribute_spec internal_computed_string_length = {
-      .name = "lu bitpack computed string length",
-      .min_length = 1, // min argcount
-      .max_length = 1, // max argcount
-      .decl_required = false,
-      .type_required = false,
-      .function_type_required = false,
-      .affects_type_identity  = true,
-      .handler = &attribute_handlers::no_op,
-      .exclude = NULL
-   };
-   static struct attribute_spec internal_computed_string_wt = {
-      .name = "lu bitpack computed string with-terminator",
-      .min_length = 1, // min argcount
-      .max_length = 1, // max argcount
-      .decl_required = false,
-      .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
       .handler = &attribute_handlers::no_op,
@@ -124,7 +91,7 @@ namespace _attributes {
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_bitpacking_data_option,
+      .handler = &attribute_handlers::bitpack_transforms,
       .exclude = NULL
    };
    static struct attribute_spec bitpack_inherit = {
@@ -151,8 +118,8 @@ namespace _attributes {
    };
    static struct attribute_spec bitpack_string = {
       .name = "lu_bitpack_string",
-      .min_length = 0, // min argcount
-      .max_length = 1, // max argcount
+      .min_length =  0, // min argcount
+      .max_length = -1, // max argcount // allow unlimited args for when we translate internally
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
@@ -187,9 +154,6 @@ namespace _attributes {
 static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::test_attribute);
    register_attribute(&_attributes::internal_invalid);
-   register_attribute(&_attributes::internal_computed);
-   register_attribute(&_attributes::internal_computed_string_length);
-   register_attribute(&_attributes::internal_computed_string_wt);
    register_attribute(&_attributes::internal_sentinel_bad_type_reported);
    register_attribute(&_attributes::bitpack_bitcount);
    register_attribute(&_attributes::bitpack_funcs);

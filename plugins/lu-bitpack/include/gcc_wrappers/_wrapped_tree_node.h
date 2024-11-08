@@ -13,6 +13,9 @@ namespace gcc_wrappers {
       concept has_typecheck = requires (tree t) {
          { Wrapper::node_is(t) } -> std::same_as<bool>;
       };
+      
+      template<typename Super, typename Sub>
+      concept can_is_as = std::is_base_of_v<Super, Sub> && !std::is_same_v<Super, Sub> && has_typecheck<Sub>;
    }
    
    class _wrapped_tree_node {
@@ -68,6 +71,18 @@ namespace gcc_wrappers {
          
          inline void set_from_untyped(tree t) {
             this->_node = t;
+         }
+         
+         template<typename Subclass> requires impl::can_is_as<_wrapped_tree_node, Subclass>
+         bool is() {
+            return !empty() && Subclass::node_is(this->_node);
+         }
+         
+         template<typename Subclass> requires impl::can_is_as<_wrapped_tree_node, Subclass>
+         Subclass as() {
+            if (is<Subclass>())
+               return Subclass::from_untyped(this->_node);
+            return Subclass{};
          }
    };
 }

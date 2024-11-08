@@ -18,8 +18,12 @@
 // START OF BITPACKING OPTIONS
 //
 
+struct NestedStruct;
+struct PackedNestedStruct;
 void MapNestedStructForSave(const struct NestedStruct* src, struct PackedNestedStruct* dst);
 void MapNestedStructForLoad(struct NestedStruct* dst, const struct PackedNestedStruct* src);
+
+ __attribute__((lu_bitpack_inherit(MapNestedStructForLoad))) typedef u32 testetest; // parser test
 
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))

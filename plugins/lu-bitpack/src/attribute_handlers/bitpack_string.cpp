@@ -7,11 +7,92 @@
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/builtin_types.h"
+#include <stringpool.h> // dependency for <attribs.h>
+#include <attribs.h> // decl_attributes
 namespace gw {
    using namespace gcc_wrappers;
 }
 
 namespace attribute_handlers {
+   static void _reassemble_parameters(
+      tree* node_ptr,
+      tree  name,
+      gw::expr::string_constant data,
+      int   flags,
+      //
+      helpers::bp_attr_context& context
+   ) {
+      struct {
+         std::optional<int>  length;
+         std::optional<bool> with_terminator;
+      } kv;
+      try {
+         lu::strings::handle_kv_string(data.value_view(), std::array{
+            lu::strings::kv_string_param{
+               .name      = "length",
+               .has_param = true,
+               .int_param = true,
+               .handler   = [&kv](std::string_view v, int vi) {
+                  kv.length = vi;
+               },
+            },
+            lu::strings::kv_string_param{
+               .name      = "with-terminator",
+               .has_param = false,
+               .handler   = [&kv](std::string_view v, int vi) {
+                  kv.with_terminator = true;
+               },
+            },
+         });
+      } catch (std::runtime_error& ex) {
+         std::string message = "argument failed to parse: ";
+         message += ex.what();
+         context.report_error(message);
+         return;
+      }
+      if (kv.length.has_value()) {
+         auto v = *kv.length;
+         if (v < 0) {
+            context.report_error(
+               "the string length cannot be zero or negative (seen: %r%d%R)",
+               "quote",
+               v
+            );
+            return;
+         }
+      }
+      
+      tree node_len = NULL_TREE;
+      tree node_wt  = NULL_TREE;
+      if (kv.length.has_value()) {
+         node_len = gw::expr::integer_constant(
+            gw::builtin_types::get().size,
+            *kv.length
+         ).as_untyped();
+      }
+      if (kv.with_terminator.has_value()) {
+         node_wt = *kv.with_terminator ? boolean_true_node : boolean_false_node;
+      }
+      
+      tree args = tree_cons(
+         NULL_TREE,
+         node_len,
+         tree_cons(
+            NULL_TREE,
+            node_wt,
+            NULL_TREE
+         )
+      );
+      
+      auto attr_node = tree_cons(name, args, NULL_TREE);
+      decl_attributes(
+         &node_ptr[0],
+         attr_node,
+         flags | ATTR_FLAG_INTERNAL,
+         node_ptr[1]
+      );
+   }
+
    extern tree bitpack_string(tree* node_ptr, tree name, tree args, int flags, bool* no_add_attrs) {
       *no_add_attrs = false;
       
@@ -20,12 +101,16 @@ namespace attribute_handlers {
          return result;
       }
       
-      helpers::bp_attr_context context(node_ptr, name, flags);
+      if (flags & ATTR_FLAG_INTERNAL) {
+         return NULL_TREE;
+      }
+      if (list_length(args) > 1) {
+         error("wrong number of arguments specified for %qE attribute", name);
+         *no_add_attrs = true;
+         return NULL_TREE;
+      }
       
-      struct {
-         std::optional<int>  length;
-         std::optional<bool> with_terminator;
-      } kv;
+      helpers::bp_attr_context context(node_ptr, name, flags);
       
       {
          gw::expr::string_constant wrap;
@@ -38,63 +123,23 @@ namespace attribute_handlers {
             }
          }
          if (!wrap.empty()) {
-            try {
-               lu::strings::handle_kv_string(wrap.value_view(), std::array{
-                  lu::strings::kv_string_param{
-                     .name      = "length",
-                     .has_param = true,
-                     .int_param = true,
-                     .handler   = [&kv](std::string_view v, int vi) {
-                        kv.length = vi;
-                     },
-                  },
-                  lu::strings::kv_string_param{
-                     .name      = "with-terminator",
-                     .has_param = false,
-                     .handler   = [&kv](std::string_view v, int vi) {
-                        kv.with_terminator = true;
-                     },
-                  },
-               });
-            } catch (std::runtime_error& ex) {
-               kv = {};
-               
-               std::string message = "argument string failed to parse: ";
-               message += ex.what();
-               context.report_error(message);
-            }
+            //
+            // Parse the arguments and reconstruct them.
+            //
+            *no_add_attrs = true;
+            _reassemble_parameters(
+               node_ptr,
+               name,
+               wrap,
+               flags,
+               context
+            );
+            return NULL_TREE;
          }
       }
-      
-      if (kv.length.has_value()) {
-         auto value = *kv.length;
-         if (value < 0) {
-            context.report_error(
-               "the string length cannot be zero or negative (seen: %r%d%R)",
-               "quote",
-               value
-            );
-         } else {
-            auto args = tree_cons(
-               NULL_TREE,
-               gw::expr::integer_constant(
-                  gw::builtin_types::get().size,
-                  *kv.length
-               ).as_untyped(),
-               NULL_TREE
-            );
-            context.add_internal_attribute("lu bitpack computed string length", args);
-         }
-      }
-      if (kv.with_terminator.has_value()) {
-         auto args = tree_cons(
-            NULL_TREE,
-            *kv.with_terminator ? boolean_true_node : boolean_false_node,
-            NULL_TREE
-         );
-         context.add_internal_attribute("lu bitpack computed string with-terminator", args);
-      }
-      
+      //
+      // Case of the pragma specified with no args.
+      //
       if (context.has_any_errors()) {
          *no_add_attrs = true;
       }

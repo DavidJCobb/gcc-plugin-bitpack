@@ -6,6 +6,7 @@ SOURCES=\
         src/attribute_handlers/bitpack_inherit.cpp \
         src/attribute_handlers/bitpack_range.cpp \
         src/attribute_handlers/bitpack_string.cpp \
+        src/attribute_handlers/bitpack_transforms.cpp \
         src/attribute_handlers/generic_bitpacking_data_option.cpp \
         src/attribute_handlers/generic_type_or_decl.cpp \
         src/attribute_handlers/no_op.cpp \

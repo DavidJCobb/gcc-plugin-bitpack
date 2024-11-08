@@ -98,10 +98,6 @@ namespace {
       if (attr.empty())
          return {};
       auto args = attr.arguments();
-      if (args.has_leading_identifier()) {
-         _report_error(report_errors_on, "%<lu_bitpack_inherit%> attribute has an identifier as its leading argument; this is invalid");
-         return {};
-      }
       if (args.empty()) {
          _report_error(report_errors_on,"%<lu_bitpack_inherit%> attribute must have a string constant argument identifying the set of heritable options to use");
          return {};
@@ -249,28 +245,6 @@ namespace bitpacking::data_options {
             this->failed = true;
             continue;
          }
-         if (key == "lu bitpack computed string length") {
-            auto& dst_opt  = this->x_options.string;
-            auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
-            
-            dst_data.length = attr.arguments().front().as<gw::expr::integer_constant>().value<size_t>();
-            continue;
-         }
-         if (key == "lu bitpack computed string with-terminator") {
-            auto& dst_opt  = this->x_options.string;
-            auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
-            
-            auto node = attr.arguments().front().as_untyped();
-            if (node == boolean_true_node) {
-               dst_data.with_terminator = true;
-            }
-            continue;
-         }
-         
-         if (attr.arguments().has_leading_identifier()) {
-            _report_error(subject, "%<%s%> attribute has an identifier as its leading argument; this is invalid", key.data());
-            continue;
-         }
          
          //
          // Attribute arguments will have been validated in advance: GCC 
@@ -292,7 +266,15 @@ namespace bitpacking::data_options {
             continue;
          }
          if (key == "lu_bitpack_funcs") {
-            this->_load_transforms(subject, attr);
+            auto args   = attr.arguments();
+            auto node_a = args[0];
+            auto node_b = args[1];
+            if (!node_a.empty()) {
+               this->transforms.pre_pack = node_a.as<gw::decl::function>();
+            }
+            if (!node_b.empty()) {
+               this->transforms.post_unpack = node_b.as<gw::decl::function>();
+            }
             continue;
          }
          if (key == "lu_bitpack_range") {
@@ -302,9 +284,20 @@ namespace bitpacking::data_options {
             continue;
          }
          if (key == "lu_bitpack_string") {
-            auto& dst_opt = this->x_options.string;
-            if (!dst_opt.has_value())
-               dst_opt.emplace();
+            auto& dst_opt  = this->x_options.string;
+            auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
+            
+            auto args = attr.arguments();
+            if (!args.empty()) {
+               auto node_a = args[0];
+               auto node_b = args[1];
+               if (!node_a.empty()) {
+                  dst_data.length = node_a.as<gw::expr::integer_constant>().value<size_t>().value();
+               }
+               if (!node_b.empty()) {
+                  dst_data.with_terminator = node_b.as_untyped() == boolean_true_node;
+               }
+            }
             continue;
          }
          

@@ -3,7 +3,7 @@
 
 GCC stores attributes as a key/value map. We could use `list_node` to refer to them, but it's friendlier to define dedicated wrappers for them.
 
-Within the map, keys are the attribute name (as an `IDENTIFIER_NODE`) and values are the attribute's arguments, if any. The arguments are themselves encoded as a key/value map, even though only the values are documnented as being meaningful.
+Within the map, keys are the attribute name (as an `IDENTIFIER_NODE`) and values are the attribute's arguments, if any. The arguments are themselves encoded as a key/value map, even though only the values are documented as being meaningful.
 
 
 ## Types
@@ -11,6 +11,8 @@ Within the map, keys are the attribute name (as an `IDENTIFIER_NODE`) and values
 ### `attribute`
 
 A wrapper around a single attribute node; from here, you can access the attribute's name, namespace[^attr-namespace], or arguments. You can also check whether the argument was parsed as an `[[attribute]]` or an `__attribute__((...))`.
+
+Officially, attribute arguments can be an identifier node on its own, an identifier node followed by `EXPR` nodes, or just `EXPR` nodes. However, tests with the C parser show that at least as of GCC 11.4.0, other node types (e.g. `FUNCTION_DECL` if you use a function's identifier) parse properly.
 
 
 ### `attribute_list`

@@ -15,4 +15,16 @@
 #define WRAPPED_TREE_NODE_BOILERPLATE(type_name) \
    public:                                       \
       void set_from_untyped(tree);               \
-      static type_name from_untyped(tree);
+      static type_name from_untyped(tree);       \
+      \
+      template<typename Subclass> requires impl::can_is_as<type_name, Subclass> \
+      bool is() { \
+         return !empty() && Subclass::node_is(this->_node); \
+      } \
+      \
+      template<typename Subclass> requires impl::can_is_as<type_name, Subclass> \
+      Subclass as() { \
+         if (is<Subclass>()) \
+            return Subclass::from_untyped(this->_node); \
+         return Subclass{}; \
+      }

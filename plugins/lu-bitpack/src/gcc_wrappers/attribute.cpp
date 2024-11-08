@@ -13,10 +13,13 @@ namespace gcc_wrappers {
    
    attribute::arguments_wrapper::iterator::iterator(tree t) : _node(t) {}
    
-   expr::base attribute::arguments_wrapper::iterator::operator*() {
+   _wrapped_tree_node attribute::arguments_wrapper::iterator::operator*() {
       assert(this->_node != NULL_TREE);
       auto arg_value_node = TREE_VALUE(this->_node);
-      return expr::base::from_untyped(arg_value_node);
+      
+      _wrapped_tree_node out;
+      out.set_from_untyped(arg_value_node);
+      return out;
    }
 
    attribute::arguments_wrapper::iterator& attribute::arguments_wrapper::iterator::operator++() {
@@ -41,40 +44,17 @@ namespace gcc_wrappers {
       return this->_node == NULL_TREE;
    }
 
-   bool attribute::arguments_wrapper::has_leading_identifier() const {
-      if (empty())
-         return false;
-      auto first = TREE_VALUE(this->_node);
-      if (first == NULL_TREE)
-         return false;
-      return TREE_CODE(first) == IDENTIFIER_NODE;
-   }
-   const_tree attribute::arguments_wrapper::leading_identifier_node() const {
-      return has_leading_identifier() ? TREE_VALUE(this->_node) : NULL_TREE;
-   }
-   std::string_view attribute::arguments_wrapper::leading_identifier() const {
-      auto id = leading_identifier_node();
-      if (id == NULL_TREE)
-         return {};
-      return std::string_view(IDENTIFIER_POINTER(id));
-   }
-   
    size_t attribute::arguments_wrapper::size() const noexcept {
-      auto node = this->_node;
-      if (has_leading_identifier())
-         node = TREE_CHAIN(node);
-      
-      size_t i = 0;
+      auto   node = this->_node;
+      size_t i    = 0;
       while (node != NULL_TREE) {
          ++i;
          node = TREE_CHAIN(node);
       }
       return i;
    }
-   expr::base attribute::arguments_wrapper::operator[](size_t n) {
+   _wrapped_tree_node attribute::arguments_wrapper::operator[](size_t n) {
       auto node = this->_node;
-      if (has_leading_identifier())
-         node = TREE_CHAIN(node);
       if (node == NULL_TREE)
          return {};
       
@@ -83,45 +63,42 @@ namespace gcc_wrappers {
          if (node == NULL_TREE)
             return {};
       }
-      return expr::base::from_untyped(TREE_VALUE(node));
+      _wrapped_tree_node out;
+      out.set_from_untyped(TREE_VALUE(node));
+      return out;
    }
    
-   expr::base attribute::arguments_wrapper::front() {
+   _wrapped_tree_node attribute::arguments_wrapper::front() {
       assert(!empty());
       return *begin();
    }
-   expr::base attribute::arguments_wrapper::back() {
+   _wrapped_tree_node attribute::arguments_wrapper::back() {
       return std::as_const(*this).back();
    }
-   const expr::base attribute::arguments_wrapper::front() const {
+   const _wrapped_tree_node attribute::arguments_wrapper::front() const {
       return const_cast<arguments_wrapper&>(*this).front();
    }
-   const expr::base attribute::arguments_wrapper::back() const {
+   const _wrapped_tree_node attribute::arguments_wrapper::back() const {
       assert(!empty());
       auto node = this->_node;
-      if (has_leading_identifier())
-         node = TREE_CHAIN(node);
       if (node != NULL_TREE) {
          while (TREE_CHAIN(node) != NULL_TREE) {
             node = TREE_CHAIN(node);
          }
       }
-      return expr::base::from_untyped(TREE_VALUE(node));
+      _wrapped_tree_node out;
+      out.set_from_untyped(TREE_VALUE(node));
+      return out;
    }
 
    attribute::arguments_wrapper::iterator attribute::arguments_wrapper::begin() {
-      auto node = this->_node;
-      if (has_leading_identifier())
-         node = TREE_CHAIN(node);
-      return iterator(node);
+      return iterator(this->_node);
    }
    attribute::arguments_wrapper::iterator attribute::arguments_wrapper::end() {
       return iterator(NULL_TREE);
    }
    attribute::arguments_wrapper::iterator attribute::arguments_wrapper::at(size_t n) {
       auto node = this->_node;
-      if (has_leading_identifier())
-         node = TREE_CHAIN(node);
       assert(node != NULL_TREE);
       if (node == NULL_TREE)
          throw std::out_of_range("out-of-bounds access to an attribute's argument expressions");

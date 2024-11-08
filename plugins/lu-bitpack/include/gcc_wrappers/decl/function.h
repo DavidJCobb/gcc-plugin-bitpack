@@ -85,11 +85,8 @@ namespace gcc_wrappers {
             // assert(!has_body());
             function_with_modifiable_body as_modifiable();
             
-            // Sadly, there's no way that I know of to introduce something 
-            // directly to the extern scope, the file scope, etc.. You'll 
-            // just have to be mindful of when you run this, and make sure 
-            // that it's not while parsing some other scope.
-            void introduce_to_current_scope();
+            void introduce_to_current_scope(); // wherever the parser happens to be rn
+            void introduce_to_global_scope();
       };
       
       class function_with_modifiable_body : public function {

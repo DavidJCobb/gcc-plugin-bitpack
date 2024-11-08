@@ -20,15 +20,6 @@ namespace gcc_wrappers {
       
       public:
          class arguments_wrapper {
-            //
-            // Attribute arguments can be either an expression list, 
-            // or an identifier (that does not name a type) followed 
-            // by an expression list.
-            //
-            // This wrapper exposes the identifier argument separately 
-            // from the others. Things like `begin`, `end`, and `size` 
-            // only apply to the expression arguments.
-            //
             friend attribute;
             protected:
                arguments_wrapper(tree t);
@@ -44,7 +35,7 @@ namespace gcc_wrappers {
                      tree _node = NULL_TREE;
                      
                   public:
-                     expr::base operator*();
+                     _wrapped_tree_node operator*();
                   
                      iterator& operator++();
                      iterator  operator++(int) const;
@@ -54,18 +45,14 @@ namespace gcc_wrappers {
             
             public:
                bool empty() const noexcept;
-            
-               bool has_leading_identifier() const;
-               const_tree leading_identifier_node() const;
-               std::string_view leading_identifier() const;
                
                size_t size() const noexcept;
-               expr::base operator[](size_t); // returns empty if out of range
+               _wrapped_tree_node operator[](size_t); // returns empty if out of range
                
-               expr::base front();
-               expr::base back();
-               const expr::base front() const;
-               const expr::base back() const;
+               _wrapped_tree_node front();
+               _wrapped_tree_node back();
+               const _wrapped_tree_node front() const;
+               const _wrapped_tree_node back() const;
          
                iterator begin();
                iterator end();

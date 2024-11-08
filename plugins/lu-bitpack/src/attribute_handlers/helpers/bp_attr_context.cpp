@@ -77,23 +77,24 @@ namespace attribute_handlers::helpers {
       if (str.empty()) {
          auto node = this->attribute_target[0];
          
-         gw::type::base  type;
-         gw::decl::field decl;
+         gw::type::base type;
+         gw::decl::base decl;
          if (TYPE_P(node)) {
             type = gw::type::base::from_untyped(node);
          } else if (DECL_P(node)) {
-            if (TREE_CODE(node) == TYPE_DECL) {
-               type = gw::type::base::from_untyped(TREE_TYPE(node));
-            } else if (TREE_CODE(node) == FIELD_DECL) {
-               decl = gw::decl::field::from_untyped(node);
-               type = decl.value_type();
-            }
+            decl = gw::decl::base::from_untyped(node);
+            type = gw::type::base::from_untyped(TREE_TYPE(node));
          }
          
          if (!decl.empty()) {
-            str = lu::strings::printf_string("(applied to field %<%s%>)", decl.name().data());
+            if (TREE_CODE(node) == TYPE_DECL) {
+               str = lu::strings::printf_string("(applied to type %<%s%>)", decl.name().data());
+            } else {
+               str = lu::strings::printf_string("(applied to field %<%s%>)", decl.name().data());
+            }
          } else if (!type.empty()) {
-            str = lu::strings::printf_string("(applied to type %<%s%>)", type.pretty_print());
+            auto pp = type.pretty_print();
+            str = lu::strings::printf_string("(applied to type %<%s%>)", pp.c_str());
          }
       }
       return str;

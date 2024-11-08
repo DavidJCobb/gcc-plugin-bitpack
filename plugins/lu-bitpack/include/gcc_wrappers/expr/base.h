@@ -24,18 +24,6 @@ namespace gcc_wrappers {
             bool suppresses_unused_warnings();
             void suppress_unused_warnings();
             void set_suppresses_unused_warnings(bool);
-            
-            template<typename Subclass> requires std::is_base_of_v<base, Subclass>
-            bool is() {
-               return !empty() && Subclass::node_is(this->_node);
-            }
-            
-            template<typename Subclass> requires std::is_base_of_v<base, Subclass>
-            Subclass as() {
-               if (is<Subclass>())
-                  return Subclass::from_untyped(this->_node);
-               return Subclass{};
-            }
       };
       static_assert(sizeof(base) == sizeof(value)); // no new fields
    }

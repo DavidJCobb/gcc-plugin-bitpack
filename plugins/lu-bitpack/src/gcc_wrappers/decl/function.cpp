@@ -11,7 +11,8 @@
 #include <c-family/c-common.h> // lookup_name, pushdecl, etc.
 #include <cgraph.h>
 
-// This is in `c/c-tree.h`, which isn't included among the plug-in headers.
+// These are in `c/c-tree.h`, which isn't included among the plug-in headers.
+extern void c_bind(location_t, tree, bool);
 extern tree pushdecl(tree);
 
 // function
@@ -194,6 +195,16 @@ namespace gcc_wrappers::decl {
       if (prior == NULL_TREE) {
          pushdecl(this->as_untyped());
       }
+   }
+   void function::introduce_to_global_scope() {
+      
+      // `c_bind` is meant for declarations, not definitions, AFAICT anyway. 
+      // it therefore does some things we maybe don't want
+      auto was_extern = DECL_EXTERNAL(this->_node);
+      c_bind(DECL_SOURCE_LOCATION(this->_node), this->_node, true); // c/c-tree.h
+      DECL_EXTERNAL(this->_node) = was_extern;
+      
+      rest_of_decl_compilation(this->_node, true, false); // toplev.h
    }
 }
 

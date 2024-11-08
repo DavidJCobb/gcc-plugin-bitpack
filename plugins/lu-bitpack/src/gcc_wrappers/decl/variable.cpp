@@ -4,6 +4,9 @@
 #include <stringpool.h> // get_identifier
 #include <toplev.h> // rest_of_decl_compilation
 
+// Defined in GCC source, `c/c-tree.h`; not included in the plug-in headers.
+extern void c_bind(location_t, tree, bool);
+
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(variable)
    
@@ -69,6 +72,7 @@ namespace gcc_wrappers::decl {
    void variable::make_file_scope_static() {
       assert(!empty());
       TREE_STATIC(this->_node) = 1;
+      c_bind(DECL_SOURCE_LOCATION(this->_node), this->_node, true); // c/c-tree.h
       rest_of_decl_compilation(this->_node, true, false); // toplev.h
    }
 }
