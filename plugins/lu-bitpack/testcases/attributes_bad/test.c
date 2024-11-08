@@ -18,20 +18,21 @@
 // START OF BITPACKING OPTIONS
 //
 
+#define LU_BP_OMIT                __attribute__((lu_bitpack_omit))
+#define LU_BP_AS_OPAQUE_BUFFER    __attribute__((lu_bitpack_as_opaque_buffer))
+#define LU_BP_BITCOUNT(n)         __attribute__((lu_bitpack_bitcount(n)))
+#define LU_BP_INHERIT(name)       __attribute__((lu_bitpack_inherit(name)))
+#define LU_BP_MINMAX(x,y)         __attribute__((lu_bitpack_range(x, y)))
+#define LU_BP_MIN_0_MAX(n)        __attribute__((lu_bitpack_range(0, n)))
+#define LU_BP_STRING_UT           __attribute__((lu_bitpack_string))
+#define LU_BP_STRING_WT           __attribute__((lu_bitpack_string("with-terminator")))
+#define LU_BP_TRANSFORM(pre_pack, post_unpack) \
+   __attribute__((lu_bitpack_transform("pre_pack="#pre_pack",post_unpack="#post_unpack)))
+
 struct NestedStruct;
 struct PackedNestedStruct;
 void MapNestedStructForSave(const struct NestedStruct* src, struct PackedNestedStruct* dst);
 void MapNestedStructForLoad(struct NestedStruct* dst, const struct PackedNestedStruct* src);
-
- __attribute__((lu_bitpack_inherit(MapNestedStructForLoad))) typedef u32 testetest; // parser test
-
-#define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
-#define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
-#define LU_BP_MINMAX(x,y)   __attribute__((lu_bitpack_range(x, y)))
-#define LU_BP_MAX(n)        __attribute__((lu_bitpack_range(0, n)))
-
-#define LU_BP_TRANSFORM(pre_pack, post_unpack) \
-   __attribute__((lu_bitpack_transform("pre_pack="#pre_pack",post_unpack="#post_unpack)))
 
 #pragma lu_bitpack set_options ( \
    sector_count=9, \
@@ -111,8 +112,8 @@ struct NestedStruct {
    enum ItemType armor[5];
 };
 struct PackedNestedStruct {
-   LU_BP_MAX(MAX_SWORD) u8 weapons[5];
-   LU_BP_MAX(MAX_ARMOR) u8 armor[5];
+   LU_BP_MIN_0_MAX(MAX_SWORD) u8 weapons[5];
+   LU_BP_MIN_0_MAX(MAX_ARMOR) u8 armor[5];
 };
 
 void MapNestedStructForSave(const struct NestedStruct* src, struct PackedNestedStruct* dst) {

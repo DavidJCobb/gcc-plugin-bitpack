@@ -51,6 +51,25 @@
 
 #pragma lu_bitpack heritable integer "$24bit" ( bitcount = 24 )
 
+u8 test_array[5] __attribute__(( lu_test_attribute( (u8[5]){[1]=1,[2]=2,[3]=3} ) ));
+
+// std::is_same_v<lucky, u8[77]> == true. typedef syntax is weird.
+// also, attributes of a typedef can't refer to that typedef by its 
+// own name because the typedef isn't "done" yet.
+typedef u8 lucky [77] __attribute__(( lu_test_attribute( (u8[77]){[7]=7} ) ));
+
+extern int bar(u8*);
+int foo() {
+   u8 test[5];
+   test = (u8[5]){ 0 };
+   bar(test);
+   test = (u8[5]){ 1, 2, 3, 4, 5 };
+   bar(0);
+   bar(test);
+   return test[2];
+}
+#pragma lu_bitpack debug_dump_function foo
+
 static struct TestStruct {
    bool8 a;
    bool8 b;

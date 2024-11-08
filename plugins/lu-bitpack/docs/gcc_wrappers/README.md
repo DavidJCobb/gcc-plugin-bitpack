@@ -179,7 +179,14 @@ Unusual ones (see [docs](https://gcc.gnu.org/onlinedocs/gcc-3.4.3/gccint/Express
 
 * `AGGR_INIT_EXPR`
 * `CLEANUP_POINT_EXPR`
-* `CONSTRUCTOR`
+* `CONSTRUCTOR`: Used for braced initializers for arrays, structs, and unions.
+  * `CONSTRUCTOR_ELTS(node)` is a `vec<constructor_elt, va_gc>*` instance. Any fields or elemnets not initialized are cleared unless the `CONSTRUCTOR_NO_CLEARING` flag is set.
+  * `FOR_EACH_CONSTRUCTOR_VALUE (vals, i, val) { ... }` exists for iterating over constructor elements.
+  * If the initializer is not for an array, then each `constructor_elt`'s `index` is a `FIELD_DECL`.
+  * If the initializer is for an array, then each `constructr_elt`'s `index` is either an `INTEGER_CST` or a `RANGE_EXPR`. The latter case occurs as a shorthand when several array indices are initialized to the same value (with any side effects being recomputed per value unless the value is a `SAVE_EXPR`).
+  * `build_constructor` (`tree.h`) can create these nodes given an existing `vec` of constructor elements. `build_constructor_single` exists for when you just need one index node and one value node, and `build_constructor_from_list` exists for when the indices and values exist in a tree list.
+  * `recompute_constructor_flags(node)` can update a `CONSTRUCTOR` node's internal flags if its contents change. `verify_constructor_flags(node)` can assert the current flags' correctness.
+  * Append a new constructor element via `CONSTRUCTOR_APPEND_ELT(node, index_node, value_node)`.
 * `COMPOUND_LITERAL_EXPR`
 * `TARGET_EXPR`
 * `VA_ARG_EXPR`

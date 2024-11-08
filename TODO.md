@@ -5,17 +5,36 @@
 
 ### Short-term
 
-* String bitpacking options need to be rejected on non-strings, from within the attribute handler.
-  * We need to account for the case of global bitpacking options appearing after an attribute that needs them, and we need to account for the case of the options pragma being used multiple times and redefining the string type. Probably we should detect if the options have ever been set, have attributes warn if they never have been, and error if options are set multiple times or if they're set after any attributes have been seen.
+* Force an error in bitpack attribute handlers if `#pragma lu_bitpack enable` but no global options have been set.
+* Force an error when setting global options if global options have already been set.
+* Once the above two things have been done, it'll be possible to validate more stuff from attribute handlers, and to offer more impactful attribute handlers.
+  * `lu_bitpack_default_value`: We'll be able to tell if a type is (for serialization purposes) a string or not, and if so, accept `STRING_CST`s.
+  * `lu_bitpack_string`: We'll be able to tell if we're being applied to a string (an array type or a field decl whose type is an array).
+* Finish implementing `lu_bitpack_default_value`.
+  * Allowed values[^no-default-arrays]
+    * `INTEGER_CST` for integers or arrays thereof.
+    * `STRING_CST` for strings.
+      * If the string is marked as having an optional null terminator, then `"foo"` should fit into a `char[3]` even though `sizeof("foo") == 4`: we need to manually copy only the content that will fit.
+    * The attribute should fail when applied to any other types.
+  * Implementation
+    * Fields that are omitted from bitpacking should be assigned to their attribute-provided default values, if they have any, in the generated "read" functions. This has to be done wherever we read a struct containing such members.
+    * The XML output should list the default values of any members that had any.
+  * When applied alongside pre-pack and post-unpack transformations, a default value should apply to the in situ type, not the transformed type.
+
+[^no-default-arrays]: We could allow specifying whole-array defaults using compound literals (e.g. `(u8[7]){ 0 }`), but those were only introduced in C99. One of my support targets is GNU89, IIRC, so I don't think that's going to parse properly. We should probably only allow scalar initializers (i.e. `int[5][3]` only gets an integer constant, which fills the array).
+
 * Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
+  * Pre-pack/post-unpack transforms
 * The XML output has no way of knowing or reporting what bitpacking options are applied to integral types. The final used bitcounts (and other associated options) should still be emitted per member, but this still reflects a potential loss of information. Can we fix this?
-  * Do we want to restrict bitpacking options to only be specifiable on struct types?
-    * No. I feel it's useful to be able to `typedef` an integral type and then put bitpacking options on it.
 * Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
-  * Most bitpacking options apply to the most deeply nested value when used on an array of any rank. For defaults, though, you'd need to at least be able to specify whether the value is per-element or for the entire member; and you'd then also need a syntax to provide values for (potentially nested) arrays. (We should support whatever initializer syntax C supports.)
+  * We could allow specifying whole-array defaults using compound literals (e.g. `(u8[7]){ 0 }`), but those were only introduced in C99. One of my support targets is GCC "C90" so I don't think that's going to parse properly. We should probably only allow scalar initializers (i.e. `int[5][3]` only gets an integer constant, which fills the array).
+  * As an extension, string values should be initializable with string literals. We'll want to check that they fit, *but* we should account for whether the string value requires a null terminator in memory (i.e. `sizeof("foo") == 4` but it should be allowed to fit in a `char[3]` if that array doesn't require a null).
+  * When applied alongside pre-pack and post-unpack transformations, a default value should apply to the in situ type, not the transformed type.
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
   * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
+* Decisions to be made
+  * GCC has a `__attribute__((nonstring))` attribute for strings that may not always be null-terminated. Instead of having `lu_bitpack_string` indicate the requirement for a null terminator (and worse: defaulting that to "no"), it might be better to require that potentially unterminated strings be annotated with `nonstring`, and to have the bitpacking codegen and XML react to `nonstring`.
 * Long-term plans below
   * Pre-pack and post-unpack functions
   * Union support
@@ -122,6 +141,12 @@ This in turn means that we need to infer the type of `__v` from the types used i
 * Let the *transformed* type of the to-be-packed member be *U*. This is the type that will be used for the generated variable `__v` above.
 * The pre-pack function must be of the form `void a(const T*, U*)`.
 * The post-unpack function must be of the form `void b(T*, const U*)`.
+
+The actual logistics of this include:
+
+* When we generate computed bitpacking options for a to-be-transformed member, we need to base those (and the `member_kind`) on the transformed type, not the in situ type. We will of course still need to be aware of the original type, and of the fact of there being a transformation.
+  * But wait. We currently validate a lot of options when we see the attributes for them, such as erroring if we see integer options on a non-integral type or field. That... isn't going to play so well with transforms.
+    * Maybe we should just flat-out make it so that transforms can't be used alongside other options: if you use a transform on a type or field, then you have to specify all further bitpacking options on the transformed type, not on the in situ type or field.
 
 Other support requirements:
 

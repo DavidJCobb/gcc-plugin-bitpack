@@ -3,12 +3,14 @@ INCDIR=include
 SOURCES=\
         src/attribute_handlers/helpers/bp_attr_context.cpp \
         src/attribute_handlers/bitpack_bitcount.cpp \
+        src/attribute_handlers/bitpack_default_value.cpp \
         src/attribute_handlers/bitpack_inherit.cpp \
         src/attribute_handlers/bitpack_range.cpp \
         src/attribute_handlers/bitpack_string.cpp \
         src/attribute_handlers/bitpack_transforms.cpp \
         src/attribute_handlers/generic_bitpacking_data_option.cpp \
         src/attribute_handlers/generic_type_or_decl.cpp \
+        src/attribute_handlers/test.cpp \
         src/attribute_handlers/no_op.cpp \
         src/bitpacking/data_options/loader.cpp \
         src/bitpacking/data_options/requested_via_attributes.cpp \

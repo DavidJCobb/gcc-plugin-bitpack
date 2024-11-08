@@ -19,6 +19,7 @@ static plugin_info _my_plugin_info = {
 };
 
 #include "attribute_handlers/bitpack_bitcount.h"
+#include "attribute_handlers/bitpack_default_value.h"
 #include "attribute_handlers/bitpack_inherit.h"
 #include "attribute_handlers/bitpack_range.h"
 #include "attribute_handlers/bitpack_string.h"
@@ -26,6 +27,7 @@ static plugin_info _my_plugin_info = {
 #include "attribute_handlers/generic_bitpacking_data_option.h"
 #include "attribute_handlers/generic_type_or_decl.h"
 #include "attribute_handlers/no_op.h"
+#include "attribute_handlers/test.h"
 
 namespace _attributes {
    static struct attribute_spec test_attribute = {
@@ -34,13 +36,13 @@ namespace _attributes {
       // the end of a table of attributes.
       .name = "lu_test_attribute",
       
-      .min_length = 1, // min argcount
-      .max_length = 1, // max argcount (use -1 for no max)
+      .min_length =  0, // min argcount
+      .max_length = -1, // max argcount (use -1 for no max)
       .decl_required = false, // if true, applying the attr to a type means it's ignored and warns
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = false,
-      .handler    = &attribute_handlers::no_op,
+      .handler    = &attribute_handlers::test,
       
       // Can be an array of `attribute_spec::exclusions` objects, which describe 
       // attributes that this attribute is mutually exclusive with. (How do you 

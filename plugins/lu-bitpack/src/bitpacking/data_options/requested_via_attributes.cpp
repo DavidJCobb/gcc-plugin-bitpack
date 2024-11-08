@@ -93,140 +93,25 @@ namespace {
       );
    }
    
-   static std::string _pull_heritable_name(tree report_errors_on, gw::attribute_list attributes) {
+   static std::string_view _pull_heritable_name(tree report_errors_on, gw::attribute_list attributes) {
       auto attr = attributes.get_attribute("lu_bitpack_inherit");
       if (attr.empty())
          return {};
-      auto args = attr.arguments();
-      if (args.empty()) {
-         _report_error(report_errors_on,"%<lu_bitpack_inherit%> attribute must have a string constant argument identifying the set of heritable options to use");
-         return {};
-      }
-      _warn_on_extra_attribute_args(report_errors_on, attr, 1);
-      
-      auto arg = args.front().as<gw::expr::string_constant>();
-      if (arg.empty()) {
-         _report_error(report_errors_on,"%<lu_bitpack_inherit%> attribute must have a string constant argument identifying the set of heritable options to use");
-         return {};
-      }
-      auto name = arg.value();
-      if (name.empty()) {
-         _report_error(report_errors_on,"%<lu_bitpack_inherit%> heritable options name cannot be blank");
-      }
+      auto arg  = attr.arguments().front().as<gw::expr::string_constant>();
+      auto name = arg.value_view();
       return name;
    }
 
 }
 
 namespace bitpacking::data_options {
-   void requested_via_attributes::_load_transforms(tree subject, gw::attribute attr) {
-      std::string id_pre_pack;
-      std::string id_post_unpack;
-      
-      auto args = attr.arguments();
-      if (!args.empty()) {
-         _warn_on_extra_attribute_args(subject, attr, 1);
-         auto arg = args.front().as<gw::expr::string_constant>();
-         if (arg.empty()) {
-            _report_error(
-               subject,
-               "%<lu_bitpack_funcs%> attribute argument must be a string literal of "
-               "the form \"pre_pack=identifier,post_unpack=identifier\""
-            );
-            return;
-         }
-         auto data = arg.value();
-         try {
-            lu::strings::handle_kv_string(data, std::array{
-               lu::strings::kv_string_param{
-                  .name      = "pre_pack",
-                  .has_param = true,
-                  .handler   = [&id_pre_pack](std::string_view v, int vi) {
-                     id_pre_pack = v;
-                  },
-               },
-               lu::strings::kv_string_param{
-                  .name      = "post_unpack",
-                  .has_param = false,
-                  .handler   = [&id_post_unpack](std::string_view v, int vi) {
-                     id_post_unpack = v;
-                  },
-               },
-            });
-         } catch (std::runtime_error& ex) {
-            _report_error(
-               subject,
-               "%<lu_bitpack_funcs%> attribute failed to parse: %s",
-               ex.what()
-            );
-            return;
-         }
-      }
-      
-      if (id_pre_pack.empty() != id_post_unpack.empty()) {
-         if (id_pre_pack.empty()) {
-            _report_error(subject, "%<lu_bitpack_funcs%> attribute specifies only a post-unpack function; you must specify both pre-pack and post-unpack functions");
-         } else {
-            _report_error(subject, "%<lu_bitpack_funcs%> attribute specifies only a pre-pack function; you must specify both pre-pack and post-unpack functions");
-         }
-         return;
-      }
-      
-      bool each_is_individually_correct = true;
-      
-      auto decl_pre  = this->transforms.pre_pack    = _get_func_decl(id_pre_pack.c_str());
-      auto decl_post = this->transforms.post_unpack = _get_func_decl(id_post_unpack.c_str());
-      if (decl_pre.empty()) {
-         _report_error(
-            subject,
-            "%<lu_bitpack_funcs%> attribute specifies a pre-pack identifier %<%s%> that "
-            "either doesn't exist or is not a function",
-            id_pre_pack.c_str()
-         );
-      } else {
-         if (!can_be_pre_pack_function(decl_pre)) {
-            each_is_individually_correct = false;
-            
-            _report_error(subject, "%<lu_bitpack_funcs%> attribute specifies a pre-pack function with the wrong signature; signature should be <%void %s(const NormalType*, PackedType*)%>.", decl_pre.name().data());
-         }
-      }
-      if (decl_post.empty()) {
-         _report_error(
-            subject,
-            "%<lu_bitpack_funcs%> attribute specifies a post-unpack identifier %<%s%> that "
-            "either doesn't exist or is not a function",
-            id_post_unpack.c_str()
-         );
-      } else {
-         if (!can_be_post_unpack_function(decl_post)) {
-            each_is_individually_correct = false;
-            
-            _report_error(subject, "%<lu_bitpack_funcs%> attribute specifies a post-unpack function with the wrong signature; signature should be <%void %s(NormalType*, const PackedType*)%>.", decl_post.name().data());
-         }
-      }
-      
-      if (!each_is_individually_correct) {
-         return;
-      }
-      if (decl_pre.empty() || decl_post.empty()) {
-         return;
-      }
-      
-      // TODO: Move this check to after we've resolved heritables, etc.
-      auto problem = check_transform_functions_match_types(decl_pre, decl_post);
-      if (!problem.empty()) {
-         problem = std::string("%<lu_bitpack_funcs%> attribute specifies mismatched functions: ") + problem;
-         _report_error(subject, problem.c_str());
-      }
-   }
-   
    void requested_via_attributes::_load_impl(tree subject, gw::attribute_list attributes) {
       {
          auto name = _pull_heritable_name(subject, attributes);
          if (!name.empty()) {
             auto* o = heritable_options_stockpile::get().options_by_name(name);
             if (!o) {
-               _report_error(subject, "%<lu_bitpack_inherit%>: no heritable option set exists with the name %<%s%>", name.c_str());
+               _report_error(subject, "%<lu_bitpack_inherit%>: no heritable option set exists with the name %<%s%>", name.data());
             }
             this->inherit = o;
          }
