@@ -62,12 +62,23 @@ namespace _attributes {
       .handler = &attribute_handlers::no_op,
       .exclude = NULL
    };
+   static struct attribute_spec internal_invalid_by_name = {
+      .name = "lu bitpack invalid attribute name",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = false,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::no_op,
+      .exclude = NULL
+   };
    static struct attribute_spec internal_sentinel_bad_type_reported = {
       .name = "lu bitpack already reported application to bad type",
       .min_length = 0, // min argcount
       .max_length = 0, // max argcount
       .decl_required = false,
-      .type_required = true,
+      .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
       .handler = &attribute_handlers::no_op,
@@ -167,6 +178,7 @@ namespace _attributes {
 static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::test_attribute);
    register_attribute(&_attributes::internal_invalid);
+   register_attribute(&_attributes::internal_invalid_by_name);
    register_attribute(&_attributes::internal_sentinel_bad_type_reported);
    register_attribute(&_attributes::bitpack_bitcount);
    register_attribute(&_attributes::bitpack_default_value);

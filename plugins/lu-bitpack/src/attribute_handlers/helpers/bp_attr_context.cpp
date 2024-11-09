@@ -50,31 +50,6 @@ namespace attribute_handlers::helpers {
       }
    }
    
-   void bp_attr_context::_report_applied_to_impossible_type(tree type) {
-      constexpr const char* const sentinel_name = "lu bitpack already reported application to bad type";
-      
-      assert(type != NULL_TREE && TYPE_P(type));
-      auto attr = lookup_attribute(sentinel_name, TYPE_ATTRIBUTES(type));
-      if (attr != NULL_TREE)
-         return;
-      
-      attr = tree_cons(get_identifier(sentinel_name), NULL_TREE, NULL_TREE);
-      decl_attributes(this->attribute_target, attr, this->attribute_flags | ATTR_FLAG_INTERNAL, nullptr);
-      
-      report_error("cannot be applied directly to array or function types");
-   }
-   
-   void bp_attr_context::_report_type_mismatch(
-      lu::strings::zview meant_for,
-      lu::strings::zview applied_to
-   ) {
-      report_error(
-         "is meant for %s; you are appling it to %s",
-         meant_for.c_str(),
-         applied_to.c_str()
-      );
-   }
-   
    const std::string& bp_attr_context::_get_context_string() {
       auto& str = this->printable;
       if (str.empty()) {
@@ -102,24 +77,43 @@ namespace attribute_handlers::helpers {
       }
       return str;
    }
-         
+   
+   void bp_attr_context::_mark_with_named_error_attribute() {
+      constexpr const char* const sentinel_name = "lu bitpack invalid attribute name";
+      
+      bool here = false;
+      auto list = get_existing_attributes();
+      for(auto attr : list) {
+         if (attr.name() != sentinel_name)
+            continue;
+         auto name = attr.arguments().front();
+         if (name.code() != IDENTIFIER_NODE)
+            continue;
+         if (name.as_untyped() == this->attribute_name) {
+            here = true;
+            break;
+         }
+      }
+      if (here)
+         return;
+      
+      auto attr_args = tree_cons(NULL_TREE, this->attribute_name, NULL_TREE);
+      auto attr_node = tree_cons(get_identifier(sentinel_name), attr_args, NULL_TREE);
+      auto deferred  = decl_attributes(
+         this->attribute_target,
+         attr_node,
+         this->attribute_flags | ATTR_FLAG_INTERNAL,
+         this->attribute_target[1]
+      );
+      assert(deferred == NULL_TREE);
+   }
    void bp_attr_context::_mark_with_error_attribute() {
       constexpr const char* const sentinel_name = "lu bitpack invalid attributes";
       
       this->failed = true;
       
-      {
-         tree list = NULL_TREE;
-         tree node = this->attribute_target[0];
-         if (TYPE_P(node)) {
-            list = TYPE_ATTRIBUTES(node);
-         } else {
-            list = DECL_ATTRIBUTES(node);
-         }
-         auto attr = lookup_attribute(sentinel_name, list);
-         if (attr != NULL_TREE)
-            return;
-      }
+      if (get_existing_attributes().has_attribute(sentinel_name))
+         return;
       
       auto attr_node = tree_cons(get_identifier(sentinel_name), NULL_TREE, NULL_TREE);
       auto deferred  = decl_attributes(
@@ -129,6 +123,32 @@ namespace attribute_handlers::helpers {
          this->attribute_target[1]
       );
       assert(deferred == NULL_TREE);
+      assert(get_existing_attributes().has_attribute(sentinel_name));
+   }
+   
+   void bp_attr_context::_report_applied_to_impossible_type(tree type) {
+      constexpr const char* const sentinel_name = "lu bitpack already reported application to bad type";
+      
+      assert(type != NULL_TREE && TYPE_P(type));
+      auto attr = lookup_attribute(sentinel_name, TYPE_ATTRIBUTES(type));
+      if (attr != NULL_TREE)
+         return;
+      
+      attr = tree_cons(get_identifier(sentinel_name), NULL_TREE, NULL_TREE);
+      decl_attributes(this->attribute_target, attr, this->attribute_flags | ATTR_FLAG_INTERNAL, nullptr);
+      
+      report_error("cannot be applied directly to array or function types");
+   }
+   
+   void bp_attr_context::_report_type_mismatch(
+      lu::strings::zview meant_for,
+      lu::strings::zview applied_to
+   ) {
+      report_error(
+         "is meant for %s; you are appling it to %s",
+         meant_for.c_str(),
+         applied_to.c_str()
+      );
    }
    
    gw::type::base bp_attr_context::type_of_target() const {
@@ -149,6 +169,36 @@ namespace attribute_handlers::helpers {
          type = type.as_array().value_type();
       }
       return type;
+   }
+   
+   bool bp_attr_context::attribute_already_applied() const {
+      return get_existing_attributes().has_attribute(this->attribute_name);
+   }
+   bool bp_attr_context::attribute_already_attempted() const {
+      auto list = get_existing_attributes();
+      for(auto attr : list) {
+         auto name = attr.name();
+         if (name == IDENTIFIER_POINTER(this->attribute_name))
+            return true;
+         if (name != "lu bitpack invalid attribute name")
+            continue;
+         auto id_node = attr.arguments().front().as_untyped();
+         assert(id_node != NULL_TREE && TREE_CODE(id_node) == IDENTIFIER_NODE);
+         if (id_node == this->attribute_name)
+            return true;
+      }
+      return false;
+   }
+   
+   gw::attribute_list bp_attr_context::get_existing_attributes() const {
+      auto node = this->attribute_target[0];
+      if (node == NULL_TREE)
+         return {};
+      if (DECL_P(node))
+         return gw::attribute_list::from_untyped(DECL_ATTRIBUTES(node));
+      if (TYPE_P(node))
+         return gw::attribute_list::from_untyped(TYPE_ATTRIBUTES(node));
+      return {};
    }
    
    bool bp_attr_context::check_and_report_applied_to_integral() {
@@ -298,6 +348,16 @@ namespace attribute_handlers::helpers {
    bool bp_attr_context::bitpacking_value_type_is_string() const {
       auto& global = basic_global_state::get().global_options.computed;
       return global.type_is_string(bitpacking_value_type());
+   }
+   
+   void bp_attr_context::reapply_with_new_args(gcc_wrappers::list_node args) {
+      auto attr_node = tree_cons(this->attribute_name, args.as_untyped(), NULL_TREE);
+      decl_attributes(
+         this->attribute_target,
+         attr_node,
+         this->attribute_flags | ATTR_FLAG_INTERNAL,
+         this->attribute_target[1]
+      );
    }
    
    void bp_attr_context::add_internal_attribute(lu::strings::zview attr_name, gw::list_node args) {

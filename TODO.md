@@ -5,13 +5,10 @@
 
 ### Short-term
 
+* If we're working with an `EXPR` that we know to be a constant expression, how do we get the computed value? Currently, our attributes support integer and string literals as appropriate, but I don't think they'd work for constant integer expressions (or constant float expressions where the result value is an integer).
 * Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
   * Pre-pack/post-unpack transform function identifiers
-* Require that heritables be defined before they're referenced in attributes, so we can validate more reliably from attributes.
-* The handler for `lu_bitpack_inherit` should verify that the specified heritable exists and is of a type compatible with the annotated type/field.
-* Specifying multiple heritables for a single field should be an error. AFAIK attributes are parsed in order but may be retained in memory in any order (per GCC code comments), and we apply heritables at codegen time rather than parse time, so we can't ensure they apply in order at that point.
-  * If `lu_bitpack_inherit` validates the heritable name, then we'd have to set some sort of sentinel on failure so that we can detect multiple names e.g. `LU_BP_INHERIT(badname) LU_BP_INHERIT(goodname)`. We could potentially leave behind an `error_mark_node` or a `STRING_CST`, as long as the code to gather and coalesce attributes knows to watch out for the former.
-  * We can't do coalescing (including applying inherited options) from within attribute handlers, because we need to coalesce options that may not be specified on the field (e.g. bitcount inherited or on the type but not on the field). There may potentially be a GCC plug-in event we could use (e.g. "decl finished" and "type finished" or whatnot) for coalescing, to do it in advance of codegen, but that's something I should leave until further in the future.
+* The handler for `lu_bitpack_inherit` should verify that the specified heritable is of a type compatible with the annotated type/field.
 * When a field has a string default value, we need to verify that the specified string literal can fit in the specified field.
   * If the string has attribute `nonstring`, or if it has `lu_bitpack_string` specifying that the terminator is optional, this should influence the check: don't require space for the `STRING_CST`'s null terminator. That is: if a `char[3]` doesn't need a null terminator, then `"a"` should `"a\0\0"`, and `"foo"` should fit despite `sizeof("foo") == 4`.
 * I don't think our `std::hash` specialization for wrapped tree nodes is reliable. Is there anything else we can use?

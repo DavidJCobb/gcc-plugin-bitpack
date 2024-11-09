@@ -230,8 +230,17 @@ namespace gcc_wrappers {
    }
    
    bool attribute_list::has_attribute(lu::strings::zview name) const {
-      auto attr = const_cast<attribute_list&>(*this).get_attribute(name);
+      if (empty())
+         return false;
+      auto attr = this->get_attribute(name);
       return !attr.empty();
+   }
+   bool attribute_list::has_attribute(tree id_node) const {
+      assert(id_node != NULL_TREE);
+      assert(TREE_CODE(id_node) == IDENTIFIER_NODE);
+      if (empty())
+         return false;
+      return has_attribute(IDENTIFIER_POINTER(id_node));
    }
          
    void attribute_list::remove_attribute(lu::strings::zview name) {

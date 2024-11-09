@@ -82,13 +82,8 @@ namespace bitpacking::data_options {
    void requested_via_attributes::_load_impl(tree subject, gw::attribute_list attributes) {
       {
          auto name = _pull_heritable_name(subject, attributes);
-         if (!name.empty()) {
-            auto* o = heritable_options_stockpile::get().options_by_name(name);
-            if (!o) {
-               _report_error(subject, "%<lu_bitpack_inherit%>: no heritable option set exists with the name %<%s%>", name.data());
-            }
-            this->inherit = o;
-         }
+         if (!name.empty())
+            this->inherit = heritable_options_stockpile::get().options_by_name(name);
       }
       
       for(auto attr : attributes) {

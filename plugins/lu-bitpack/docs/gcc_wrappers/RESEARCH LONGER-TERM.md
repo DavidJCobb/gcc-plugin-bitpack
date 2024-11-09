@@ -56,8 +56,3 @@ extern tree build1(enum tree_code code, tree type, tree operand_a, tree operand_
   * `get_ultimate_context` gets the containing `TRANSLATION_UNIT_DECL` if any of a `DECL` or `TYPE`
   * `decl_function_context` gets a `DECL` or `TYPE`'s innermost enclosing function
   * `decl_type_context` gets a `DECL` or `TYPE`'s innermost enclosing type
-
-Things we know a `DECL_CONTEXT` or `TYPE_CONTEXT` can be:
-
-* `BLOCK`, in which case `BLOCK_SUPERCONTEXT(block)` is the containing scope
-* A `DECL` or `TYPE`

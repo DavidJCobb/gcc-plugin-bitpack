@@ -120,6 +120,9 @@ namespace gcc_wrappers {
       
          bool has_attribute(lu::strings::zview) const;
          
+         // assert(TREE_CODE(id_node) == IDENTIFIER_NODE)
+         bool has_attribute(tree id_node) const;
+         
          // Removes the attribute. Note that GCC never bothers to delete attribute 
          // nodes, so this will leak.
          void remove_attribute(lu::strings::zview);

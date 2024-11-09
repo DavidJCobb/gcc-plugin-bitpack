@@ -18,14 +18,14 @@
 // START OF BITPACKING OPTIONS
 //
 
-#define LU_BP_OMIT                __attribute__((lu_bitpack_omit))
-#define LU_BP_AS_OPAQUE_BUFFER    __attribute__((lu_bitpack_as_opaque_buffer))
-#define LU_BP_BITCOUNT(n)         __attribute__((lu_bitpack_bitcount(n)))
-#define LU_BP_INHERIT(name)       __attribute__((lu_bitpack_inherit(name)))
-#define LU_BP_MINMAX(x,y)         __attribute__((lu_bitpack_range(x, y)))
-#define LU_BP_MIN_0_MAX(n)        __attribute__((lu_bitpack_range(0, n)))
-#define LU_BP_STRING_UT           __attribute__((lu_bitpack_string))
-#define LU_BP_STRING_WT           __attribute__((lu_bitpack_string("with-terminator")))
+#define LU_BP_AS_OPAQUE_BUFFER __attribute__((lu_bitpack_as_opaque_buffer))
+#define LU_BP_BITCOUNT(n)      __attribute__((lu_bitpack_bitcount(n)))
+#define LU_BP_INHERIT(name)    __attribute__((lu_bitpack_inherit(name)))
+#define LU_BP_MINMAX(x,y)      __attribute__((lu_bitpack_range(x, y)))
+#define LU_BP_MIN_0_MAX(n)     __attribute__((lu_bitpack_range(0, n)))
+#define LU_BP_OMIT             __attribute__((lu_bitpack_omit))
+#define LU_BP_STRING_UT        __attribute__((lu_bitpack_string))
+#define LU_BP_STRING_WT        __attribute__((lu_bitpack_string("with-terminator")))
 #define LU_BP_TRANSFORM(pre_pack, post_unpack) \
    __attribute__((lu_bitpack_transform("pre_pack="#pre_pack",post_unpack="#post_unpack)))
 
@@ -149,6 +149,12 @@ static struct TestStruct {
    LU_BP_MINMAX(-3, 0) u32 f;
    LU_BP_MINMAX( 0, 0) void* g;
    LU_BP_MINMAX( 0, 0) struct NestedStruct h;
+   LU_BP_OMIT struct NestedStruct h_omit; // test: this one should actually work
+   
+   LU_BP_INHERIT("nonexistent!") u32 heritable_missing;
+   LU_BP_INHERIT("")             u32 heritable_blank;
+   LU_BP_INHERIT("$23bit") LU_BP_INHERIT("$24bit") u32 heritable_multiple;
+   LU_BP_INHERIT("nonexistent!") LU_BP_INHERIT("$24bit") u32 heritable_multiple_one_missing;
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);

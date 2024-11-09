@@ -27,6 +27,12 @@ namespace gcc_wrappers {
       public:
          list_node() {}
          list_node(tree t) : _node(t) {}
+         
+         static list_node from_untyped(tree t) {
+            list_node wrap;
+            wrap._node = t;
+            return wrap;
+         }
       
          inline bool empty() const {
             return this->_node == NULL_TREE;

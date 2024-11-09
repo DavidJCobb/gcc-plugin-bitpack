@@ -7,6 +7,7 @@
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/builtin_types.h"
+#include "gcc_wrappers/list_node.h"
 #include <stringpool.h> // dependency for <attribs.h>
 #include <attribs.h> // decl_attributes
 namespace gw {
@@ -15,11 +16,7 @@ namespace gw {
 
 namespace attribute_handlers {
    static void _reassemble_parameters(
-      tree* node_ptr,
-      tree  name,
       gw::expr::string_constant data,
-      int   flags,
-      //
       helpers::bp_attr_context& context
    ) {
       struct {
@@ -87,19 +84,10 @@ namespace attribute_handlers {
             NULL_TREE
          )
       );
-      
-      auto attr_node = tree_cons(name, args, NULL_TREE);
-      decl_attributes(
-         &node_ptr[0],
-         attr_node,
-         flags | ATTR_FLAG_INTERNAL,
-         node_ptr[1]
-      );
+      context.reapply_with_new_args(gw::list_node::from_untyped(args));
    }
 
    extern tree bitpack_string(tree* node_ptr, tree name, tree args, int flags, bool* no_add_attrs) {
-      *no_add_attrs = false;
-      
       auto result = generic_bitpacking_data_option(node_ptr, name, args, flags, no_add_attrs);
       if (*no_add_attrs) {
          return result;
@@ -132,13 +120,7 @@ namespace attribute_handlers {
             // Parse the arguments and reconstruct them.
             //
             *no_add_attrs = true;
-            _reassemble_parameters(
-               node_ptr,
-               name,
-               wrap,
-               flags,
-               context
-            );
+            _reassemble_parameters(wrap, context);
             return NULL_TREE;
          }
       }

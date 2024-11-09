@@ -10,8 +10,6 @@ namespace gw {
 
 namespace attribute_handlers {
    extern tree bitpack_bitcount(tree* node_ptr, tree name, tree args, int flags, bool* no_add_attrs) {
-      *no_add_attrs = false;
-      
       auto result = generic_bitpacking_data_option(node_ptr, name, args, flags, no_add_attrs);
       if (*no_add_attrs) {
          return result;
