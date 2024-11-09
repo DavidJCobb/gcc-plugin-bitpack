@@ -9,6 +9,7 @@
 #include "basic_global_state.h"
 #include "codegen/sector_functions_generator.h"
 
+#include "gcc_helpers/c/at_file_scope.h"
 #include "gcc_wrappers/builtin_types.h"
 
 // for generating XML output:
@@ -135,6 +136,10 @@ namespace pragma_handlers {
          } while (true);
       }
       
+      if (identifier_groups.empty()) {
+         warning_at(start_loc, 1, "%<#pragma lu_bitpack generate_functions%>: you did not specify any data to serialize; is this intentional?");
+      }
+      
       if (read_name.empty()) {
          error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: missing the %<read_name%> key (the identifier of a function to generate, with signature %<void f(const buffer_byte_type* src, int sector_id)%>)");
          return;
@@ -144,8 +149,18 @@ namespace pragma_handlers {
          return;
       }
       
-      if (identifier_groups.empty()) {
-         warning_at(start_loc, 1, "%<#pragma lu_bitpack generate_functions%>: you did not specify any data to serialize; is this intentional?");
+      if (!gcc_helpers::c::at_file_scope()) {
+         //
+         // GCC name lookups are relative to the current scope. AFAIK there's 
+         // no way to only do lookups within file scope. This means that if we 
+         // allow this pragma to be used in any inner scope, the identifiers 
+         // that the user specified in the pragma options may match function 
+         // locals -- and we'll generate file-scope functions that refer to 
+         // another function's locals, causing GCC to crash when compiling the 
+         // code we generate.
+         //
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%> must be used at file scope (i.e. outside of any function, struct definition, and similar)");
+         return;
       }
       
       try {

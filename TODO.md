@@ -5,8 +5,13 @@
 
 ### Short-term
 
+* Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
+  * Pre-pack/post-unpack transform function identifiers
 * Require that heritables be defined before they're referenced in attributes, so we can validate more reliably from attributes.
 * The handler for `lu_bitpack_inherit` should verify that the specified heritable exists and is of a type compatible with the annotated type/field.
+* Specifying multiple heritables for a single field should be an error. AFAIK attributes are parsed in order but may be retained in memory in any order (per GCC code comments), and we apply heritables at codegen time rather than parse time, so we can't ensure they apply in order at that point.
+  * If `lu_bitpack_inherit` validates the heritable name, then we'd have to set some sort of sentinel on failure so that we can detect multiple names e.g. `LU_BP_INHERIT(badname) LU_BP_INHERIT(goodname)`. We could potentially leave behind an `error_mark_node` or a `STRING_CST`, as long as the code to gather and coalesce attributes knows to watch out for the former.
+  * We can't do coalescing (including applying inherited options) from within attribute handlers, because we need to coalesce options that may not be specified on the field (e.g. bitcount inherited or on the type but not on the field). There may potentially be a GCC plug-in event we could use (e.g. "decl finished" and "type finished" or whatnot) for coalescing, to do it in advance of codegen, but that's something I should leave until further in the future.
 * When a field has a string default value, we need to verify that the specified string literal can fit in the specified field.
   * If the string has attribute `nonstring`, or if it has `lu_bitpack_string` specifying that the terminator is optional, this should influence the check: don't require space for the `STRING_CST`'s null terminator. That is: if a `char[3]` doesn't need a null terminator, then `"a"` should `"a\0\0"`, and `"foo"` should fit despite `sizeof("foo") == 4`.
 * I don't think our `std::hash` specialization for wrapped tree nodes is reliable. Is there anything else we can use?
@@ -14,8 +19,6 @@
   * `TYPE_UID(node)` also exists.
   * Our use case is storing `gw::type::base`s inside of an `unordered_map`. We could use GCC's dedicated "type map" class, or &mdash; and this may be more reliable &mdash; we could use a `vector` of `pair`s, with a lookup function which looks for an exact type match or a match with a transitive typedef.
 
-* Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
-  * Pre-pack/post-unpack transform function identifiers
 * The XML output has no way of knowing or reporting what bitpacking options are applied to integral types (as opposed to fields *of* those types). The final used bitcounts (and other associated options) should still be emitted per field, but this still reflects a potential loss of information. Can we fix this?
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
