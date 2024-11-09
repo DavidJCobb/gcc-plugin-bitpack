@@ -5,32 +5,18 @@
 
 ### Short-term
 
-* Once the above two things have been done, it'll be possible to validate more stuff from attribute handlers, and to offer more impactful attribute handlers.
-* Finish implementing `lu_bitpack_default_value`.
-  * Allowed values[^no-default-arrays]
-    * `INTEGER_CST` for integers or arrays thereof, and for pointers if zero.
-    * `REAL_CST` for floats or arrays thereof.
-    * `STRING_CST` for strings.
-      * If the string is marked as having an optional null terminator, then `"foo"` should fit into a `char[3]` even though `sizeof("foo") == 4`: we need to manually copy only the content that will fit. We can't check this from the attribute handler, because we may not have seen the `lu_bitpack_string` attribute (which indicates the presence or absence of a null terminator) yet.
-      * Use `build_string_literal` to build an `ADDR_EXPR` to an array of chars (with you able to control the char type). However, that function also builds a new underlying `STRING_CST`; I'm not sure if there's a way to reuse one of those.
-    * The attribute should fail when applied to any other types.
-  * Implementation
-    * Fields that are omitted from bitpacking should be assigned to their attribute-provided default values, if they have any, in the generated "read" functions. This has to be done wherever we read a struct containing such members.
-    * The XML output should list the default values of any members that had any.
-  * When applied alongside pre-pack and post-unpack transformations, a default value should apply to the in situ type, not the transformed type.
+* Require that heritables be defined before they're referenced in attributes, so we can validate more reliably from attributes.
+* The handler for `lu_bitpack_inherit` should verify that the specified heritable exists and is of a type compatible with the annotated type/field.
+* When a field has a string default value, we need to verify that the specified string literal can fit in the specified field.
+  * If the string has attribute `nonstring`, or if it has `lu_bitpack_string` specifying that the terminator is optional, this should influence the check: don't require space for the `STRING_CST`'s null terminator. That is: if a `char[3]` doesn't need a null terminator, then `"a"` should `"a\0\0"`, and `"foo"` should fit despite `sizeof("foo") == 4`.
 * I don't think our `std::hash` specialization for wrapped tree nodes is reliable. Is there anything else we can use?
   * Every `DECL` has a unique `DECL_UID(node)`, but I don't know that these would be unique among other node types' potential ID schemes as well.
   * `TYPE_UID(node)` also exists.
-
-[^no-default-arrays]: We could allow specifying whole-array defaults using compound literals (e.g. `(u8[7]){ 0 }`), but those were only introduced in C99. One of my support targets is GNU89, IIRC, so I don't think that's going to parse properly. We should probably only allow scalar initializers (i.e. `int[5][3]` only gets an integer constant, which fills the array).
+  * Our use case is storing `gw::type::base`s inside of an `unordered_map`. We could use GCC's dedicated "type map" class, or &mdash; and this may be more reliable &mdash; we could use a `vector` of `pair`s, with a lookup function which looks for an exact type match or a match with a transitive typedef.
 
 * Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
-  * Pre-pack/post-unpack transforms
-* The XML output has no way of knowing or reporting what bitpacking options are applied to integral types. The final used bitcounts (and other associated options) should still be emitted per member, but this still reflects a potential loss of information. Can we fix this?
-* Add an attribute that annotates a struct member with a default value. This should be written into any bitpack format XML we generate (so that upgrade tools know what to set the member to), and if the member is marked as do-not-serialize, then its value should be set to the default when reading bitpacked data to memory.
-  * We could allow specifying whole-array defaults using compound literals (e.g. `(u8[7]){ 0 }`), but those were only introduced in C99. One of my support targets is GCC "C90" so I don't think that's going to parse properly. We should probably only allow scalar initializers (i.e. `int[5][3]` only gets an integer constant, which fills the array).
-  * As an extension, string values should be initializable with string literals. We'll want to check that they fit, *but* we should account for whether the string value requires a null terminator in memory (i.e. `sizeof("foo") == 4` but it should be allowed to fit in a `char[3]` if that array doesn't require a null).
-  * When applied alongside pre-pack and post-unpack transformations, a default value should apply to the in situ type, not the transformed type.
+  * Pre-pack/post-unpack transform function identifiers
+* The XML output has no way of knowing or reporting what bitpacking options are applied to integral types (as opposed to fields *of* those types). The final used bitcounts (and other associated options) should still be emitted per field, but this still reflects a potential loss of information. Can we fix this?
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
   * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
