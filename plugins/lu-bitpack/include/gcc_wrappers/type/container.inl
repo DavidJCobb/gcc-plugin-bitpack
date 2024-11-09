@@ -23,6 +23,12 @@ namespace gcc_wrappers::type {
          if (TREE_CODE(item) != FIELD_DECL)
             continue;
          
+         if (DECL_VIRTUAL_P(item))
+            //
+            // This is the VTBL pointer. Skip it.
+            //
+            continue;
+         
          if (DECL_NAME(item) == NULL_TREE) {
             //
             // This data member is unnamed. If it's a `container` itself, then 

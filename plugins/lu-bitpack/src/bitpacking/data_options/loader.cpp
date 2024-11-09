@@ -40,13 +40,7 @@ namespace {
          auto decl = gw::decl::field::from_untyped(node);
          
          std::string result = "field %<";
-         
-         auto context = decl.context();
-         if (TYPE_P(context.as_untyped())) {
-            result += gw::type::base::from_untyped(context.as_untyped()).pretty_print();
-            result += "::";
-         }
-         result += decl.name();
+         result += decl.fully_qualified_name();
          result += "%>";
          return result;
       }

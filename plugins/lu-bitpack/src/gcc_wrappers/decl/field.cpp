@@ -1,13 +1,27 @@
 #include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/type/container.h"
+#include "gcc_wrappers/scope.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
+
+//
+// GCC has renamed some macros; prefer the new names over the old. 
+// `#define` synonyms so we can avoid scattering preprocessor if/else 
+// checks in the code below; then `#undef` them at the bottom of the 
+// file.
+//
 
 // _GCC_DECL_FIELD_BIT_OFFSET
 #ifdef DECL_FIELD_BITPOS
    #define _GCC_DECL_FIELD_BIT_OFFSET DECL_FIELD_BITPOS
 #else
+   //
+   // Oldest known/supported name.
+   //
+   #ifndef DECL_FIELD_BIT_OFFSET
+      #error GCC may have renamed the macro used to get a FIELD_DECL&apos;s offset in bits. Update the code here to cope with that.
+   #endif
    #define _GCC_DECL_FIELD_BIT_OFFSET DECL_FIELD_BIT_OFFSET
 #endif
 
@@ -15,6 +29,12 @@
 #ifdef DECL_C_BIT_FIELD
    #define _GCC_DECL_IS_BITFIELD DECL_C_BIT_FIELD
 #else
+   //
+   // Oldest known/supported name.
+   //
+   #ifndef DECL_BIT_FIELD
+      #error GCC may have renamed the macro used to get a C bitfield FIELD_DECL&apos;s bit width. Update the code here to cope with that.
+   #endif
    #define _GCC_DECL_IS_BITFIELD DECL_BIT_FIELD
 #endif
 
@@ -25,16 +45,19 @@ namespace gcc_wrappers::decl {
    type::container field::member_of() const {
       if (empty())
          return {};
-      auto ctxt = DECL_CONTEXT(this->_node);
-      if (ctxt != NULL_TREE) {
+      auto scope = this->context();
+      if (scope.empty())
          //
          // A FIELD_DECL may lack a DECL_CONTEXT if it's still being 
          // built by the compiler internals.
          //
-         assert(TREE_CODE(ctxt) == RECORD_TYPE || TREE_CODE(ctxt) == UNION_TYPE);
+         return {};
+      if (scope.is_type()) {
+         auto type = scope.as_type();
+         if (type.is_record() || type.is_union())
+            return type::container::from_untyped(type.as_untyped());
       }
-      
-      return type::container::from_untyped(ctxt);
+      return {};
    }
    type::base field::value_type() const {
       if (empty())
@@ -84,6 +107,11 @@ namespace gcc_wrappers::decl {
       
       return out;
    }
+   
+   bool field::is_class_vtbl_pointer() const {
+      return !empty() && DECL_VIRTUAL_P(this->_node);
+   }
 }
 
 #undef _GCC_DECL_FIELD_BIT_OFFSET
+#undef _GCC_DECL_IS_BITFIELD

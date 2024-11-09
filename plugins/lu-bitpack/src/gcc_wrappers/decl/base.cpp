@@ -1,4 +1,7 @@
 #include "gcc_wrappers/decl/base.h"
+#include "lu/strings/builder.h"
+#include "gcc_wrappers/decl/field.h"
+#include "gcc_wrappers/scope.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
 
@@ -14,6 +17,52 @@ namespace gcc_wrappers::decl {
          return {};
       return std::string_view(IDENTIFIER_POINTER(id_node));
    }
+   std::string base::fully_qualified_name() const {
+      constexpr const std::string_view scope_separator = "::";
+   
+      if (empty())
+         return {};
+      
+      lu::strings::builder builder;
+      {
+         auto name = this->name();
+         if (!name.empty()) {
+            builder.append(name);
+         } else {
+            bool nameless = true;
+            if (this->code() == FIELD_DECL) {
+               auto casted = as<field>();
+               if (casted.is_class_vtbl_pointer()) {
+                  builder.append("<vtbl>");
+                  nameless = false;
+               }
+            }
+            if (nameless)
+               return {};
+         }
+      }
+      for(auto scope = this->context(); !scope.empty(); scope = scope.containing_scope()) {
+         std::string chunk;
+         if (scope.is_declaration()) {
+            auto name = scope.as_declaration().name();
+            if (name.empty()) {
+               break;
+            }
+            builder.prepend(scope_separator);
+            builder.prepend(name);
+         } else if (scope.is_type()) {
+            auto name = scope.as_type().pretty_print();
+            if (name.empty()) {
+               break;
+            }
+            builder.prepend(scope_separator);
+            builder.prepend(name);
+         }
+      }
+      
+      return builder.build_and_clear();
+   }
+   
    attribute_list base::attributes() {
       return attribute_list::from_untyped(DECL_ATTRIBUTES(this->_node));
    }
@@ -89,10 +138,7 @@ namespace gcc_wrappers::decl {
       TREE_USED(this->_node) = v;
    }
    
-   // TODO: what types can this be?
-   _wrapped_tree_node base::context() const {
-      _wrapped_tree_node w;
-      w.set_from_untyped(DECL_CONTEXT(this->_node));
-      return w;
+   scope base::context() const {
+      return scope::from_untyped(DECL_CONTEXT(this->_node));
    }
 }

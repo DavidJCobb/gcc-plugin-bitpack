@@ -67,8 +67,10 @@ SOURCES=\
         src/gcc_wrappers/builtin_types.cpp \
         src/gcc_wrappers/chain_node.cpp \
         src/gcc_wrappers/list_node.cpp \
+        src/gcc_wrappers/scope.cpp \
         src/gcc_wrappers/statement_list.cpp \
         src/gcc_wrappers/value.cpp \
+        src/lu/strings/builder.cpp \
         src/lu/strings/handle_kv_string.cpp \
         src/lu/strings/printf_string.cpp \
         src/lu/strings/trim.cpp \

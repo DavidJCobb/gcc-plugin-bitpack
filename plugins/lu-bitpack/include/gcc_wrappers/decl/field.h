@@ -30,6 +30,8 @@ namespace gcc_wrappers {
             bool is_bitfield() const;
             
             std::string pretty_print() const;
+            
+            bool is_class_vtbl_pointer() const;
       };
    }
 }

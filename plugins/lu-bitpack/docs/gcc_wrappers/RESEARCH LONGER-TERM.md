@@ -38,10 +38,6 @@ extern tree build1(enum tree_code code, tree type, tree operand_a, tree operand_
 
 # GCC functions related to generating types and declarations
 
-## Creating arrays
-
-* `build_index_type` creates the `TYPE_DOMAIN` of the array type (but you should generally just use `build_array_type` or `build_nonshared_array_type`)
-
 ## Creating C bitfields
 
 * `build_nonstandard_integer_type` for the bitfield decl's type
@@ -56,8 +52,12 @@ extern tree build1(enum tree_code code, tree type, tree operand_a, tree operand_
 
 * `build_empty_stmt` builds an empty statement (i.e. `;`) in the form of a `NOP_EXPR`
 * `build_builtin_unreachable` builds a call to `__builtin_unreachable()`.
-* `build_string_literal`
 * `get_containing_scope` returns `TYPE_CONTEXT` or `DECL_CONTEXT` as appropriate, but I still don't know the full set of nodes that can be a "context" yet.
   * `get_ultimate_context` gets the containing `TRANSLATION_UNIT_DECL` if any of a `DECL` or `TYPE`
   * `decl_function_context` gets a `DECL` or `TYPE`'s innermost enclosing function
   * `decl_type_context` gets a `DECL` or `TYPE`'s innermost enclosing type
+
+Things we know a `DECL_CONTEXT` or `TYPE_CONTEXT` can be:
+
+* `BLOCK`, in which case `BLOCK_SUPERCONTEXT(block)` is the containing scope
+* A `DECL` or `TYPE`

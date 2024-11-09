@@ -5,6 +5,10 @@
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
+   class scope;
+}
+
+namespace gcc_wrappers {
    namespace decl {
       class base : public _wrapped_tree_node {
          public:
@@ -15,6 +19,8 @@ namespace gcc_wrappers {
             
          public:
             std::string_view name() const;
+            
+            std::string fully_qualified_name() const;
             
             attribute_list attributes();
             const attribute_list attributes() const;
@@ -42,8 +48,7 @@ namespace gcc_wrappers {
             void make_used();
             void set_is_used(bool);
             
-            // TODO: what types can this be?
-            _wrapped_tree_node context() const;
+            scope context() const;
       };
    }
 }

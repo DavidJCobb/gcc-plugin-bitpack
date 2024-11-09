@@ -92,7 +92,8 @@ void print_buffer(const u8* buffer, int size) {
    }
    printf("\n");
 }
-void print_char(c) {
+#include <ctype.h>
+void print_char(char c) {
    if (isprint(c)) {
       printf("'%c'", c);
    } else {

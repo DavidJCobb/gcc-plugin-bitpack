@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string_view>
 
+#include <gcc-plugin.h>
 #include <tree.h>
 #include <c-family/c-common.h> // lookup_name
 #include <stringpool.h> // get_identifier
@@ -38,6 +39,9 @@ namespace pragma_handlers {
          std::cerr << "error: " << this_pragma_name << ": identifier " << name << " not found\n";
          return;
       }
+      
+      std::cerr << "Dumping identifier " << name << "...\n";
+      
       debug_tree(decl);
       if (TREE_CODE(decl) == TYPE_DECL) {
          auto type = TREE_TYPE(decl);
