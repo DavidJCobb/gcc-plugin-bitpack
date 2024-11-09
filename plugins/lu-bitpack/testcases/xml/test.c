@@ -15,7 +15,9 @@
 #pragma lu_bitpack enable
 
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
+#define LU_BP_DEFAULT(x)    __attribute__((lu_bitpack_default_value(x)))
 #define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
+#define LU_BP_OMIT          __attribute__((lu_bitpack_omit))
 #define LU_BP_STRING(info)  __attribute__((lu_bitpack_string(info)))
 #define LU_BP_STRING_WT     __attribute__((lu_bitpack_string("with-terminator")))
 
@@ -51,25 +53,6 @@
 
 #pragma lu_bitpack heritable integer "$24bit" ( bitcount = 24 )
 
-u8 test_array[5] __attribute__(( lu_test_attribute( (u8[5]){[1]=1,[2]=2,[3]=3} ) ));
-
-// std::is_same_v<lucky, u8[77]> == true. typedef syntax is weird.
-// also, attributes of a typedef can't refer to that typedef by its 
-// own name because the typedef isn't "done" yet.
-typedef u8 lucky [77] __attribute__(( lu_test_attribute( (u8[77]){[7]=7} ) ));
-
-extern int bar(u8*);
-int foo() {
-   u8 test[5];
-   test = (u8[5]){ 0 };
-   bar(test);
-   test = (u8[5]){ 1, 2, 3, 4, 5 };
-   bar(0);
-   bar(test);
-   return test[2];
-}
-#pragma lu_bitpack debug_dump_function foo
-
 static struct TestStruct {
    bool8 a;
    bool8 b;
@@ -84,6 +67,10 @@ static struct TestStruct {
    LU_BP_BITCOUNT(24)      u32 k;
    LU_BP_BITCOUNT(7)       u8  l[7];
    LU_BP_STRING_WT         u8  name[6];
+   
+   LU_BP_OMIT LU_BP_DEFAULT(1.5)   float defaulted_f;
+   LU_BP_OMIT LU_BP_DEFAULT(7)     u8    defaulted_i;
+   LU_BP_OMIT LU_BP_DEFAULT("foo") u8    defaulted_s[4];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);
@@ -105,6 +92,13 @@ void print_buffer(const u8* buffer, int size) {
    }
    printf("\n");
 }
+void print_char(c) {
+   if (isprint(c)) {
+      printf("'%c'", c);
+   } else {
+      printf("0x%02X", c);
+   }
+}
 void print_data() {
    printf("   sTestStruct == {\n");
    printf("      .a = %u,\n", sTestStruct.a);
@@ -121,6 +115,22 @@ void print_data() {
    printf("      .l = {\n");
    for(int i = 0; i < 7; ++i) {
       printf("         %u,\n", sTestStruct.l[i]);
+   }
+   printf("      },\n");
+   printf("      .name = {\n");
+   for(int i = 0; i < 6; ++i) {
+      printf("         ");
+      print_char(sTestStruct.name[i]);
+      printf(",\n");
+   }
+   printf("      },\n");
+   printf("      .defaulted_f = %f,\n", sTestStruct.defaulted_f);
+   printf("      .defaulted_i = %u,\n", sTestStruct.defaulted_i);
+   printf("      .defaulted_s = {\n");
+   for(int i = 0; i < 4; ++i) {
+      printf("         ");
+      print_char(sTestStruct.defaulted_s[i]);
+      printf(",\n");
    }
    printf("      },\n");
    printf("   }\n");

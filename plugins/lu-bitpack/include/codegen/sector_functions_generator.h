@@ -52,6 +52,9 @@ namespace codegen {
          
          struct_info& info_for_struct(gcc_wrappers::type::record);
          
+         bool has_descriptor_for(gcc_wrappers::type::record) const;
+         bool has_whole_struct_functions_for(gcc_wrappers::type::record) const;
+         
          template<typename Functor>
          void for_each_seen_struct_descriptor(Functor&& functor) const {
             for(auto& pair : this->_struct_info) {

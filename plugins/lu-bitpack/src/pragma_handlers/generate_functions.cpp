@@ -155,7 +155,8 @@ namespace pragma_handlers {
             return;
          }
          
-         gs.global_options.computed.resolve(gs.global_options.requested);
+         // now done immediately after the global options are read:
+         //gs.global_options.computed.resolve(gs.global_options.requested);
          
          codegen::sector_functions_generator generator(gs.global_options.computed);
          generator.identifiers_to_serialize = identifier_groups;

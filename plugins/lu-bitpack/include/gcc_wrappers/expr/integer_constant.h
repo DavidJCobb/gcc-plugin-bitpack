@@ -25,7 +25,7 @@ namespace gcc_wrappers {
          
          public:
             integer_constant() {}
-            integer_constant(type::integral, int);
+            explicit integer_constant(type::integral, int);
             
             type::integral value_type() const;
             
@@ -66,6 +66,8 @@ namespace gcc_wrappers {
             
             bool operator<(const integer_constant&) const;
             bool operator==(const integer_constant&) const;
+            
+            bool operator==(host_wide_uint_type) const;
       };
       static_assert(sizeof(integer_constant) == sizeof(value)); // no new fields
    }

@@ -87,8 +87,26 @@ namespace gcc_wrappers {
       return out;
    }
    
+   bool value::is_constant() const {
+      if (empty())
+         return false;
+      return really_constant_p(this->_node);
+   }
    bool value::is_lvalue() const {
+      if (empty())
+         return false;
       return lvalue_p(this->_node); // c-family/c-common.h, c/c-typeck.cc
+   }
+   
+   bool value::is_associative_operator() const {
+      if (empty())
+         return false;
+      return associative_tree_code(TREE_CODE(this->_node));
+   }
+   bool value::is_commutative_operator() const {
+      if (empty())
+         return false;
+      return commutative_tree_code(TREE_CODE(this->_node));
    }
    
    //#pragma region Constant integer checks

@@ -12,6 +12,9 @@ namespace bitpacking::data_options {
          
          member_kind kind = member_kind::none;
          
+         // INTEGER_CST, REAL_CST, or STRING_CST
+         tree default_value_node = NULL_TREE;
+         
          std::variant<
             std::monostate,
             computed_x_options::buffer,

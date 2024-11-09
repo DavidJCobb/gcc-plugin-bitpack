@@ -555,42 +555,48 @@ namespace bitpacking::global_options {
       return type.is_type_or_transitive_typedef_thereof(this->types.boolean);
    }
    bool computed::type_is_string(const gw::type::base type) const {
-      if (!type.is_array())
+      if (type.empty() || !type.is_array())
          return false;
-      return type.as_array().value_type() == this->types.string_char;
+      return type.as_array().value_type().is_type_or_transitive_typedef_thereof(this->types.string_char);
    }
    bool computed::type_is_string_or_array_thereof(const gw::type::base type) const {
-      if (!type.is_array())
+      if (type.empty() || !type.is_array())
+         return false;
+      if (this->types.string_char.empty())
          return false;
       gw::type::array at = type.as_array();
       gw::type::base  et = at.value_type();
-      do {
-         if (!et.is_array()) {
-            if (et == this->types.string_char) {
-               return true;
-            }
-            break;
-         }
+      while (et.is_array()) {
          at = et.as_array();
          et = at.value_type();
-      } while (true);
-      return false;
+      }
+      return et.is_type_or_transitive_typedef_thereof(this->types.string_char);
    }
    
    std::optional<size_t> computed::string_extent_for_type(const gw::type::base type) const {
       assert(type.is_array() && "invalid argument");
       auto at = type.as_array();
       auto et = at.value_type();
-      do {
-         if (!et.is_array()) {
-            if (et == this->types.string_char) {
-               return at.extent();
-            }
-            break;
-         }
+      while (et.is_array()) {
          at = et.as_array();
          et = at.value_type();
-      } while (true);
+      }
+      if (et.is_type_or_transitive_typedef_thereof(this->types.string_char))
+         return at.extent();
       assert(false && "invalid argument");
+   }
+   
+   gw::type::base computed::innermost_value_type(gw::type::base type) const {
+      if (!type.is_array())
+         return type;
+      gw::type::array at = type.as_array();
+      gw::type::base  et = at.value_type();
+      while (et.is_array()) {
+         at = et.as_array();
+         et = at.value_type();
+      }
+      if (et.is_type_or_transitive_typedef_thereof(this->types.string_char))
+         return at;
+      return et;
    }
 }

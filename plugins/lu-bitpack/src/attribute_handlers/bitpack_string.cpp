@@ -62,6 +62,10 @@ namespace attribute_handlers {
          }
       }
       
+      if (context.has_any_errors()) {
+         return;
+      }
+      
       tree node_len = NULL_TREE;
       tree node_wt  = NULL_TREE;
       if (kv.length.has_value()) {
@@ -111,6 +115,7 @@ namespace attribute_handlers {
       }
       
       helpers::bp_attr_context context(node_ptr, name, flags);
+      context.check_and_report_applied_to_string();
       
       {
          gw::expr::string_constant wrap;

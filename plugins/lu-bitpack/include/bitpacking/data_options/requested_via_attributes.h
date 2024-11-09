@@ -16,6 +16,8 @@ namespace bitpacking::data_options {
       public:
          bool omit = false;
          
+         tree default_value_node = NULL_TREE;
+         
          const heritable_options* inherit = nullptr;
          
          struct {

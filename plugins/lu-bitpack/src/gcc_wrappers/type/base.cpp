@@ -1,6 +1,7 @@
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/decl/type_def.h"
 #include <cassert>
+#include <charconv>
 #include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to
 
 // Defined in GCC source, `c-tree.h`; not included in the plug-in headers, bafflingly.
@@ -112,8 +113,21 @@ namespace gcc_wrappers::type {
          auto at = this->as_array();
          out = at.value_type().pretty_print();
          out += '[';
-         if (auto extent = at.extent(); extent.has_value())
-            out += *extent; // TODO: stringify number
+         if (auto extent = at.extent(); extent.has_value()) {
+            char buffer[64] = { 0 };
+            auto result = std::to_chars(
+               (char*)buffer,
+               (char*)(&buffer + sizeof(buffer) - 1),
+               *extent
+            );
+            if (result.ec == std::errc{}) {
+               *result.ptr = '\0';
+            } else {
+               buffer[0] = '?';
+               buffer[1] = '\0';
+            }
+            out += buffer;
+         }
          out += ']';
          return out;
       }
@@ -193,8 +207,14 @@ namespace gcc_wrappers::type {
       return false;
    }
    
+   bool base::has_user_requested_alignment() const {
+      return TYPE_USER_ALIGN(this->_node);
+   }
    bool base::is_complete() const {
       return COMPLETE_TYPE_P(this->_node);
+   }
+   bool base::is_packed() const {
+      return TYPE_PACKED(this->_node);
    }
    
    size_t base::size_in_bits() const {
@@ -370,5 +390,13 @@ namespace gcc_wrappers::type {
    }
    bool base::is_pointer() const {
       return !empty() && TREE_CODE(this->_node) == POINTER_TYPE;
+   }
+   
+   base base::with_user_defined_alignment(size_t bytes) {
+      return with_user_defined_alignment_in_bits(bytes * 8);
+   }
+   base base::with_user_defined_alignment_in_bits(size_t bits) {
+      assert(!is_packed());
+      return base::from_untyped(build_aligned_type(this->_node, bits));
    }
 }

@@ -57,7 +57,9 @@ namespace gcc_wrappers::type {
          
          bool is_type_or_transitive_typedef_thereof(base) const;
          
+         bool has_user_requested_alignment() const; // __attribute__((align...))
          bool is_complete() const;
+         bool is_packed() const;
          
          size_t size_in_bits() const;
          size_t size_in_bytes() const;
@@ -126,6 +128,12 @@ namespace gcc_wrappers::type {
          bool is_pointer() const;
          
          array add_array_extent(size_t) const;
+         
+         // assert(!is_packed())
+         // If this type already has the desired alignment (whether user-requested 
+         // or not), returns self.
+         base with_user_defined_alignment(size_t bytes);
+         base with_user_defined_alignment_in_bits(size_t bits);
    };
 }
 

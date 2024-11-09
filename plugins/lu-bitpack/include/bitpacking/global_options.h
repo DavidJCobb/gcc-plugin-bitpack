@@ -97,6 +97,11 @@ namespace bitpacking {
             //
             // Fails an assertion if the type is not a string or array thereof.
             std::optional<size_t> string_extent_for_type(const gcc_wrappers::type::base) const;
+            
+            // In general, strips all array ranks to get to the innermost value 
+            // type. However, if the type is a to-be-bitpacked string (or array 
+            // thereof), returns the string char array type instead.
+            gcc_wrappers::type::base innermost_value_type(gcc_wrappers::type::base) const;
       };
    }
 }

@@ -5,21 +5,22 @@
 
 ### Short-term
 
-* Force an error in bitpack attribute handlers if `#pragma lu_bitpack enable` but no global options have been set.
-* Force an error when setting global options if global options have already been set.
 * Once the above two things have been done, it'll be possible to validate more stuff from attribute handlers, and to offer more impactful attribute handlers.
-  * `lu_bitpack_default_value`: We'll be able to tell if a type is (for serialization purposes) a string or not, and if so, accept `STRING_CST`s.
-  * `lu_bitpack_string`: We'll be able to tell if we're being applied to a string (an array type or a field decl whose type is an array).
 * Finish implementing `lu_bitpack_default_value`.
   * Allowed values[^no-default-arrays]
-    * `INTEGER_CST` for integers or arrays thereof.
+    * `INTEGER_CST` for integers or arrays thereof, and for pointers if zero.
+    * `REAL_CST` for floats or arrays thereof.
     * `STRING_CST` for strings.
-      * If the string is marked as having an optional null terminator, then `"foo"` should fit into a `char[3]` even though `sizeof("foo") == 4`: we need to manually copy only the content that will fit.
+      * If the string is marked as having an optional null terminator, then `"foo"` should fit into a `char[3]` even though `sizeof("foo") == 4`: we need to manually copy only the content that will fit. We can't check this from the attribute handler, because we may not have seen the `lu_bitpack_string` attribute (which indicates the presence or absence of a null terminator) yet.
+      * Use `build_string_literal` to build an `ADDR_EXPR` to an array of chars (with you able to control the char type). However, that function also builds a new underlying `STRING_CST`; I'm not sure if there's a way to reuse one of those.
     * The attribute should fail when applied to any other types.
   * Implementation
     * Fields that are omitted from bitpacking should be assigned to their attribute-provided default values, if they have any, in the generated "read" functions. This has to be done wherever we read a struct containing such members.
     * The XML output should list the default values of any members that had any.
   * When applied alongside pre-pack and post-unpack transformations, a default value should apply to the in situ type, not the transformed type.
+* I don't think our `std::hash` specialization for wrapped tree nodes is reliable. Is there anything else we can use?
+  * Every `DECL` has a unique `DECL_UID(node)`, but I don't know that these would be unique among other node types' potential ID schemes as well.
+  * `TYPE_UID(node)` also exists.
 
 [^no-default-arrays]: We could allow specifying whole-array defaults using compound literals (e.g. `(u8[7]){ 0 }`), but those were only introduced in C99. One of my support targets is GNU89, IIRC, so I don't think that's going to parse properly. We should probably only allow scalar initializers (i.e. `int[5][3]` only gets an integer constant, which fills the array).
 
@@ -35,6 +36,7 @@
   * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
 * Decisions to be made
   * GCC has a `__attribute__((nonstring))` attribute for strings that may not always be null-terminated. Instead of having `lu_bitpack_string` indicate the requirement for a null terminator (and worse: defaulting that to "no"), it might be better to require that potentially unterminated strings be annotated with `nonstring`, and to have the bitpacking codegen and XML react to `nonstring`.
+    * `nonstring` was added to GCC in 2017 circa GCC 8.0.
 * Long-term plans below
   * Pre-pack and post-unpack functions
   * Union support

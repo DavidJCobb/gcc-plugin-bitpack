@@ -45,6 +45,13 @@ namespace attribute_handlers::helpers {
          }
       
          bool check_and_report_applied_to_integral();
+         bool check_and_report_applied_to_string();
+         
+         // Generally, returns the innermost value type. If the target type is 
+         // a string or array thereof, returns an array of the character type.
+         gcc_wrappers::type::base bitpacking_value_type() const;
+         
+         bool bitpacking_value_type_is_string() const;
          
          void add_internal_attribute(lu::strings::zview attr_name, gcc_wrappers::list_node = {});
          

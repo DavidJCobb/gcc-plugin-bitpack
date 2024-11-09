@@ -19,6 +19,7 @@ SOURCES=\
         src/bitpacking/heritable_options.cpp \
         src/bitpacking/transform_function_validation_helpers.cpp \
         src/codegen/descriptors.cpp \
+        src/codegen/generate_omitted_default_for_read.cpp \
         src/codegen/in_progress_func_pair.cpp \
         src/codegen/sector_functions_generator.cpp \
         src/codegen/serialization_value.cpp \
@@ -38,6 +39,7 @@ SOURCES=\
         src/gcc_wrappers/expr/base.cpp \
         src/gcc_wrappers/expr/call.cpp \
         src/gcc_wrappers/expr/declare.cpp \
+        src/gcc_wrappers/expr/floating_point_constant.cpp \
         src/gcc_wrappers/expr/go_to_label.cpp \
         src/gcc_wrappers/expr/integer_constant.cpp \
         src/gcc_wrappers/expr/label.cpp \

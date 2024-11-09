@@ -13,9 +13,13 @@
 
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/expr/floating_point_constant.h"
+#include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/record.h"
+#include "gcc_wrappers/attribute.h"
 namespace {
    namespace gw {
       using namespace gcc_wrappers;
@@ -41,6 +45,31 @@ namespace {
 }
 
 namespace xmlgen {
+   static void _set_default_value_info(xml_element& elem, gw::_wrapped_tree_node data) {
+      if (auto casted = data.as<gw::expr::string_constant>(); !casted.empty()) {
+         auto sub = std::make_unique<xml_element>();
+         sub->node_name = "default-value-string";
+         sub->text_content = casted.value_view();
+         elem.append_child(std::move(sub));
+      } else if (auto casted = data.as<gw::expr::integer_constant>(); !casted.empty()) {
+         std::string text;
+         {
+            auto opt = casted.try_value_signed();
+            if (opt.has_value()) {
+               text = lu::strings::printf_string("%d", *opt);
+            } else {
+               text = "???";
+            }
+         }
+         elem.set_attribute("default-value", text);
+      } else if (auto casted = data.as<gw::expr::floating_point_constant>(); !casted.empty()) {
+         auto text = casted.to_string();
+         elem.set_attribute("default-value", text);
+      } else if (!data.empty()) {
+         elem.set_attribute("default-value", "???");
+      }
+   }
+   
    std::unique_ptr<xml_element> sector_xml_generator::_make_whole_data_member(const codegen::member_descriptor& member) {
       auto ptr = std::make_unique<xml_element>();
       {
@@ -50,7 +79,7 @@ namespace xmlgen {
       }
       {
          auto vt = member.value_type;
-         ptr->set_attribute("c-type", member.value_type.pretty_print());
+         ptr->set_attribute("c-type", vt.pretty_print());
          if (vt.is_record() && !vt.declaration().empty()) {
             ptr->set_attribute("c-type-defined-via-typedef", "true");
          }
@@ -66,6 +95,12 @@ namespace xmlgen {
             //
             auto value = attr.arguments().front().as<gw::expr::string_constant>().value();
             ptr->set_attribute("inherit", value);
+         }
+         
+         attr = list.get_attribute("lu_bitpack_default_value");
+         if (!attr.empty()) {
+            auto data = attr.arguments().front();
+            _set_default_value_info(*ptr, data);
          }
       }
       const auto& computed = member.bitpacking_options;
@@ -137,6 +172,69 @@ namespace xmlgen {
       return ptr;
    }
    
+   void sector_xml_generator::_append_omitted_defaulted_members(xml_element& dst, const codegen::struct_descriptor& desc) {
+      desc.type.for_each_referenceable_field([&dst](tree node) {
+         auto decl = gw::decl::field::from_untyped(node);
+         
+         tree default_value = NULL_TREE;
+         bool omitted       = false;
+         {
+            auto list = decl.value_type().attributes();
+            if (list.has_attribute("lu_bitpack_omit")) {
+               omitted = true;
+               auto attr = list.get_attribute("lu_bitpack_default_value");
+               if (!attr.empty())
+                  default_value = attr.arguments().front().as_untyped();
+            }
+         }
+         {
+            auto list = decl.attributes();
+            if (list.has_attribute("lu_bitpack_omit")) {
+               omitted = true;
+               auto attr = list.get_attribute("lu_bitpack_default_value");
+               if (!attr.empty())
+                  default_value = attr.arguments().front().as_untyped();
+            }
+         }
+         if (!omitted || default_value == NULL_TREE)
+            return;
+         
+         auto ptr = std::make_unique<xml_element>();
+         ptr->node_name = "omitted";
+         {
+            auto name = decl.name();
+            if (!name.empty())
+               ptr->set_attribute("name", name);
+         }
+         {
+            auto vt = decl.value_type();
+            while (vt.is_array()) {
+               std::string extent;
+               {
+                  auto opt = vt.as_array().extent();
+                  if (opt.has_value())
+                     extent = _to_chars(*opt);
+               }
+               auto rank_elem = std::make_unique<xml_element>();
+               rank_elem->node_name = "array-rank";
+               rank_elem->set_attribute("extent", extent);
+               ptr->append_child(std::move(rank_elem));
+               
+               vt = vt.as_array().value_type();
+            }
+            ptr->set_attribute("c-type", vt.pretty_print());
+            if (vt.is_record() && !vt.declaration().empty()) {
+               ptr->set_attribute("c-type-defined-via-typedef", "true");
+            }
+         }
+         gw::_wrapped_tree_node wrap;
+         wrap.set_from_untyped(default_value);
+         _set_default_value_info(*ptr, wrap);
+         
+         dst.append_child(std::move(ptr));
+      });
+   }
+   
    void sector_xml_generator::_make_heritable_xml(std::string_view name, const heritable_options& options) {
       assert(!name.empty());
       
@@ -197,6 +295,8 @@ namespace xmlgen {
          for(auto& m_descriptor : descriptor.members) {
             root->append_child(std::move(_make_whole_data_member(m_descriptor)));
          }
+         
+         _append_omitted_defaulted_members(*root, descriptor);
          
          this->per_type_xml.push_back(std::move(root));
       });

@@ -85,6 +85,17 @@ namespace _attributes {
       .handler = &attribute_handlers::bitpack_bitcount,
       .exclude = NULL
    };
+   static struct attribute_spec bitpack_default_value = {
+      .name = "lu_bitpack_default_value",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = false,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::bitpack_default_value,
+      .exclude = NULL
+   };
    static struct attribute_spec bitpack_funcs = {
       .name = "lu_bitpack_funcs",
       .min_length = 1, // min argcount
@@ -158,6 +169,7 @@ static void register_attributes(void* event_data, void* data) {
    register_attribute(&_attributes::internal_invalid);
    register_attribute(&_attributes::internal_sentinel_bad_type_reported);
    register_attribute(&_attributes::bitpack_bitcount);
+   register_attribute(&_attributes::bitpack_default_value);
    register_attribute(&_attributes::bitpack_funcs);
    register_attribute(&_attributes::bitpack_inherit);
    register_attribute(&_attributes::bitpack_range);

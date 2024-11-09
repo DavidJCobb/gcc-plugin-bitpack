@@ -3,6 +3,7 @@
 #include <c-family/c-common.h> // lookup_name
 #include <stringpool.h> // get_identifier
 #include "bitpacking/global_options.h"
+#include "codegen/generate_omitted_default_for_read.h"
 #include "gcc_wrappers/decl/result.h"
 #include "gcc_wrappers/expr/assign.h"
 #include "gcc_wrappers/expr/call.h"
@@ -177,6 +178,13 @@ namespace codegen {
          save_statements.append(expr.save);
       }
       
+      // Generate code to assign default values to any omitted members that have them.
+      {
+         auto expr = generate_omitted_default_for_read::generate_for_members(object.read);
+         if (!expr.empty())
+            read_statements.append(expr);
+      }
+      
       dst_read.set_is_defined_elsewhere(false);
       dst_save.set_is_defined_elsewhere(false);
       dst_read.set_root_block(root_read);
@@ -207,6 +215,15 @@ namespace codegen {
          return &value.as_top_level_struct();
       }
       return this->info_for_struct(value.as_member().type().as_record()).descriptor.get();
+   }
+   
+   bool sector_functions_generator::has_descriptor_for(gcc_wrappers::type::record type) const {
+      auto it = this->_struct_info.find(type);
+      if (it == this->_struct_info.end())
+         return false;
+      if (it->second.descriptor == nullptr)
+         return false;
+      return true;
    }
    
    expr_pair sector_functions_generator::_serialize_whole_struct(value_pair state_ptr, serialization_value& value) {
@@ -702,6 +719,11 @@ namespace codegen {
       if (object.is_struct()) {
          const auto* info = _descriptor_for_struct(object);
          assert(info != nullptr);
+         {
+            auto expr = generate_omitted_default_for_read::generate_for_members(object.read);
+            if (!expr.empty())
+               sector.functions.read_root.statements().append(expr);
+         }
          for(const auto& m : info->members) {
             auto v = object.access_member(m);
             this->_serialize_value_to_sector(sector, v, object_path.to_member(m));

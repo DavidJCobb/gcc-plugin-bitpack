@@ -1,8 +1,11 @@
 #include "attribute_handlers/helpers/bp_attr_context.h"
+#include <array>
+#include <utility> // std::pair
 #include "lu/strings/printf_string.h"
 #include <stringpool.h> // dependency of <attribs.h>
 #include <attribs.h>
 #include "gcc_wrappers/type/array.h"
+#include "basic_global_state.h"
 namespace gw {
    using namespace gcc_wrappers;
 }
@@ -177,6 +180,124 @@ namespace attribute_handlers::helpers {
       }
       
       return true;
+   }
+   bool bp_attr_context::check_and_report_applied_to_string() {
+      gw::type::base type;
+      {
+         auto node = this->attribute_target[0];
+         if (node == NULL_TREE)
+            return true;
+         if (TYPE_P(node))
+            type.set_from_untyped(node);
+         else if (TREE_CODE(node) == TYPE_DECL)
+            type.set_from_untyped(TREE_TYPE(node));
+         else if (DECL_P(node))
+            type.set_from_untyped(TREE_TYPE(node));
+         else
+            return true;
+      }
+      if (type.empty())
+         return true;
+      
+      auto& global       = basic_global_state::get().global_options.computed;
+      auto  bitpack_type = bitpacking_value_type();
+      if (global.type_is_string(bitpack_type))
+         return true;
+      
+      //
+      // Report error information:
+      //
+      
+      bool is_array = type.is_array();
+      while (type.is_array()) {
+         type = type.as_array().value_type();
+      }
+      
+      constexpr const auto nouns = std::array{
+         std::pair{ "a non-string", "an array of non-strings" },
+         std::pair{ "a boolean",    "an array of booleans" },
+         std::pair{ "an enum",      "an array of enums" },
+         std::pair{ "a float",      "an array of floats" },
+         std::pair{ "an integer",   "an array of integers" },
+         std::pair{ "a pointer",    "an array of pointers" },
+         std::pair{ "a struct",     "an array of structs" },
+         std::pair{ "a union",      "an array of unions" },
+         std::pair{ "void",         "an array of void" },
+      };
+      enum class noun_type {
+         unknown,
+         boolean,
+         enumeration,
+         floating_point,
+         integer,
+         pointer,
+         record,
+         union_type,
+         void_type,
+      };
+      
+      std::string what;
+      {
+         size_t i = 0;
+         if (type.is_boolean())
+            i = (size_t)noun_type::boolean;
+         else if (type.is_enum())
+            i = (size_t)noun_type::enumeration;
+         else if (type.is_floating_point())
+            i = (size_t)noun_type::floating_point;
+         else if (type.is_integer())
+            i = (size_t)noun_type::integer;
+         else if (type.is_pointer())
+            i = (size_t)noun_type::pointer;
+         else if (type.is_record())
+            i = (size_t)noun_type::record;
+         else if (type.is_union())
+            i = (size_t)noun_type::union_type;
+         else if (type.is_void())
+            i = (size_t)noun_type::void_type;
+         
+         if (is_array) {
+            what = nouns[i].second;
+         } else {
+            what = nouns[i].first;
+         }
+      }
+      _report_type_mismatch("string types", what);
+      if (is_array && type.is_integer()) {
+         auto pp = global.types.string_char.pretty_print();
+         inform(UNKNOWN_LOCATION, "the global bitpacking options specify %<%s%> as the character type for bitpacking; a \"string\" is thus defined as an array of %<%s%>", pp.c_str(), pp.c_str());
+      }
+      return false;
+   }
+   
+   gw::type::base bp_attr_context::bitpacking_value_type() const {
+      tree node = this->attribute_target[0];
+      if (node == NULL_TREE)
+         return {};
+      
+      gw::type::base type;
+      if (TYPE_P(node))
+         type.set_from_untyped(node);
+      else {
+         switch (TREE_CODE(node)) {
+            case FIELD_DECL:
+            case TYPE_DECL:
+            case VAR_DECL:
+               type.set_from_untyped(TREE_TYPE(node));
+               break;
+            default:
+               break;
+         }
+      }
+      if (type.empty())
+         return {};
+      
+      return basic_global_state::get().global_options.computed.innermost_value_type(type);
+   }
+   
+   bool bp_attr_context::bitpacking_value_type_is_string() const {
+      auto& global = basic_global_state::get().global_options.computed;
+      return global.type_is_string(bitpacking_value_type());
    }
    
    void bp_attr_context::add_internal_attribute(lu::strings::zview attr_name, gw::list_node args) {

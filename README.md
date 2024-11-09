@@ -104,8 +104,11 @@ Members that inherit any set of heritable options will have an `inherit` attribu
 
 Additionally, if a member is an array, it will possess at least one `array-rank` child element, whose `extent` attribute indicates the array extent; for multi-dimensional arrays, these child elements are ordered matching left-to-right ordering of the array extents. (If a field is marked to be serialized as a string, then the deepest-nested array rank is not considered "an array." For example, if `char names[5][10]` is marked as a string, then this is considered a one-dimensional array, extent five, of ten-character strings; not a two-dimensional array.)
 
+Members will have either a `default-value` attribute, or a `default-value-string` child element (whose text content is string content), if the elements were annotated with `lu_bitpack_default_value`. The default value is recorded even if it isn't used in the generated code (i.e. even if no such members are omitted from bitpacking).
+
 The node name of a member element varies depending on its type, and some attributes are also type-specific:
 
+* `omitted` elements represent fields that aren't serialized at all. These elements are only emitted if the fields have some other property worth capturing (e.g. their default value).
 * `boolean` elements represent fields that are serialized as 1-bit booleans.
 * `integer` elements represent fields that are serialized as integer values.
   * The `bitcount` attribute indicates the final used bitcount.

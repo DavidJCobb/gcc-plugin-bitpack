@@ -15,13 +15,6 @@ namespace {
    namespace gw {
       using namespace gcc_wrappers;
    }
-   
-   gw::decl::function _get_func_decl(const char* identifier) {
-      auto node = lookup_name(get_identifier(identifier));
-      if (node != NULL_TREE && !gw::decl::function::node_is(node))
-         node = NULL_TREE;
-      return gw::decl::function::from_untyped(node);
-   }
 }
 
 namespace {
@@ -80,19 +73,6 @@ namespace {
       error_at(_location_of(subject), message.c_str(), args...);
    }
    
-   static void _warn_on_extra_attribute_args(tree subject, gw::attribute attr, size_t expected) {
-      auto argcount = attr.arguments().size();
-      if (argcount <= expected)
-         return;
-      _report_warning(
-         subject,
-         "%<%s%> attribute specifies more (%u) arguments than expected (%u)",
-         attr.name().data(),
-         (unsigned int)argcount,
-         (unsigned int)expected
-      );
-   }
-   
    static std::string_view _pull_heritable_name(tree report_errors_on, gw::attribute_list attributes) {
       auto attr = attributes.get_attribute("lu_bitpack_inherit");
       if (attr.empty())
@@ -140,6 +120,10 @@ namespace bitpacking::data_options {
          
          if (key == "lu_bitpack_omit") {
             this->omit = true;
+            continue;
+         }
+         if (key == "lu_bitpack_default_value") {
+            this->default_value_node = attr.arguments().front().as_untyped();
             continue;
          }
          if (key == "lu_bitpack_as_opaque_buffer") {

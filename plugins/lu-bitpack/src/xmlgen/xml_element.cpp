@@ -50,15 +50,25 @@ namespace xmlgen {
       if (this->children.empty() && this->text_content.empty()) {
          out += " />";
       } else {
-         out += ">\n";
+         out += '>';
+         
+         const bool indent_contents = !this->children.empty();
+         
+         if (indent_contents) {
+            out += '\n';
+         }
          
          if (!this->text_content.empty()) {
-            out += indent;
-            out += "   ";
+            if (indent_contents) {
+               out += indent;
+               out += "   ";
+            }
             write_string_as_text_content(this->text_content, out);
-            out += '\n';
-            out += indent;
-            out += "   ";
+            if (indent_contents) {
+               out += '\n';
+               out += indent;
+               out += "   ";
+            }
          }
          for(const auto& child_ptr : this->children) {
             assert(child_ptr != nullptr);
@@ -68,7 +78,9 @@ namespace xmlgen {
             out += '\n';
          }
          
-         out += indent;
+         if (indent_contents) {
+            out += indent;
+         }
          out += "</";
          out += this->node_name;
          out += '>';

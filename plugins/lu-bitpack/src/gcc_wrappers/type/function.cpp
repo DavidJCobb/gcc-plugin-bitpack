@@ -46,13 +46,7 @@ namespace gcc_wrappers::type {
    
    size_t function::fixed_argument_count() const {
       assert(!empty());
-      auto   list = this->arguments();
-      size_t size = list.size();
-      if (size) {
-         if (list.untyped_back() == void_list_node)
-            --size;
-      }
-      return size;
+      return type_num_arguments(this->_node);
    }
    
    bool function::is_unprototyped() const {

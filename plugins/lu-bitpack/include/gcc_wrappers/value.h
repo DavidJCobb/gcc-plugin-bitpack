@@ -71,7 +71,13 @@ namespace gcc_wrappers {
          // This value must be a POINTER_TYPE or REFERENCE_TYPE.
          value dereference();
          
+         // Returns true if the value is a constant value or a constant expression.
+         bool is_constant() const;
+         
          bool is_lvalue() const;
+         
+         bool is_associative_operator() const; // a + b + c == (a + b) + c == a + (b + c)
+         bool is_commutative_operator() const; // a + b == b + a
          
          //#pragma region Constant integer checks
             // Check if EXPR is a zero-value INTEGER_CST, VECTOR_CST, or 

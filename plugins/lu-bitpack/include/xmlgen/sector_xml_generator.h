@@ -12,12 +12,15 @@ namespace bitpacking {
 namespace codegen {
    class member_descriptor;
    class sector_functions_generator;
+   class struct_descriptor;
 }
 
 namespace xmlgen {
    class sector_xml_generator {
       protected:
          std::unique_ptr<xml_element> _make_whole_data_member(const codegen::member_descriptor&);
+         
+         void _append_omitted_defaulted_members(xml_element& dst, const codegen::struct_descriptor&);
          
          void _make_heritable_xml(std::string_view, const bitpacking::heritable_options&);
       

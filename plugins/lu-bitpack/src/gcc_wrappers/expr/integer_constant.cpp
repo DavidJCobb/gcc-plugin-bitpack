@@ -4,7 +4,7 @@
 namespace gcc_wrappers::expr {
    WRAPPED_TREE_NODE_BOILERPLATE(integer_constant)
    
-   integer_constant::integer_constant(type::integral t, int n) {
+   /*explicit*/ integer_constant::integer_constant(type::integral t, int n) {
       this->_node = build_int_cst(t.as_untyped(), n);
    }
 
@@ -50,5 +50,9 @@ namespace gcc_wrappers::expr {
    }
    bool integer_constant::operator==(const integer_constant& other) const {
       return tree_int_cst_equal(this->_node, other._node);
+   }
+   
+   bool integer_constant::operator==(host_wide_uint_type v) const {
+      return compare_tree_int(this->_node, v);
    }
 }

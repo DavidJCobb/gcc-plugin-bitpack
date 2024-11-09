@@ -19,6 +19,12 @@
             <array-rank extent="7" />
          </integer>
          <string with-terminator="true" c-type="u8" length="5" name="name" />
+         <omitted default-value="1.5e+0" c-type="float" name="defaulted_f" />
+         <omitted default-value="7" c-type="u8" name="defaulted_i" />
+         <omitted c-type="u8" name="defaulted_s">
+            <array-rank extent="4" />
+            <default-value-string>foo</default-value-string>
+         </omitted>
       </struct-type>
    </types>
    <variables>

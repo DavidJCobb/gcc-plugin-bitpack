@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include "gcc_wrappers/expr/base.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -25,6 +26,21 @@ namespace gcc_wrappers {
             
             std::string value() const;
             std::string_view value_view() const;
+            
+            size_t length() const;
+            
+            // Each STRING_CST can only have a single type, but can be referenced 
+            // by multiple ADDR_EXPRs (i.e. multiple string literals can share 
+            // the same data).
+            bool referenced_by_string_literal() const;
+            
+            // Creates a new string literal. If this STRING_CST is already used 
+            // by a literal of a different type, then we'll have to clone the 
+            // STRING_CST.
+            //
+            // If the input type is empty, we default to `char` (and we assert 
+            // in that case that the built-in type nodes are actually ready).
+            ::gcc_wrappers::value to_string_literal(type::base character_type);
       };
       static_assert(sizeof(string_constant) == sizeof(value)); // no new fields
    }

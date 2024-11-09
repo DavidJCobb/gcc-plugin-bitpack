@@ -24,6 +24,9 @@ namespace gcc_wrappers {
             bool suppresses_unused_warnings();
             void suppress_unused_warnings();
             void set_suppresses_unused_warnings(bool);
+         
+            bool is_associative_operator() const; // a + b + c == (a + b) + c == a + (b + c)
+            bool is_commutative_operator() const; // a + b == b + a
       };
       static_assert(sizeof(base) == sizeof(value)); // no new fields
    }

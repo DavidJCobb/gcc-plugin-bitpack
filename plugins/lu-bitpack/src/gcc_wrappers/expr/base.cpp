@@ -36,4 +36,15 @@ namespace gcc_wrappers::expr {
          return {};
       return type::base::from_untyped(TREE_TYPE(this->_node));
    }
+   
+   bool base::is_associative_operator() const {
+      if (empty())
+         return false;
+      return associative_tree_code(TREE_CODE(this->_node));
+   }
+   bool base::is_commutative_operator() const {
+      if (empty())
+         return false;
+      return commutative_tree_code(TREE_CODE(this->_node));
+   }
 }
