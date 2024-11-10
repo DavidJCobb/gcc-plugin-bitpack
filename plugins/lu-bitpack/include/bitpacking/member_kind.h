@@ -11,6 +11,9 @@ namespace bitpacking {
       string,
       structure,
       
+      // Data member that uses transform functions.
+      transformed,
+      
       // Not yet implemented: a union B that is a member of a struct A, 
       // where the active member of B is indicated by some B-sibling 
       // member A::c.

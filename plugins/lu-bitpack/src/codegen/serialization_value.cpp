@@ -74,6 +74,12 @@ namespace codegen {
       const auto& view = this->as_member();
       return !view.is_array() && view.type().is_record();
    }
+   bool serialization_value::is_transformed() const {
+      if (this->is_top_level_struct())
+         return false; // TODO: get this working for top-level structs
+      const auto& view = this->as_member();
+      return view.kind() == bitpacking::member_kind::transformed;
+   }
    
    size_t serialization_value::array_extent() const {
       assert(is_array());

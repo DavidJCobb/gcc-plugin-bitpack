@@ -77,6 +77,10 @@ namespace codegen {
             size_t start,
             size_t count
          );
+         expr_pair _serialize_transformed(
+            value_pair state_ptr,
+            serialization_value&
+         );
          expr_pair _serialize_primitive(
             value_pair state_ptr,
             serialization_value&

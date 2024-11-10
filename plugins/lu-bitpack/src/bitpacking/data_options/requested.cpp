@@ -148,9 +148,11 @@ namespace bitpacking::data_options {
             auto node_b = args[1];
             if (!node_a.empty()) {
                dst_data.pre_pack = node_a.as<gw::decl::function>();
+               dst_data.transformed_type = dst_data.pre_pack.function_type().nth_argument_type(1).remove_pointer();
             }
             if (!node_b.empty()) {
                dst_data.post_unpack = node_b.as<gw::decl::function>();
+               dst_data.transformed_type = dst_data.pre_pack.function_type().nth_argument_type(1).remove_pointer().remove_const();
             }
             continue;
          }

@@ -25,6 +25,7 @@ namespace codegen {
       size_t bitcount() const;
       bool is_array() const;
       bool is_struct() const;
+      bool is_transformed() const;
       
       // assert(is_array());
       size_t array_extent() const;

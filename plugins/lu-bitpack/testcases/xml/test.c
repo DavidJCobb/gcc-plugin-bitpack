@@ -14,18 +14,12 @@
 
 #pragma lu_bitpack enable
 
-#if __GNUC__ >= 8
-   #define NONSTRING __attribute__((nonstring))
-#else
-   #define NONSTRING 
-#endif
-
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_DEFAULT(x)    __attribute__((lu_bitpack_default_value(x)))
 #define LU_BP_OMIT          __attribute__((lu_bitpack_omit))
 #define LU_BP_STRING        __attribute__((lu_bitpack_string))
 #define LU_BP_STRING_NT     LU_BP_STRING
-#define LU_BP_STRING_UT     NONSTRING LU_BP_STRING
+#define LU_BP_STRING_UT     __attribute__((lu_nonstring)) LU_BP_STRING
 
 #pragma lu_bitpack set_options ( \
    sector_count=9, \

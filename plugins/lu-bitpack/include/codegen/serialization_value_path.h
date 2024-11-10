@@ -21,5 +21,9 @@ namespace codegen {
          serialization_value_path to_member(std::string_view name) const;
          serialization_value_path to_array_element(size_t) const;
          serialization_value_path to_array_slice(size_t start, size_t count) const;
+         
+         serialization_value_path transform_to(
+            const std::string& transformed_type_name
+         ) const;
    };
 }

@@ -32,6 +32,7 @@ namespace bitpacking::data_options {
          bool   nonstring = false;
       };
       struct transforms {
+         gcc_wrappers::type::base     transformed_type;
          gcc_wrappers::decl::function pre_pack;
          gcc_wrappers::decl::function post_unpack;
       };

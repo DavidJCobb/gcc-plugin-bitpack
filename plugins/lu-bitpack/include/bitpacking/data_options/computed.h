@@ -39,6 +39,9 @@ namespace bitpacking::data_options {
          constexpr bool is_string() const noexcept {
             return std::holds_alternative<computed_x_options::string>(this->data);
          }
+         constexpr bool is_transforms() const noexcept {
+            return std::holds_alternative<computed_x_options::transforms>(this->data);
+         }
          
          constexpr const computed_x_options::buffer& buffer_options() const noexcept {
             return std::get<computed_x_options::buffer>(this->data);
@@ -48,6 +51,9 @@ namespace bitpacking::data_options {
          }
          constexpr const computed_x_options::string& string_options() const noexcept {
             return std::get<computed_x_options::string>(this->data);
+         }
+         constexpr const computed_x_options::transforms& transform_options() const noexcept {
+            return std::get<computed_x_options::transforms>(this->data);
          }
          //
          // non-const:
@@ -60,6 +66,9 @@ namespace bitpacking::data_options {
          }
          constexpr computed_x_options::string& string_options() noexcept {
             return std::get<computed_x_options::string>(this->data);
+         }
+         constexpr computed_x_options::transforms& transform_options() noexcept {
+            return std::get<computed_x_options::transforms>(this->data);
          }
    };
 }

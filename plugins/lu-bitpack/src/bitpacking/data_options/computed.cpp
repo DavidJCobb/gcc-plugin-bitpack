@@ -34,7 +34,7 @@ namespace bitpacking::data_options {
          this->kind = member_kind::string;
          this->data = casted->bake(decl);
       } else if (auto* casted = std::get_if<requested_x_options::transforms>(&src.x_options)) {
-         this->kind = member_kind::integer; // TODO
+         this->kind = member_kind::transformed;
          this->data = *casted;
       } else {
          if (value_type.is_pointer() || value_type.is_boolean() || value_type.is_integer() || value_type.is_enum()) {

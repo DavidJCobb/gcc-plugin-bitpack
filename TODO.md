@@ -5,47 +5,89 @@
 
 ### Short-term
 
-* Arrays of opaque buffers should be serialized using just one function call.
-* To fully implement transform functions for structs (both generating code to call them, and including them in the attributes for `struct-type` XML elements), we need to modify `codegen::struct_descriptor` to store any [computed] bitpacking options that are appropriate for struct types.
-* See "Rethink heritables" section below.
-* The handler for `lu_bitpack_inherit` should verify that the specified heritable is of a type compatible with the annotated type/field.
-* We should add a plug-in callback for when a `DECL` is finished. There,...
-  * If the `FIELD_DECL` inherits a `string` heritable, we should check the field's string length and whether it has the `nonstring` attribute. If either of these don't match the options specified on the heritable, we should error.
+* Devise a testcase for arrays of opaque buffers: entire array slices should use a single read-buffer and save-buffer call, rather than descending into the array and making multiple per-buffer calls.
+* Devise a testcase for attributes set on array typedefs.
+* Find all remaining uses of the "string character" type in the global bitpacking options, and get rid of them: the "string" bitpacking type should be valid for any array of [arrays of [...]] single-byte integrals. When we're sure we've achieved this, remove the global option itself.
+* XML output needs a tagname for transformed members (e.g. `<transformed/>`), as well as an attribute identifying the type to which they are transformed (i.e. don't *just* list the identifiers of the transform functions).
+* Pre-pack/post-unpack functions
+  * The attribute should require specifying both functions at once, and should validate that they match each other and that the in situ type matches the type that the argument would affect. That way, we don't have to deal with resolving functions that come from different places (e.g. pre-pack from the type and post-unpack from the field), with the complications (e.g. type mismatches) that that brings now that we're no longer doing absolutely all error-checking at codegen-time.
+    * The precise operational definition of the type "matching" is that a pointer to the field['s innermost array values] could be passed as an argument. We'd want to check for main variant type equivalence, not typedef transitivity or anything like that.
+  * Steps needed to allow the use of transforms on top-level structs
+    * We need to store bitpacking options on `codegen::struct_descriptor`
+    * XML needs to serialize transform options on struct descriptors
+    * `serialization_value::is_transformed` needs to handle top-level structs
+    * `sector_functions_generator::_serialize_transformed` needs to handle `serialization_value`s that are top-level structs
+  * When dealing with a transformed object, `codegen::struct_descriptor::size_in_bits` and `codegen::member_descriptor::size_in_bits` need to return the serialized size in bits of the transformed type.
+  * Codegen:
+    * In order to handle splitting a transformed struct type across sector boundaries, we need to add a branch to `sector_functions_generator::_serialize_value_to_sector` just before the `object.is_struct()` case, wherein we check if `object.is_transformed()` *and* if the transformed type is a struct. If so, we'd need to...
+      * Get/create a descriptor for the transformed type.
+      * Generate a `gw::expr::local_block`.
+      * Define a variable of the transformed type.
+      * Generate a call to the pre-pack function.
+      * Wrap the transformed-type variable in a `serialization_value`, and then recurse on that value's struct members.
+        * Use `value.transform_to(transformed_type_name).to_member(m)` as the serialization path when recursing on each member.
+    * We likewise need to handle the case of the transformed type being an array or primitive. Primitives are easy, but I'm unsure how to handle the case of transformation to an array.
+      * For arrays, it might be easiest to generate a dummy `member_descriptor`, wrap it in a view, and then recurse similarly to how we would for structs.
+  * At some point, we should look into detecting circular transforms at attribute-handling time, as I believe they'd cause us to spin in an infinite loop within codegen if encountered.
+* Implement statistics tracking (see section below).
 * I don't think our `std::hash` specialization for wrapped tree nodes is reliable. Is there anything else we can use?
   * Every `DECL` has a unique `DECL_UID(node)`, but I don't know that these would be unique among other node types' potential ID schemes as well.
   * `TYPE_UID(node)` also exists.
   * Our use case is storing `gw::type::base`s inside of an `unordered_map`. We could use GCC's dedicated "type map" class, or &mdash; and this may be more reliable &mdash; we could use a `vector` of `pair`s, with a lookup function which looks for an exact type match or a match with a transitive typedef.
 
-* It's possible to set bitpacking options on an array `typedef` but due to how we handle coalescing of data options, these options would never be seen (unless, perhaps, they were set on an array of the string character type specified in the global bitpacking options). Do we want to fix this?
-* We should get rid of the ability to specify a character type for bitpacking options, and instead just allow string bitpacking options to be applied to any array, provided that that array is of `char`, `signed char`, `unsigned char`, or any variant type (and currently, `uint8_t` and typedefs thereof count as variants of `unsigned char`).
-  * This may require redoing a lot of the logic that depends on the "innermost value type" of a field as understood by the global bitpacking options.
-
 * The XML output has no way of knowing or reporting what bitpacking options are applied to integral types (as opposed to fields *of* those types). The final used bitcounts (and other associated options) should still be emitted per field, but this still reflects a potential loss of information. Can we fix this?
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.
   * Buffers are basically just `void*` blobs that we `memcpy`. When `sector_functions_generator::_serialize_value_to_sector` reaches the "Handle indivisible values" case (preferably just above the code comment), we can check if the primitive to be serialized is a buffer and if so, manually split it via similar logic to arrays (start and length).
   * Strings require a little bit more work because we have to account for the null terminator and zero-filling: a string like "FOO" in a seven-character buffer should always load as "FOO\0\0\0\0"; we should never leave the tail bytes uninitialized. In order to split a string, we'd have to read the string as fragments (same logic as splitting an array) and then call a fix-up function after reading the string (where the fix-up function finds the first '\0', if there is one, and zero-fills the rest of the buffer; and if the string requires a null-terminator, then the fix-up function would write that as well). So basically, we'd need to have bitstream "string cap" functions for always-terminated versus optionally-terminated strings.
-* Decisions to be made
-  * GCC has a `__attribute__((nonstring))` attribute for strings that may not always be null-terminated. Instead of having `lu_bitpack_string` indicate the requirement for a null terminator (and worse: defaulting that to "no"), it might be better to require that potentially unterminated strings be annotated with `nonstring`, and to have the bitpacking codegen and XML react to `nonstring`.
-    * `nonstring` was added to GCC in 2017 circa GCC 8.0.
 * Long-term plans below
   * Pre-pack and post-unpack functions
   * Union support
 
 ### Short-term advanced
 
-#### Re-think heritables
+#### Statistics
 
-Heritables were introduced in the old XML-based proofs of concept for two reasons:
+The XML output should include the information needed to generate reports and statistics on space usage and savings.
 
-* Reusing sets of options to ensure consistency between fields located in different structs.
-* Statistics: the old proof of concept was able to produce a comprehensive report indicating how much space was used by different structs and heritables, and how much space was saved by bitpacking them.
+* Every C bitfield should be annotated with its C bitfield width.
+* Every type element (e.g. `struct-type`) should report the following stats:
+  * Number of instances seen in the serialized output
+    * Per top-level identifier
+    * Total
+  * `sizeof`
+  * `serialized-bitcount`
+  * If the type is an array type (could happen if an array typedef has bitpacking options), then its array ranks.
+  * If the type originates from a typedef, then it should have an `is-typedef-of` attribute listing the name of the nearest type worth outputting an XML element for or, if none are worth it, the end of the transitive typedef chain.
+* If a type is annotated with `__attribute__((lu_bitpack_track_type_stats))`, then we should guarantee that the XML output will contain an element representing that type. If it's not a struct, then it should get an appropriate tagname (even just `type` would do).
 
-With the plug-in, consistency is best attained through typedefs with options set:
+Accordingly, type XML should reformatted:
+
+```xml
+<!-- `general-type` or `struct-type` -->
+<general-type name="..." c-type="..." sizeof="..." serialized-bitcount="...">
+   <array-rank extent="1" /> <!-- optional; repeatable -->
+   
+   <!-- bitpack options listed as attributes here, incl. x-options type -->
+   <options />
+   
+   <fields>
+      <!-- ... -->
+   </fields>
+   <stats>
+      <times-seen total="5">
+         <per-top-level-identifier identifier="foo" count="3" />
+         <!-- if the type IS the type of a top-level identifer, then consider that a count of 1 for that identifier -->
+      </times-seen>
+   </stats>
+</general-type>
+```
+
+Goal:
 
 ```c
-#define LU_BP_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_MAX_ONLY(n) __attribute__((lu_bitpack_range(0,n)))
 #define LU_BP_RANGE(x,y)  __attribute__((lu_bitpack_range(x,y)))
+#define LU_BP_TRACK       __attribute__((lu_bitpack_track_statistics))
 
 enum {
    LANG_UNDEFINED,
@@ -60,133 +102,9 @@ enum {
    LANG_COUNT
 };
 
-LU_BP_BITCOUNT(LANG_COUNT) typedef uint8_t language_id;
-```
+LU_BP_TRACK LU_BP_MAX_ONLY(LANG_COUNT) typedef uint8_t language_t;
 
-Theoretically we could have an attribute that enables stat-tracking &mdash; keeping track of how many times a given type occurs in the serialized output:
-
-```c
-// Count how many times this type appears in the output, and how many times it appears 
-// in each seen struct type.
-#define LU_BP_TRACK __attribute__((lu_bitpack_track_statistics))
-
-LU_BP_TRACK LU_BP_BITCOUNT(LANG_COUNT) typedef uint8_t language_t;
-```
-
-Something like that would work for anything other than strings because when we process bitpacking options, we follow typedef chains to do so rather than just shortcutting to the main/canonical types. That is: given `typedef original newname`, options set on `original` are inherited (and can be overridden) by `newname`, but options set on `newname` don't propagate backward to `original`.
-
-The problem is that this falls short for strings. We can set bitpacking options on array types, but nothing actually reads them, because we only care about the innermost value type. (We make a specific exception for things tagged as strings, using the innermost *array* type.)
-
-```c
-// This doesn't work: the options would never be seen.
-LU_BP_TRACK typedef char player_name_t [7];
-
-// Syntax reminder: `typedef a b [n]` defines an alias to `a[n]`.
-// (It's meant to match how field declarations work, similar to 
-// the whole `int *a, b, c` debacle.)
-```
-
-There's an additional limitation as well, which is that GCC's `__attribute__((nonstring))` doesn't work on types or typedefs; only fields.
-
-The goal we should work toward, then, is:
-
-* Figure out a more coherent way to deal with attributes on arrays &mdash; something that will work for strings.
-* Implement an attribute that marks a type for statistics-tracking.
-* Implement generating a statistics report for serialization, *or* augment the XML output with enough information for outside tools to generate such a report.
-* Get rid of heritables in favor of statistics-tracked typedefs.
-
-##### Thoughts
-
-The following should "just work:"
-
-```c
-#define LU_BP_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
-
-#define LU_BP_STRING    __attribute__((lu_bitpack_string))
-#define LU_BP_STRING_NT __attribute__((lu_bitpack_string))
-#define LU_BP_STRING_UT __attribute__((lu_nonstring)) LU_BP_STRING
-
-struct Foo {
-   LU_BP_STRING_UT char player_name[7];
-   
-   LU_BP_STRING_UT char player_name[10][7]; // ten player names
-};
-
-LU_BP_STRING_UT typedef char player_name_t [7];
-
-struct Bar {
-   player_name_t player_name;
-   
-   player_name_t player_name[10];
-};
-
-LU_BP_BITCOUNT(3) typedef uint8_t small_number;
-struct Baz {
-   LU_BP_BITCOUNT(3) uint8_t smalls_a[7]; // total bitcount: 3 * 7 == 21
-   
-   small_number smalls_b[7]; // total bitcount: 3 * 7 == 21
-};
-```
-
-So let's come up with some rules.
-
-* If the `lu_bitpack_string` attribute is applied to a `TYPE_DECL`, then the declared type must be an array of single-byte values.
-* If the `lu_bitpack_string` attribute is applied to a `FIELD_DECL` or `VAR_DECL`, then the declaration must be an array, and the innermost array type must meet the rules for applying the attribute to `TYPE_DECL`s.
-* If a `FIELD_DECL` has the attribute, or if the innermost array type has the attribute, then its innermost array rank is treated as a string.
-
-```c
-struct Foo {
-   /*
-      for(int i = 0; i < 4; ++i)
-         lu_BitstreamRead_String(state, names[i], 7 - 1);
-   */
-   LU_BP_STRING names[4][7];
-};
-```
-
-What about buffers?
-
-* If the `lu_bitpack_as_opaque_buffer` attribute is applied to a `TYPE_DECL`, then the declared type is treated as an opaque buffer.
-* If the `lu_bitpack_as_opaque_buffer` attribute is applied to a `FIELD_DECL` or `VAR_DECL`, then the declaration is treated as an opaque buffer.
-* If a `FIELD_DECL` has the attribute, or if its type has the attribute, or if its type is [an array of [arrays of [...]]] a type that has the attribute, then the entire `FIELD_DECL` should be treated as a single opaque buffer and serialized with a single function call. Statistics-tracking must still count the field appropriately (i.e. `T field[x][y]` counts as <var>x</var> &times; <var>y</var> occurrences of <code>T</code>).
-
-```c
-LU_BP_TRACK LU_BP_AS_OPAQUE_BUFFER typedef uint8_t buffer [64];
-
-struct Foo {
-   // Serializes with a single memcpy call, size 64.
-   // Statistics logs it as one instance.
-   buffer a;
-   
-   // Serializes with a single memcpy call, size 128.
-   // Statistics logs it as two instances.
-   buffer a[2];
-};
-```
-
-And for other attributes? Let's use `lu_bitpack_bitcount` as a case study.
-
-* If the `lu_bitpack_bitcount` attribute is applied to a `TYPE_DECL`, then the declared type must be either an integral type, or an array of [arrays of [...]] an integral type.
-* If the `lu_bitpack_bitcount` attribute is applied to a `FIELD_DECL`, then its type must meet the rules for applying the attribute to `TYPE_DECL`s.
-* If a `FIELD_DECL` has the attribute, or if its type has the attribute, or if its type is [an array of [arrays of [...]]] a type that has the attribute, then the outermost specified bitcount is used for all elements therein.
-
-Let's explore this further.
-
-```c
-// std::is_same_v<smalls, uint8_t[7]> and the serialized size is 5 * 7 == 35
-LU_BP_BITCOUNT(5) typedef uint8_t smalls [7];
-
-// std::is_same_v<smallers, uint8_t[2][7]> and the serialized size is 4 * (7 * 2) == 56
-LU_BP_BITCOUNT(4) typedef smalls smallers[2];
-
-struct Foo {
-   // the serialized size is 3 * (7 * 2) == 42
-   LU_BP_BITCOUNT(3) smallers smallests;
-};
-
-// the requested sizes, ordered from outermost to innermost, are: 3, 4, 5
-// given the FIELD_DECL and the array ranks
-// and we use the outermost size
+LU_BP_TRACK LU_BP_STRING_UT typedef char player_name_t [7];
 ```
 
 

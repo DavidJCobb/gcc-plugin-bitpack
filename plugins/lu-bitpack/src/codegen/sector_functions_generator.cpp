@@ -251,6 +251,36 @@ namespace codegen {
    expr_pair sector_functions_generator::_serialize_array_slice(value_pair state_ptr, serialization_value& value, size_t start, size_t count) {
       value.assert_valid();
       
+      if (value.is_member()) {
+         //
+         // Try an optimization: if we're serializing the innermost elements of 
+         // this array as opaque buffers via read-buffer calls, then just do that 
+         // for the entire array rather than looping on each individual element.
+         //
+         const auto& info = value.as_member();
+         if (info.innermost_kind() == bitpacking::member_kind::buffer) {
+            auto count = info.count_of_innermost();
+            
+            const auto& options = info.bitpacking_options().buffer_options();
+            return expr_pair{
+               .read = gw::expr::call(
+                  this->global_options.functions.read.buffer,
+                  // args:
+                  state_ptr.read,
+                  value.read.address_of(),
+                  gw::expr::integer_constant(ty.uint16, options.bytecount * count)
+               ),
+               .save = gw::expr::call(
+                  this->global_options.functions.save.buffer,
+                  // args:
+                  state_ptr.save,
+                  value.save.address_of(),
+                  gw::expr::integer_constant(ty.uint16, options.bytecount * count)
+               )
+            };
+         }
+      }
+      
       const auto& ty = gw::builtin_types::get_fast();
       
       gw::flow::simple_for_loop read_loop(ty.basic_int);
@@ -284,6 +314,85 @@ namespace codegen {
          .read = read_loop.enclosing,
          .save = save_loop.enclosing
       };
+   }
+   
+   // Only appropriate for when we know a whole transformed value will fit.
+   expr_pair sector_functions_generator::_serialize_transformed(value_pair state_ptr, serialization_value& value) {
+      value.assert_valid();
+      // TODO: This assertion is bad for top-level structs; find a better way:
+      assert(value.is_member());
+      const auto& info    = value.as_member();
+      const auto& options = info.bitpacking_options().transform_options();
+      assert(!options.transformed_type.empty());
+      
+      /*
+      
+         Code to generate (read):
+         
+            {
+               TransformedType __transformed_r;
+               
+               __lu_bitstream_read_TransformedType(state, &__transformed_r);
+               
+               post_unpack(&value, &__transformed_r);
+            }
+         
+         Code to generate (save):
+         
+            {
+               TransformedType __transformed_s;
+               
+               pre_pack(&value, &__transformed_s);
+               
+               __lu_bitstream_save_TransformedType(state, &__transformed_s);
+            }
+         
+      */
+      
+      expr_pair out;
+      {  // Read
+         decl::variable transformed("__transformed_r", options.transformed_type);
+      
+         gw::expr::local_block block;
+         auto statements = block.statements();
+         statements.append(transformed.make_declare_expr());
+         
+         // read transformed value:
+         // (need to check if it's a struct, array, or primitive)
+         // (so really, i think we need to make `serialization_value`s and not just `value`s)
+         throw std::runtime_error("not implemented");
+         
+         statements.append(gw::expr::call(
+            options.post_unpack,
+            // args:
+            value.read.address_of(), // in situ
+            transformed.address_of() // transformed
+         ));
+         
+         out.read = block;
+      }
+      {  // Save
+         decl::variable transformed("__transformed_s", options.transformed_type);
+      
+         gw::expr::local_block block;
+         auto statements = block.statements();
+         statements.append(transformed.make_declare_expr());
+         
+         statements.append(gw::expr::call(
+            options.post_unpack,
+            // args:
+            value.read.address_of(), // in situ
+            transformed.address_of() // transformed
+         ));
+         
+         // save transformed value:
+         // (need to check if it's a struct, array, or primitive)
+         // (so really, i think we need to make `serialization_value`s and not just `value`s)
+         throw std::runtime_error("not implemented");
+         
+         out.save = block;
+      }
+      return out;
    }
    
    expr_pair sector_functions_generator::_serialize_primitive(value_pair state_ptr, serialization_value& value) {
@@ -487,6 +596,8 @@ namespace codegen {
          return _serialize_whole_struct(state_ptr, value);
       } else if (value.is_array()) {
          return _serialize_array_slice(state_ptr, value, 0, value.array_extent());
+      } else if (value.is_transformed()) {
+         return _serialize_transformed(state_ptr, value);
       } else {
          return _serialize_primitive(state_ptr, value);
       }

@@ -39,4 +39,16 @@ namespace codegen {
       copy.access_array_slice(start, count);
       return copy;
    }
+   
+   serialization_value_path serialization_value_path::transform_to(
+      const std::string& transformed_type_name
+   ) const {
+      auto copy = *this;
+      copy.path = "((";
+      copy.path += transformed_type_name;
+      copy.path += ')';
+      copy.path += this->path;
+      copy.path += ')';
+      return copy;
+   }
 }

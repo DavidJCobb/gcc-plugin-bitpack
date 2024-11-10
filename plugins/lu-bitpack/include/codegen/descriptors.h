@@ -56,6 +56,7 @@ namespace codegen {
          const member_descriptor& innermost_member() const noexcept { return *this->target; }
       
          bitpacking::member_kind kind() const;
+         bitpacking::member_kind innermost_kind() const;
          gcc_wrappers::type::base type() const;
          gcc_wrappers::type::base innermost_value_type() const;
          
@@ -63,6 +64,9 @@ namespace codegen {
       
          size_t size_in_bits() const; // given int foo[4][3][2], this is the bitcount of foo as a whole
          size_t element_size_in_bits() const; // given int foo[4][3][2], this is the bitcount of foo[x][y][z]
+         
+         // given int foo[4][3][2], this is 4 * 3 * 2
+         size_t count_of_innermost() const;
          
          bool is_array() const;
          size_t array_extent() const; // returns 1 for non-arrays

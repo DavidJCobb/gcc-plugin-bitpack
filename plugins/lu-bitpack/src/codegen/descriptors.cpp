@@ -45,6 +45,9 @@ namespace codegen {
          return bitpacking::member_kind::array;
       return this->target->kind;
    }
+   bitpacking::member_kind member_descriptor_view::innermost_kind() const {
+      return this->target->kind;
+   }
    gw::type::base member_descriptor_view::type() const {
       auto type = this->target->type;
       for(size_t i = 0; i < this->_state.array_rank; ++i)
@@ -70,6 +73,17 @@ namespace codegen {
          bc *= ranks[i];
       }
       return bc;
+   }
+   
+   size_t member_descriptor_view::count_of_innermost() const {
+      if (!is_array())
+         return 1;
+      size_t count = 1;
+      auto&  ranks = this->target->array_extents;
+      for(size_t i = this->_state.array_rank; i < ranks.size(); ++i) {
+         count *= ranks[i];
+      }
+      return count;
    }
    
    bool member_descriptor_view::is_array() const {
