@@ -6,6 +6,7 @@
 ### Short-term
 
 * To fully implement transform functions for structs (both generating code to call them, and including them in the attributes for `struct-type` XML elements), we need to modify `codegen::struct_descriptor` to store any [computed] bitpacking options that are appropriate for struct types.
+* See "Rethink heritables" section below.
 * The handler for `lu_bitpack_inherit` should verify that the specified heritable is of a type compatible with the annotated type/field.
 * We should add a plug-in callback for when a `DECL` is finished. There,...
   * If the `FIELD_DECL` inherits a `string` heritable, we should check the field's string length and whether it has the `nonstring` attribute. If either of these don't match the options specified on the heritable, we should error.
@@ -28,6 +29,165 @@
 * Long-term plans below
   * Pre-pack and post-unpack functions
   * Union support
+
+### Short-term advanced
+
+#### Re-think heritables
+
+Heritables were introduced in the old XML-based proofs of concept for two reasons:
+
+* Reusing sets of options to ensure consistency between fields located in different structs.
+* Statistics: the old proof of concept was able to produce a comprehensive report indicating how much space was used by different structs and heritables, and how much space was saved by bitpacking them.
+
+With the plug-in, consistency is best attained through typedefs with options set:
+
+```c
+#define LU_BP_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
+#define LU_BP_MAX_ONLY(n) __attribute__((lu_bitpack_range(0,n)))
+#define LU_BP_RANGE(x,y)  __attribute__((lu_bitpack_range(x,y)))
+
+enum {
+   LANG_UNDEFINED,
+   LANG_ENGLISH,
+   LANG_FRENCH,
+   LANG_GERMAN,
+   LANG_ITALIAN,
+   LANG_JAPANESE,
+   LANG_KOREAN,
+   LANG_SPANISH,
+   
+   LANG_COUNT
+};
+
+LU_BP_BITCOUNT(LANG_COUNT) typedef uint8_t language_id;
+```
+
+Theoretically we could have an attribute that enables stat-tracking &mdash; keeping track of how many times a given type occurs in the serialized output:
+
+```c
+// Count how many times this type appears in the output, and how many times it appears 
+// in each seen struct type.
+#define LU_BP_TRACK __attribute__((lu_bitpack_track_statistics))
+
+LU_BP_TRACK LU_BP_BITCOUNT(LANG_COUNT) typedef uint8_t language_t;
+```
+
+Something like that would work for anything other than strings because when we process bitpacking options, we follow typedef chains to do so rather than just shortcutting to the main/canonical types. That is: given `typedef original newname`, options set on `original` are inherited (and can be overridden) by `newname`, but options set on `newname` don't propagate backward to `original`.
+
+The problem is that this falls short for strings. We can set bitpacking options on array types, but nothing actually reads them, because we only care about the innermost value type. (We make a specific exception for things tagged as strings, using the innermost *array* type.)
+
+```c
+// This doesn't work: the options would never be seen.
+LU_BP_TRACK typedef char player_name_t [7];
+
+// Syntax reminder: `typedef a b [n]` defines an alias to `a[n]`.
+// (It's meant to match how field declarations work, similar to 
+// the whole `int *a, b, c` debacle.)
+```
+
+There's an additional limitation as well, which is that GCC's `__attribute__((nonstring))` doesn't work on types or typedefs; only fields.
+
+The goal we should work toward, then, is:
+
+* Figure out a more coherent way to deal with attributes on arrays &mdash; something that will work for strings.
+* Implement an attribute that marks a type for statistics-tracking.
+* Implement generating a statistics report for serialization, *or* augment the XML output with enough information for outside tools to generate such a report.
+* Get rid of heritables in favor of statistics-tracked typedefs.
+
+##### Thoughts
+
+The following should "just work:"
+
+```c
+#define LU_BP_BITCOUNT(n) __attribute__((lu_bitpack_bitcount(n)))
+
+#define LU_BP_STRING    __attribute__((lu_bitpack_string))
+#define LU_BP_STRING_NT __attribute__((lu_bitpack_string))
+#define LU_BP_STRING_UT __attribute__((lu_nonstring)) LU_BP_STRING
+
+struct Foo {
+   LU_BP_STRING_UT char player_name[7];
+   
+   LU_BP_STRING_UT char player_name[10][7]; // ten player names
+};
+
+LU_BP_STRING_UT typedef char player_name_t [7];
+
+struct Bar {
+   player_name_t player_name;
+   
+   player_name_t player_name[10];
+};
+
+LU_BP_BITCOUNT(3) typedef uint8_t small_number;
+struct Baz {
+   LU_BP_BITCOUNT(3) uint8_t smalls_a[7]; // total bitcount: 3 * 7 == 21
+   
+   small_number smalls_b[7]; // total bitcount: 3 * 7 == 21
+};
+```
+
+So let's come up with some rules.
+
+* If the `lu_bitpack_string` attribute is applied to a `TYPE_DECL`, then the declared type must be an array of single-byte values.
+* If the `lu_bitpack_string` attribute is applied to a `FIELD_DECL` or `VAR_DECL`, then the declaration must be an array, and the innermost array type must meet the rules for applying the attribute to `TYPE_DECL`s.
+* If a `FIELD_DECL` has the attribute, or if the innermost array type has the attribute, then its innermost array rank is treated as a string.
+
+```c
+struct Foo {
+   /*
+      for(int i = 0; i < 4; ++i)
+         lu_BitstreamRead_String(state, names[i], 7 - 1);
+   */
+   LU_BP_STRING names[4][7];
+};
+```
+
+What about buffers?
+
+* If the `lu_bitpack_as_opaque_buffer` attribute is applied to a `TYPE_DECL`, then the declared type is treated as an opaque buffer.
+* If the `lu_bitpack_as_opaque_buffer` attribute is applied to a `FIELD_DECL` or `VAR_DECL`, then the declaration is treated as an opaque buffer.
+* If a `FIELD_DECL` has the attribute, or if its type has the attribute, or if its type is [an array of [arrays of [...]]] a type that has the attribute, then the entire `FIELD_DECL` should be treated as a single opaque buffer and serialized with a single function call. Statistics-tracking must still count the field appropriately (i.e. `T field[x][y]` counts as <var>x</var> &times; <var>y</var> occurrences of <code>T</code>).
+
+```c
+LU_BP_TRACK LU_BP_AS_OPAQUE_BUFFER typedef uint8_t buffer [64];
+
+struct Foo {
+   // Serializes with a single memcpy call, size 64.
+   // Statistics logs it as one instance.
+   buffer a;
+   
+   // Serializes with a single memcpy call, size 128.
+   // Statistics logs it as two instances.
+   buffer a[2];
+};
+```
+
+And for other attributes? Let's use `lu_bitpack_bitcount` as a case study.
+
+* If the `lu_bitpack_bitcount` attribute is applied to a `TYPE_DECL`, then the declared type must be either an integral type, or an array of [arrays of [...]] an integral type.
+* If the `lu_bitpack_bitcount` attribute is applied to a `FIELD_DECL`, then its type must meet the rules for applying the attribute to `TYPE_DECL`s.
+* If a `FIELD_DECL` has the attribute, or if its type has the attribute, or if its type is [an array of [arrays of [...]]] a type that has the attribute, then the outermost specified bitcount is used for all elements therein.
+
+Let's explore this further.
+
+```c
+// std::is_same_v<smalls, uint8_t[7]> and the serialized size is 5 * 7 == 35
+LU_BP_BITCOUNT(5) typedef uint8_t smalls [7];
+
+// std::is_same_v<smallers, uint8_t[2][7]> and the serialized size is 4 * (7 * 2) == 56
+LU_BP_BITCOUNT(4) typedef smalls smallers[2];
+
+struct Foo {
+   // the serialized size is 3 * (7 * 2) == 42
+   LU_BP_BITCOUNT(3) smallers smallests;
+};
+
+// the requested sizes, ordered from outermost to innermost, are: 3, 4, 5
+// given the FIELD_DECL and the array ranks
+// and we use the outermost size
+```
+
 
 ### Long-term
 

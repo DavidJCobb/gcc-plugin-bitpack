@@ -39,6 +39,119 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 
 ## Documentation
 
+### Attributes
+
+Attributes may be applied to non-array types or to struct field declarations in order to configure how those fields are serialized.
+
+The following attributes may be used on non-array types or on struct field declarations:
+
+<dl>
+   <dt><code>lu_bitpack_default_value(<var>value</var>)</code></dt>
+      <dd>
+         <p>Designates a default value for the entity, with respect to bitpacking. The default value will be emitted in the XML output, and if an omitted field (see <code>lu_bitpack_omit</code>) has a default value, then the generated read function will assign that value to that field.</p>
+         <p>The following value types are valid:</p>
+         <ul>
+            <li>Integer constants, if the field is an integer.</li>
+            <li>Floating-point constants, if the field is a floating-point number.</li>
+            <li>String literals, if the field is an array. The string literal must not be longer than the array. (It may be shorter, in which case excess bytes will be <code>memset</code> to zero.) The presence of GCC's <code>nonstring</code> attribute is detected and accounted for.</li>
+         </ul>
+      </dd>
+   <dt><code>lu_bitpack_inherit("<var>name</var>")</code></dt>
+      <dd><p>Indicates that this entity inherits a set of options defined via <code>#pragma lu_bitpack heritable</code>.</p></dd>
+   <dt><code>lu_bitpack_omit</code></dt>
+      <dd><p>Indicates that this entity should be omitted from bitpacking. If an omitted field has a default value, then the generated "read" function will set the field to that value.</p></dd>
+</dl>
+
+The following groups of options are mutually exclusive.
+
+#### Integral options
+
+When these attributes are applied to fields of an array type, the attributes are assumed to pertain to the innermost value type. For example, setting an explicit bitcount of 3 on <code>int field[5]</code> will cause the field's serialized representation to consume 15 bits in total.
+
+<dl>
+   <dt><code>lu_bitpack_bitcount(<var>n</var>)</code></dt>
+      <dd><p>Sets an explicit size in bits for the field's serialized representation.</p></dd>
+   <dt><code>lu_bitpack_range(<var>min</var>, <var>max</var>)</code></dt>
+      <dd><p>Indicates the minimum and maximum possible values for the field, influencing the computed size in bits for the field's serialized representation (if that is not set explicitly).</p></dd>
+</dl>
+
+If you don't set an explicit bitcount or a range for an integral type or field, then the computed minimum is the minimum representable value in the field's type, and the computed bitcount is <code>std::bit_width((uintmax_t)(max - min))</code>. For example, the default size in bits for the serialized representation of a <code>int8_t</code> is 8, and the serialized representation takes the form <code>v - std::numeric_limits<int8_t>::lowest()</code>.
+
+If you set a range but not a bitcount, then the bitcount is computed from the range. For example, an integral field defined to permit values in the range [-5, 5] will be serialized as <code>v + 5</code> and will have a serialized size of 4 bits.
+
+Booleans are a notable exception. When defining global bitpacking options, you can specify the identifier of an integral typedef. Any field of this type (or of a typedef thereoF) will be considered a boolean: absent any other bitpacking options, it will serialize as a single-bit value by default.
+
+#### Opaque buffer options
+
+When these attributes are applied to fields of an array type, the attributes are assumed to pertain to the innermost value type. That is: we currently use a for-loop to serialize each array element individually, rather than serializing the entire array as a unit.
+
+<dl>
+   <dt><code>lu_bitpack_as_opaque_buffer</code></dt>
+      <dd><p>Indicates that the field should be serialized as an opaque buffer &mdash; akin to <code>memcpy</code>ing it, were it possible to <code>memcpy</code> to a destination measured in bits rather than bytes.</p></dd>
+</dl>
+
+The serialized size of a field of type <code>T</code> encoded as an opaque buffer is <code>sizeof(T)</code> bytes.
+
+#### String options
+
+When these attributes are applied to fields that are multi-dimensional arrays, the options are assumed to pertain to the innermost array. For example, applying them to <code>char names[5][10]</code> produces five strings of length 10.
+
+<dl>
+   <dt><code>lu_bitpack_string</code></dt>
+      <dd><p>Indicates that the field should be serialized as a string.</p></dd>
+</dl>
+
+Strings are assumed to require a null terminator by default, such that given a string <code>char field[<var>n</var>]</code>, the max length is <var>n</var> &minus; 1. If a string has GCC's <code>nonstring</code> attribute, however, then the null terminator is considered optional.
+
+Strings are not handled substantially different from opaque buffers, except that they may use different bitstream functions (one for always-terminated strings and one for optionally-terminated strings). These bitstream functions may process the value differently as is necessary (e.g. setting all bytes past the first null terminator to zero, on read).
+
+#### Transformation options
+
+(This functionality is not fully implemented; in particular, code generation is not done yet.)
+
+When these attributes are applied, they designate <dfn>transformation functions</dfn> that will be used to convert the value just before its serialized and just after it's deserialized. The value's ordinary type is the <dfn>in situ type</dfn>, whereas the type that is serialized into a bitstream is the <dfn>transformed</dfn> type.
+
+<dl>
+   <dt><code>lu_bitpack_funcs("pre_pack=<var>pre</var>,post_unpack=<var>post</var>")</code></dt>
+      <dd><p>Specify <dfn>pre-pack</dfn> and <dfn>post-unpack</dfn> functions by their identifiers. These functions must exist at file scope.</p>
+      <p>The pre-pack function should have the signature <code>void pre(const <var>InSitu</var>*, <var>Transform</var>*)</code>. The post-unpack function should have the signature <code>void post(<var>InSitu</var>*, const <var>Transform</var>*)</code>.</p></dd>
+</dl>
+
+### Heritable options
+
+It's possible to define a heritable set of options via the following syntax:
+
+```c++
+#pragma lu_bitpack heritable type "name" ( option, ... )
+```
+
+The following heritable types are available.
+
+<dl>
+   <dt><code>integer</code></dt>
+      <dd>
+         <p>Indicates that inheriting types and fields are to be packed as integers. The following options are permitted:</p>
+         <dl>
+            <dt><code>bitcount = <var>n</var></code></dt>
+               <dd><p>Behaves the same as the <code>lu_bitpack_bitcount</code> attribute. The value <var>n</var> must be an integer constant; expressions are not parsed.</p></dd>
+            <dt><code>max = <var>n</var></code></dt>
+               <dd><p>Indicates the maximum possible value, behaving the same as the maximum in the <code>lu_bitpack_range</code> attribute. The value <var>n</var> must be an integer constant; expressions are not parsed.</p></dd>
+            <dt><code>min = <var>n</var></code></dt>
+               <dd><p>Indicates the minimum possible value, behaving the same as the minimum in the <code>lu_bitpack_range</code> attribute. The value <var>n</var> must be an integer constant; expressions are not parsed.</p></dd>
+         </dl>
+      </dd>
+   <dt><code>string</code></dt>
+      <dd>
+         <p>Indicates that inheriting types and fields are to be packed as strings. The following options are permitted:</p>
+         <dl>
+            <dt><code>length = <var>n</var></code></dt>
+               <dd>Indicates the expected length of string fields inheriting this set of options.</dd>
+            <dt><code>with_terminator</code></dt>
+               <dd>Indicates that string fields inheriting this set of options require null terminators.</dd>
+         </dl>
+      </dd>
+</dl>
+
 ### Generated XML
 
 When running the plug-in, you can specify the path to an XML file as `-fplugin-arg-lu_bitpack-xml-out=$(DESIRED_PATH)/test.xml`. If you do so, then every time the plug-in generates serialization code, it will write information about the computed bitpacking format to the specified XML file. (Note that the `.xml` file extension is required and case-sensitive.)
