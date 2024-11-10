@@ -5,9 +5,7 @@
 
 ### Short-term
 
-* If we're working with an `EXPR` that we know to be a constant expression, how do we get the computed value? Currently, our attributes support integer and string literals as appropriate, but I don't think they'd work for constant integer expressions (or constant float expressions where the result value is an integer).
-* Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
-  * Pre-pack/post-unpack transform function identifiers
+* To fully implement transform functions for structs (both generating code to call them, and including them in the attributes for `struct-type` XML elements), we need to modify `codegen::struct_descriptor` to store any [computed] bitpacking options that are appropriate for struct types.
 * The handler for `lu_bitpack_inherit` should verify that the specified heritable is of a type compatible with the annotated type/field.
 * We should add a plug-in callback for when a `DECL` is finished. There,...
   * If the `FIELD_DECL` inherits a `string` heritable, we should check the field's string length and whether it has the `nonstring` attribute. If either of these don't match the options specified on the heritable, we should error.

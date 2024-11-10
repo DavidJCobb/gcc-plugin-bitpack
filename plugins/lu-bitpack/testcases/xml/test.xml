@@ -19,6 +19,7 @@
             <array-rank extent="7" />
          </integer>
          <string with-terminator="true" c-type="u8" length="5" name="name" />
+         <integer min="0" bitcount="1" c-type="u8" name="math_single_bit" />
          <omitted default-value="1.5e+0" c-type="float" name="defaulted_f" />
          <omitted default-value="7" c-type="u8" name="defaulted_i" />
          <omitted c-type="u8" name="defaulted_s">
@@ -63,6 +64,7 @@
       </sector>
       <sector id="3">
          <value path="sTestStruct.name" />
+         <value path="sTestStruct.math_single_bit" />
       </sector>
    </sectors>
 </data>

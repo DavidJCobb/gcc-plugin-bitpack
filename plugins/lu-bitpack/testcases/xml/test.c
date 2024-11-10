@@ -81,6 +81,8 @@ static struct TestStruct {
    
    LU_BP_OMIT LU_BP_STRING_UT LU_BP_DEFAULT("ABCDEFG") u8 creatureName1[7];
    LU_BP_OMIT LU_BP_STRING_UT LU_BP_DEFAULT("ABCDE") u8 creatureName2[7];
+   
+   LU_BP_BITCOUNT((1 + 2) / 3) u8 math_single_bit;
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);
