@@ -1,7 +1,4 @@
 <data>
-   <heritables>
-      <heritable bitcount="24" type="integer" name="$24bit" />
-   </heritables>
    <types>
       <struct-type c-type="TestStruct" name="TestStruct">
          <boolean c-type="bool8" name="a" />
@@ -12,13 +9,13 @@
          <integer min="0" bitcount="5" c-type="u8" name="f" />
          <integer min="0" bitcount="3" c-type="u8" name="g" />
          <integer min="0" bitcount="12" c-type="u16" name="h" />
-         <integer min="0" bitcount="24" c-type="u32" inherit="$24bit" name="i" />
-         <integer min="0" bitcount="24" c-type="u32" inherit="$24bit" name="j" />
+         <integer min="0" bitcount="24" c-type="u32" name="i" />
+         <integer min="0" bitcount="24" c-type="u32" name="j" />
          <integer min="0" bitcount="24" c-type="u32" name="k" />
          <integer min="0" bitcount="7" c-type="u8" name="l">
             <array-rank extent="7" />
          </integer>
-         <string with-terminator="true" c-type="u8" length="5" name="name" />
+         <string c-type="u8" length="5" name="name" />
          <integer min="0" bitcount="1" c-type="u8" name="math_single_bit" />
          <omitted default-value="1.5e+0" c-type="float" name="defaulted_f" />
          <omitted default-value="7" c-type="u8" name="defaulted_i" />

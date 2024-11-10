@@ -1,6 +1,5 @@
 #include "codegen/descriptors.h"
 #include "lu/strings/printf_string.h"
-#include "bitpacking/data_options/loader.h"
 #include "bitpacking/global_options.h"
 #include <gcc-plugin.h>
 #include <diagnostic.h>
@@ -115,25 +114,16 @@ namespace codegen {
          auto decl = gw::decl::field::from_untyped(raw_decl);
          
          bitpacking::data_options::computed computed;
-         {
-            using result_code = bitpacking::data_options::loader::result_code;
-            
-            bitpacking::data_options::loader loader(global);
-            loader.field = decl;
-            auto result = loader.go();
-            if (result == result_code::field_is_omitted) {
-               return;
-            } else if (result == result_code::success) {
-               assert(loader.result.has_value());
-               computed = *loader.result;
-            } else {
-               auto message = lu::strings::printf_string(
-                  "unable to continue: a problem occurred while processing bitpacking options for struct data member %<%s::%s%>",
-                  this->type.pretty_print().c_str(),
-                  decl.name().data()
-               );
-               throw std::runtime_error(message);
-            }
+         if (!computed.load(decl)) {
+            auto message = lu::strings::printf_string(
+               "unable to continue: a problem occurred while processing bitpacking options for struct data member %<%s::%s%>",
+               this->type.pretty_print().c_str(),
+               decl.name().data()
+            );
+            throw std::runtime_error(message);
+         }
+         if (computed.omit_from_bitpacking) {
+            return;
          }
          assert(computed.kind != bitpacking::member_kind::none);
          assert(computed.kind != bitpacking::member_kind::array && "this value should only be used by member_descriptor_view");
@@ -143,11 +133,12 @@ namespace codegen {
          member.type       = decl.value_type();
          member.decl       = decl;
          member.value_type = member.type;
+         member.bitpacking_options = computed;
          if (member.type.is_array()) {
             auto array_type = member.type.as_array();
             auto value_type = array_type.value_type();
             do {
-               if (computed.is_string() && value_type == global.types.string_char) {
+               if (computed.is_string() && !value_type.is_array()) {
                   break;
                }
                
@@ -174,7 +165,6 @@ namespace codegen {
             } while (true);
             member.value_type = value_type;
          }
-         member.bitpacking_options = computed;
          
          switch (member.kind) {
             case bitpacking::member_kind::buffer:

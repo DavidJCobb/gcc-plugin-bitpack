@@ -17,6 +17,7 @@ namespace attribute_handlers {
       
       helpers::bp_attr_context context(node_ptr, name, flags);
       context.check_and_report_applied_to_integral();
+      context.check_and_report_contradictory_x_options(helpers::x_option_type::integral);
       
       gw::expr::integer_constant min_node;
       gw::expr::integer_constant max_node;

@@ -1,7 +1,6 @@
 #include "xmlgen/sector_xml_generator.h"
 #include <charconv> // std::to_chars
 #include "lu/strings/printf_string.h"
-#include "bitpacking/heritable_options.h"
 #include "codegen/descriptors.h"
 #include "codegen/sector_functions_generator.h"
 #include "codegen/serialization_value_path.h"
@@ -27,9 +26,6 @@ namespace {
 }
 
 namespace {
-   using heritable_options           = bitpacking::heritable_options;
-   using heritable_options_stockpile = bitpacking::heritable_options_stockpile;
-   
    template<typename T>
    std::string _to_chars(T value) {
       char buffer[64] = { 0 };
@@ -86,18 +82,7 @@ namespace xmlgen {
       }
       {
          auto list = member.decl.attributes();
-         auto attr = list.get_attribute("lu_bitpack_inherit");
-         if (!attr.empty()) {
-            //
-            // If this attribute is present, we know it must be valid, or bitpacking 
-            // would've failed and we wouldn't have anything to write out to XML. 
-            // Don't bother doing any correctness checks now.
-            //
-            auto value = attr.arguments().front().as<gw::expr::string_constant>().value();
-            ptr->set_attribute("inherit", value);
-         }
-         
-         attr = list.get_attribute("lu_bitpack_default_value");
+         auto attr = list.get_attribute("lu_bitpack_default_value");
          if (!attr.empty()) {
             auto data = attr.arguments().front();
             _set_default_value_info(*ptr, data);
@@ -135,7 +120,8 @@ namespace xmlgen {
             {
                auto& options = computed.string_options();
                ptr->set_attribute("length", _to_chars(options.length));
-               ptr->set_attribute("with-terminator", options.with_terminator ? "true" : "false");
+               if (options.nonstring)
+                  ptr->set_attribute("nonstring", "true");
             }
             break;
          case bitpacking::member_kind::structure:
@@ -152,12 +138,11 @@ namespace xmlgen {
          default:
             assert(false && "unreachable");
       }
-      {
-         auto& xfrm = member.bitpacking_options.transforms;
-         if (auto& v = xfrm.pre_pack; !v.empty()) {
+      if (auto* casted = std::get_if<bitpacking::data_options::computed_x_options::transforms>(&member.bitpacking_options.data)) {
+         if (auto& v = casted->pre_pack; !v.empty()) {
             ptr->set_attribute("pre-pack-transform", v.name());
          }
-         if (auto& v = xfrm.post_unpack; !v.empty()) {
+         if (auto& v = casted->post_unpack; !v.empty()) {
             ptr->set_attribute("post-unpack-transform", v.name());
          }
       }
@@ -234,63 +219,13 @@ namespace xmlgen {
          dst.append_child(std::move(ptr));
       });
    }
-   
-   void sector_xml_generator::_make_heritable_xml(std::string_view name, const heritable_options& options) {
-      assert(!name.empty());
-      
-      auto ptr = std::make_unique<xml_element>();
-      ptr->node_name = "heritable";
-      ptr->set_attribute("name", name);
-      
-      if (auto* casted = std::get_if<heritable_options::integral_data>(&options.data)) {
-         ptr->set_attribute("type", "integer");
-         if (auto& opt = casted->bitcount; opt.has_value())
-            ptr->set_attribute("bitcount", _to_chars(*opt));
-         if (auto& opt = casted->min; opt.has_value())
-            ptr->set_attribute("min", _to_chars(*opt));
-         if (auto& opt = casted->max; opt.has_value())
-            ptr->set_attribute("max", _to_chars(*opt));
-      } else if (auto* casted = std::get_if<heritable_options::string_data>(&options.data)) {
-         ptr->set_attribute("type", "string");
-         if (auto& opt = casted->length; opt.has_value())
-            ptr->set_attribute("length", _to_chars(*opt));
-         if (auto& opt = casted->with_terminator; opt.has_value())
-            ptr->set_attribute("with-terminator", *opt ? "true" : "false");
-      }
-      
-      if (auto& v = options.transforms.pre_pack; !v.empty()) {
-         ptr->set_attribute("pre-pack-transform", v);
-      }
-      if (auto& v = options.transforms.post_unpack; !v.empty()) {
-         ptr->set_attribute("post-unpack-transform", v);
-      }
-      
-      this->heritables[std::string(name)] = std::move(ptr);
-   }
 
    void sector_xml_generator::run(const codegen::sector_functions_generator& gen) {
-      heritable_options_stockpile::get().for_each_option([this](const std::string& name, const heritable_options& options) {
-         this->_make_heritable_xml(name, options);
-      });
-      
       gen.for_each_seen_struct_descriptor([this](const codegen::struct_descriptor& descriptor) {
          auto root = std::make_unique<xml_element>();
          root->node_name = "struct-type";
          root->set_attribute("name",   descriptor.type.name());
          root->set_attribute("c-type", descriptor.type.pretty_print());
-         {
-            auto list = descriptor.type.attributes();
-            auto attr = list.get_attribute("lu_bitpack_inherit");
-            if (!attr.empty()) {
-               //
-               // If this attribute is present, we know it must be valid, or bitpacking 
-               // would've failed and we wouldn't have anything to write out to XML. 
-               // Don't bother doing any correctness checks now.
-               //
-               auto value = attr.arguments().front().as<gw::expr::string_constant>().value();
-               root->set_attribute("inherit", value);
-            }
-         }
          
          for(auto& m_descriptor : descriptor.members) {
             root->append_child(std::move(_make_whole_data_member(m_descriptor)));
@@ -344,17 +279,6 @@ namespace xmlgen {
 
    std::string sector_xml_generator::bake() const {
       std::string out = "<data>\n";
-      {
-         auto& list = this->heritables;
-         if (!list.empty()) {
-            out += "   <heritables>\n";
-            for(const auto& pair : list) {
-               out += pair.second->to_string(2);
-               out += '\n';
-            }
-            out += "   </heritables>\n";
-         }
-      }
       {
          auto& list = this->per_type_xml;
          if (!list.empty()) {

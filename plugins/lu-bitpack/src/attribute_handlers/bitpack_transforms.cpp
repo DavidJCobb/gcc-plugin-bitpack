@@ -121,6 +121,7 @@ namespace attribute_handlers {
       }
       
       helpers::bp_attr_context context(node_ptr, name, flags);
+      context.check_and_report_contradictory_x_options(helpers::x_option_type::transforms);
       gw::expr::string_constant data;
       {
          auto next = TREE_VALUE(args);

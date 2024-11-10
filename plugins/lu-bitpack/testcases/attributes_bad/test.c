@@ -20,7 +20,6 @@
 
 #define LU_BP_AS_OPAQUE_BUFFER __attribute__((lu_bitpack_as_opaque_buffer))
 #define LU_BP_BITCOUNT(n)      __attribute__((lu_bitpack_bitcount(n)))
-#define LU_BP_INHERIT(name)    __attribute__((lu_bitpack_inherit(name)))
 #define LU_BP_MINMAX(x,y)      __attribute__((lu_bitpack_range(x, y)))
 #define LU_BP_MIN_0_MAX(n)     __attribute__((lu_bitpack_range(0, n)))
 #define LU_BP_OMIT             __attribute__((lu_bitpack_omit))
@@ -72,7 +71,7 @@ void MapNestedStructForLoad(struct NestedStruct* dst, const struct PackedNestedS
 // END OF BITPACKING OPTIONS
 //
 
-LU_BP_INHERIT("$23bit") typedef u32 u32_packed_23;
+LU_BP_BITCOUNT(23) typedef u32 u32_packed_23;
 typedef u32_packed_23 transitive_u23;
 //#pragma lu_bitpack debug_dump_identifier u32_packed_23
 
@@ -151,11 +150,6 @@ static struct TestStruct {
    LU_BP_MINMAX( 0, 0) void* g;
    LU_BP_MINMAX( 0, 0) struct NestedStruct h;
    LU_BP_OMIT struct NestedStruct h_omit; // test: this one should actually work
-   
-   LU_BP_INHERIT("nonexistent!") u32 heritable_missing;
-   LU_BP_INHERIT("")             u32 heritable_blank;
-   LU_BP_INHERIT("$23bit") LU_BP_INHERIT("$24bit") u32 heritable_multiple;
-   LU_BP_INHERIT("nonexistent!") LU_BP_INHERIT("$24bit") u32 heritable_multiple_one_missing;
    
    LU_BP_STRING_NT u8 string_zero_1[0];
    LU_BP_STRING_NT u8 string_null[1];

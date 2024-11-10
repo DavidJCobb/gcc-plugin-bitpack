@@ -21,8 +21,6 @@ namespace xmlgen {
          std::unique_ptr<xml_element> _make_whole_data_member(const codegen::member_descriptor&);
          
          void _append_omitted_defaulted_members(xml_element& dst, const codegen::struct_descriptor&);
-         
-         void _make_heritable_xml(std::string_view, const bitpacking::heritable_options&);
       
       public:
          // outputs
@@ -31,7 +29,6 @@ namespace xmlgen {
          > serialized_identifiers;
          std::vector<std::unique_ptr<xml_element>> per_type_xml;
          std::vector<std::unique_ptr<xml_element>> per_sector_xml;
-         std::unordered_map<std::string, std::unique_ptr<xml_element>> heritables;
          
          void run(const codegen::sector_functions_generator&);
          std::string bake() const;

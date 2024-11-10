@@ -3,6 +3,7 @@
 #include <optional>
 #include <variant>
 #include "bitpacking/member_kind.h"
+#include "gcc_wrappers/decl/function.h"
 
 namespace bitpacking::global_options {
    class computed;
@@ -27,12 +28,18 @@ namespace bitpacking::data_options {
          uintmax_t max = 0;
       };
       struct string {
-         size_t length = 0;
-         bool   with_terminator = true;
+         size_t length    = 0;
+         bool   nonstring = false;
+      };
+      struct transforms {
+         gcc_wrappers::decl::function pre_pack;
+         gcc_wrappers::decl::function post_unpack;
       };
    }
    
    namespace requested_x_options {
+      struct buffer {
+      };
       struct integral {
          std::optional<size_t> bitcount;
          std::optional<size_t> min;
@@ -46,30 +53,23 @@ namespace bitpacking::data_options {
          
          // throws std::runtime_error on failure
          computed_x_options::integral bake(
-            const bitpacking::global_options::computed&,
             gcc_wrappers::decl::field,
-            gcc_wrappers::type::base,
             member_kind& out_kind
          ) const;
       };
       struct string {
-         std::optional<size_t> length;
-         std::optional<bool>   with_terminator; // defaults to true
+         std::optional<bool> nonstring;
          
-         void coalesce(const string& higher_prio);
-         
-         // throws std::runtime_error on failure
-         computed_x_options::string bake(
-            const bitpacking::global_options::computed&,
-            gcc_wrappers::decl::field,
-            gcc_wrappers::type::base
-         ) const;
+         computed_x_options::string bake(gcc_wrappers::decl::field) const;
       };
+      using transforms = computed_x_options::transforms;
       
       using variant = std::variant<
          std::monostate,
+         buffer,
          integral,
-         string
+         string,
+         transforms
       >;
    }
 }

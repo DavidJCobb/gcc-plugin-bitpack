@@ -2,9 +2,10 @@ PLUGIN=lu_bitpack.so
 INCDIR=include
 SOURCES=\
         src/attribute_handlers/helpers/bp_attr_context.cpp \
+        src/attribute_handlers/helpers/type_transitively_has_attribute.cpp \
+        src/attribute_handlers/bitpack_as_opaque_buffer.cpp \
         src/attribute_handlers/bitpack_bitcount.cpp \
         src/attribute_handlers/bitpack_default_value.cpp \
-        src/attribute_handlers/bitpack_inherit.cpp \
         src/attribute_handlers/bitpack_range.cpp \
         src/attribute_handlers/bitpack_string.cpp \
         src/attribute_handlers/bitpack_transforms.cpp \
@@ -12,11 +13,10 @@ SOURCES=\
         src/attribute_handlers/generic_type_or_decl.cpp \
         src/attribute_handlers/test.cpp \
         src/attribute_handlers/no_op.cpp \
-        src/bitpacking/data_options/loader.cpp \
-        src/bitpacking/data_options/requested_via_attributes.cpp \
+        src/bitpacking/data_options/computed.cpp \
+        src/bitpacking/data_options/requested.cpp \
         src/bitpacking/data_options/x_options.cpp \
         src/bitpacking/global_options.cpp \
-        src/bitpacking/heritable_options.cpp \
         src/bitpacking/transform_function_validation_helpers.cpp \
         src/codegen/descriptors.cpp \
         src/codegen/generate_omitted_default_for_read.cpp \
@@ -78,7 +78,6 @@ SOURCES=\
         src/pragma_handlers/debug_dump_identifier.cpp \
         src/pragma_handlers/enable.cpp \
         src/pragma_handlers/generate_functions.cpp \
-        src/pragma_handlers/heritable.cpp \
         src/pragma_handlers/set_options.cpp \
         src/xmlgen/is_valid_name.cpp \
         src/xmlgen/sector_xml_generator.cpp \

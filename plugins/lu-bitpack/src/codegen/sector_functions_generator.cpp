@@ -329,12 +329,12 @@ namespace codegen {
          
          gw::decl::function read_func;
          gw::decl::function save_func;
-         if (options.with_terminator) {
-            read_func = this->global_options.functions.read.string_wt;
-            save_func = this->global_options.functions.save.string_wt;
-         } else {
+         if (options.nonstring) {
             read_func = this->global_options.functions.read.string_ut;
             save_func = this->global_options.functions.save.string_ut;
+         } else {
+            read_func = this->global_options.functions.read.string_wt;
+            save_func = this->global_options.functions.save.string_wt;
          }
          
          return expr_pair{

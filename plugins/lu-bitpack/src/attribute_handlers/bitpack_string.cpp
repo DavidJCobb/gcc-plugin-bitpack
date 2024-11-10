@@ -21,11 +21,19 @@ namespace attribute_handlers {
       }
       
       helpers::bp_attr_context context(node_ptr, name, flags);
-      context.check_and_report_applied_to_string();
+      context.check_and_report_contradictory_x_options(helpers::x_option_type::string);
       
-      auto type = context.bitpacking_value_type();
-      if (type.is_array()) {
-         auto extent_opt = type.as_array().extent();
+      auto type = context.type_of_target();
+      if (!type.is_array()) {
+         context.report_error("applied to a scalar type; only arrays of [arrays of [...]] single-byte values may be marked as strings");
+      } else {
+         gw::type::array array_type = type.as_array();
+         gw::type::base  value_type = array_type.value_type();
+         while (value_type.is_array()) {
+            array_type = value_type.as_array();
+            value_type = array_type.value_type();
+         }
+         auto extent_opt = array_type.extent();
          if (!extent_opt.has_value()) {
             context.report_error("applied to a variable-length array; VLAs are not supported");
          } else {
@@ -33,9 +41,12 @@ namespace attribute_handlers {
             if (extent == 0) {
                context.report_error("applied to a zero-length array");
             } else {
-               bool optional_terminator = context.get_existing_attributes().has_attribute("nonstring");
-               
-               if (!optional_terminator && extent == 1) {
+               bool nonstring = false;
+               {
+                  auto list = context.get_existing_attributes();
+                  nonstring = list.has_attribute("nonstring") || list.has_attribute("lu_nonstring");
+               }
+               if (!nonstring && extent == 1) {
                   context.report_error("applied to a zero-length string (array length is 1; terminator byte is required; ergo no room for any actual string content)");
                }
             }

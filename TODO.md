@@ -5,6 +5,7 @@
 
 ### Short-term
 
+* Arrays of opaque buffers should be serialized using just one function call.
 * To fully implement transform functions for structs (both generating code to call them, and including them in the attributes for `struct-type` XML elements), we need to modify `codegen::struct_descriptor` to store any [computed] bitpacking options that are appropriate for struct types.
 * See "Rethink heritables" section below.
 * The handler for `lu_bitpack_inherit` should verify that the specified heritable is of a type compatible with the annotated type/field.

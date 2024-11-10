@@ -1,11 +1,15 @@
 #pragma once
 #include <optional>
 #include <variant>
+#include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/type/base.h"
 #include "bitpacking/data_options/x_options.h"
 #include "bitpacking/member_kind.h"
 
 namespace bitpacking::data_options {
+   class requested;
+   
    class computed {
       public:
          bool omit_from_bitpacking = false;
@@ -19,15 +23,13 @@ namespace bitpacking::data_options {
             std::monostate,
             computed_x_options::buffer,
             computed_x_options::integral,
-            computed_x_options::string
+            computed_x_options::string,
+            computed_x_options::transforms
          > data;
          
-         struct {
-            gcc_wrappers::decl::function pre_pack;
-            gcc_wrappers::decl::function post_unpack;
-         } transforms;
-         
       public:
+         bool load(gcc_wrappers::decl::field);
+      
          constexpr bool is_buffer() const noexcept {
             return std::holds_alternative<computed_x_options::buffer>(this->data);
          }

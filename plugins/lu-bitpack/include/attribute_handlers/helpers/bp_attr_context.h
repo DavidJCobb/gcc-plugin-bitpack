@@ -13,10 +13,18 @@
 #include <diagnostic.h>
 
 namespace attribute_handlers::helpers {
+   enum class x_option_type {
+      none,
+      buffer,
+      integral,
+      string,
+      transforms,
+   };
+   
    struct bp_attr_context {
       public:
          bp_attr_context(tree* node_ptr, tree attribute_name, int flags);
-      
+         
       protected:
          tree  attribute_name;
          tree* attribute_target = nullptr;
@@ -39,15 +47,6 @@ namespace attribute_handlers::helpers {
          // was invalid.
          void _mark_with_error_attribute();
          
-         void _report_applied_to_impossible_type(tree type);
-      
-         void _report_type_mismatch(
-            lu::strings::zview meant_for,
-            lu::strings::zview applied_to
-         );
-         
-         gcc_wrappers::type::base type_of_target() const;
-         
       public:
          constexpr bool has_any_errors() const noexcept {
             return this->failed;
@@ -59,16 +58,18 @@ namespace attribute_handlers::helpers {
          // May be an empty wrapper.
          gcc_wrappers::attribute_list get_existing_attributes() const;
       
-         bool check_and_report_applied_to_integral();
-         bool check_and_report_applied_to_string();
+         void check_and_report_applied_to_integral();
+      
+      protected:
+         bool _impl_check_x_options(tree subject, x_option_type here);
+      public:
+         void check_and_report_contradictory_x_options(x_option_type here);
          
-         // Generally, returns the innermost value type. If the target type is 
-         // a string or array thereof, returns an array of the character type.
-         gcc_wrappers::type::base bitpacking_value_type() const;
+         // Casts. Return empty if they aren't what's being annotated.
+         gcc_wrappers::decl::field target_field() const;
+         gcc_wrappers::type::base  target_type() const;
          
-         // Check whether `bitpacking_value_type` is an array of the string 
-         // character type specified in the global bitpacking options.
-         bool bitpacking_value_type_is_string() const;
+         gcc_wrappers::type::base type_of_target() const;
          
          // Apply a copy of the current attribute, with the specified args, to 
          // the current attribute target. An attribute handler can use this to 

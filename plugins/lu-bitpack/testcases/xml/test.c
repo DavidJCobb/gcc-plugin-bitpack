@@ -22,7 +22,6 @@
 
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_DEFAULT(x)    __attribute__((lu_bitpack_default_value(x)))
-#define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
 #define LU_BP_OMIT          __attribute__((lu_bitpack_omit))
 #define LU_BP_STRING        __attribute__((lu_bitpack_string))
 #define LU_BP_STRING_NT     LU_BP_STRING
@@ -66,14 +65,14 @@ static struct TestStruct {
    bool8 c;
    bool8 d;
    bool8 e;
-   LU_BP_BITCOUNT(5)       u8  f;
-   LU_BP_BITCOUNT(3)       u8  g;
-   LU_BP_BITCOUNT(12)      u16 h;
-   LU_BP_INHERIT("$24bit") u32 i;
-   LU_BP_INHERIT("$24bit") u32 j;
-   LU_BP_BITCOUNT(24)      u32 k;
-   LU_BP_BITCOUNT(7)       u8  l[7];
-   LU_BP_STRING            u8  name[6];
+   LU_BP_BITCOUNT(5)  u8  f;
+   LU_BP_BITCOUNT(3)  u8  g;
+   LU_BP_BITCOUNT(12) u16 h;
+   LU_BP_BITCOUNT(24) u32 i;
+   LU_BP_BITCOUNT(24) u32 j;
+   LU_BP_BITCOUNT(24) u32 k;
+   LU_BP_BITCOUNT(7)  u8  l[7];
+   LU_BP_STRING       u8  name[6];
    
    LU_BP_OMIT LU_BP_DEFAULT(1.5)   float defaulted_f;
    LU_BP_OMIT LU_BP_DEFAULT(7)     u8    defaulted_i;
@@ -107,9 +106,9 @@ void print_buffer(const u8* buffer, int size) {
 #include <ctype.h>
 void print_char(char c) {
    if (isprint(c)) {
-      printf("'%c'", c);
+      printf("'%c'", c & 0xFF);
    } else {
-      printf("0x%02X", c);
+      printf("0x%02X", c & 0xFF);
    }
 }
 void print_data() {
