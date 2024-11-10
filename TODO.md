@@ -9,12 +9,16 @@
 * Bitpacking options that make sense for struct types should appear in the XML output as attributes on `struct-type` elements.
   * Pre-pack/post-unpack transform function identifiers
 * The handler for `lu_bitpack_inherit` should verify that the specified heritable is of a type compatible with the annotated type/field.
-* When a field has a string default value, we need to verify that the specified string literal can fit in the specified field.
-  * If the string has attribute `nonstring`, or if it has `lu_bitpack_string` specifying that the terminator is optional, this should influence the check: don't require space for the `STRING_CST`'s null terminator. That is: if a `char[3]` doesn't need a null terminator, then `"a"` should `"a\0\0"`, and `"foo"` should fit despite `sizeof("foo") == 4`.
+* We should add a plug-in callback for when a `DECL` is finished. There,...
+  * If the `FIELD_DECL` inherits a `string` heritable, we should check the field's string length and whether it has the `nonstring` attribute. If either of these don't match the options specified on the heritable, we should error.
 * I don't think our `std::hash` specialization for wrapped tree nodes is reliable. Is there anything else we can use?
   * Every `DECL` has a unique `DECL_UID(node)`, but I don't know that these would be unique among other node types' potential ID schemes as well.
   * `TYPE_UID(node)` also exists.
   * Our use case is storing `gw::type::base`s inside of an `unordered_map`. We could use GCC's dedicated "type map" class, or &mdash; and this may be more reliable &mdash; we could use a `vector` of `pair`s, with a lookup function which looks for an exact type match or a match with a transitive typedef.
+
+* It's possible to set bitpacking options on an array `typedef` but due to how we handle coalescing of data options, these options would never be seen (unless, perhaps, they were set on an array of the string character type specified in the global bitpacking options). Do we want to fix this?
+* We should get rid of the ability to specify a character type for bitpacking options, and instead just allow string bitpacking options to be applied to any array, provided that that array is of `char`, `signed char`, `unsigned char`, or any variant type (and currently, `uint8_t` and typedefs thereof count as variants of `unsigned char`).
+  * This may require redoing a lot of the logic that depends on the "innermost value type" of a field as understood by the global bitpacking options.
 
 * The XML output has no way of knowing or reporting what bitpacking options are applied to integral types (as opposed to fields *of* those types). The final used bitcounts (and other associated options) should still be emitted per field, but this still reflects a potential loss of information. Can we fix this?
 * It'd be very nice if we could find a way to split buffers and strings across sector boundaries, for optimal space usage.

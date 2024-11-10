@@ -97,5 +97,11 @@ namespace attribute_handlers::helpers {
             this->_mark_with_error_attribute();
             this->_mark_with_named_error_attribute();
          }
+         
+         // GCC inform
+         template<typename... Args>
+         void report_note(lu::strings::zview text, Args&&... args) {
+            inform(UNKNOWN_LOCATION, text.c_str(), std::forward<Args>(args)...);
+         }
    };
 }

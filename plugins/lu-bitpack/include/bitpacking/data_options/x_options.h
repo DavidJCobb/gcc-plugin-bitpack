@@ -28,7 +28,7 @@ namespace bitpacking::data_options {
       };
       struct string {
          size_t length = 0;
-         bool   with_terminator = false;
+         bool   with_terminator = true;
       };
    }
    
@@ -54,7 +54,7 @@ namespace bitpacking::data_options {
       };
       struct string {
          std::optional<size_t> length;
-         std::optional<bool>   with_terminator;
+         std::optional<bool>   with_terminator; // defaults to true
          
          void coalesce(const string& higher_prio);
          

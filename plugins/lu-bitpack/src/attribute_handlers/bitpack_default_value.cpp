@@ -4,7 +4,10 @@
 #include "lu/strings/printf_string.h"
 #include "attribute_handlers/helpers/bp_attr_context.h"
 #include "attribute_handlers/generic_bitpacking_data_option.h"
+#include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/array.h"
+#include "gcc_wrappers/attribute.h"
 #include "basic_global_state.h"
 #include "debugprint.h"
 namespace gw {
@@ -22,7 +25,7 @@ namespace attribute_handlers {
          default:
             break;
       }
-      context.report_error("the default value is not of the correct type");
+      context.report_error("specifies a default value of an incorrect type");
    }
    static void _check_and_report_integral_value(helpers::bp_attr_context& context, tree node) {
       if (node == NULL_TREE)
@@ -35,7 +38,7 @@ namespace attribute_handlers {
          default:
             break;
       }
-      context.report_error("the default value is not of the correct type");
+      context.report_error("specifies a default value of an incorrect type");
    }
    static void _check_and_report_pointer_value(helpers::bp_attr_context& context, tree node) {
       if (node == NULL_TREE) {
@@ -47,20 +50,44 @@ namespace attribute_handlers {
             return;
       }
       if (!integer_zerop(node)) {
-         context.report_error("the only permitted default value for a pointer is zero");
+         context.report_error("uses a non-zero default value; the only permitted default value for a pointer is zero");
       }
    }
    static void _check_and_report_string_value(helpers::bp_attr_context& context, tree node) {
       if (node == NULL_TREE) {
          return;
       }
-      switch (TREE_CODE(node)) {
-         case STRING_CST:
-            return;
-         default:
-            break;
+      if (TREE_CODE(node) != STRING_CST) {
+         context.report_error("specifies a default value of an incorrect type");
+         return;
       }
-      context.report_error("the default value is not of the correct type");
+      
+      auto type = context.bitpacking_value_type();
+      if (type.is_array()) {
+         auto data = gw::expr::string_constant::from_untyped(node);
+         auto size = data.size_of();
+         
+         auto extent_opt = type.as_array().extent();
+         if (extent_opt.has_value()) {
+            auto extent    = *extent_opt;
+            bool nonstring = context.get_existing_attributes().has_attribute("nonstring");
+            if (nonstring)
+               --size;
+            
+            if (size > extent) {
+               context.report_error(
+                  "specifies a default value that is too long (%r%u%R characters) to fit in the array (%r%u%R)",
+                  "quote",
+                  size,
+                  "quote",
+                  extent
+               );
+               if (!nonstring && size == extent + 1) {
+                  context.report_note("if this array does not require a null terminator, then applying %<__attribute__((nonstring))%> before this attribute would allow this value to fit, while also allowing GCC to error-check certain string functions for you");
+               }
+            }
+         }
+      }
    }
    
    extern tree bitpack_default_value(tree* node_ptr, tree name, tree args, int flags, bool* no_add_attrs) {

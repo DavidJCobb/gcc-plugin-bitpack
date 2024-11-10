@@ -142,8 +142,8 @@ namespace _attributes {
    };
    static struct attribute_spec bitpack_string = {
       .name = "lu_bitpack_string",
-      .min_length =  0, // min argcount
-      .max_length = -1, // max argcount // allow unlimited args for when we translate internally
+      .min_length = 0, // min argcount
+      .max_length = 0, // max argcount
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,

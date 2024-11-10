@@ -145,16 +145,8 @@ namespace bitpacking::data_options {
             auto& dst_opt  = this->x_options.string;
             auto& dst_data = dst_opt.has_value() ? *dst_opt : dst_opt.emplace();
             
-            auto args = attr.arguments();
-            if (!args.empty()) {
-               auto node_a = args[0];
-               auto node_b = args[1];
-               if (!node_a.empty()) {
-                  dst_data.length = node_a.as<gw::expr::integer_constant>().value<size_t>().value();
-               }
-               if (!node_b.empty()) {
-                  dst_data.with_terminator = node_b.as_untyped() == boolean_true_node;
-               }
+            if (attributes.has_attribute("nonstring")) {
+               dst_data.with_terminator = false;
             }
             continue;
          }

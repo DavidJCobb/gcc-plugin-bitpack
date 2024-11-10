@@ -26,7 +26,6 @@ namespace gcc_wrappers {
          
       public:
          list_node() {}
-         list_node(tree t) : _node(t) {}
          
          static list_node from_untyped(tree t) {
             list_node wrap;
@@ -77,14 +76,13 @@ namespace gcc_wrappers {
          // Functions for mutating a list:
          //
          
+         void append(tree key, tree value);
+         
          void concat(list_node);
          
          // Only call this on the list head. Sets `this->_node` to the 
          // newly-created pair node.
-         void insert_at_head(tree key, tree value);
-         
-         // assert(!empty());
-         void insert_after(tree key, tree value);
+         void prepend(tree key, tree value);
    };
 }
 

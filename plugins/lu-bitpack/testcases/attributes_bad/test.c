@@ -24,8 +24,9 @@
 #define LU_BP_MINMAX(x,y)      __attribute__((lu_bitpack_range(x, y)))
 #define LU_BP_MIN_0_MAX(n)     __attribute__((lu_bitpack_range(0, n)))
 #define LU_BP_OMIT             __attribute__((lu_bitpack_omit))
-#define LU_BP_STRING_UT        __attribute__((lu_bitpack_string))
-#define LU_BP_STRING_WT        __attribute__((lu_bitpack_string("with-terminator")))
+#define LU_BP_STRING        __attribute__((lu_bitpack_string))
+#define LU_BP_STRING_NT     LU_BP_STRING
+#define LU_BP_STRING_UT     __attribute__((nonstring)) LU_BP_STRING
 #define LU_BP_TRANSFORM(pre_pack, post_unpack) \
    __attribute__((lu_bitpack_transform("pre_pack="#pre_pack",post_unpack="#post_unpack)))
 
@@ -155,6 +156,11 @@ static struct TestStruct {
    LU_BP_INHERIT("")             u32 heritable_blank;
    LU_BP_INHERIT("$23bit") LU_BP_INHERIT("$24bit") u32 heritable_multiple;
    LU_BP_INHERIT("nonexistent!") LU_BP_INHERIT("$24bit") u32 heritable_multiple_one_missing;
+   
+   LU_BP_STRING_NT u8 string_zero_1[0];
+   LU_BP_STRING_NT u8 string_null[1];
+   LU_BP_STRING_UT u8 string_zero_2[0];
+   LU_BP_STRING_UT u8 string_one[1];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);

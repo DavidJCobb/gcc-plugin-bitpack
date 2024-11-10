@@ -139,20 +139,14 @@ namespace bitpacking::data_options::requested_x_options {
       // The default length of a string is determined based on its type.
       //
       auto opt = global.string_extent_for_type(type);
-      if (!opt.has_value()) {
-         std::runtime_error("string bitpacking options applied to a variable-length array; VLAs are not supported");
-      }
+      assert(opt.has_value()); // should've been validated by the string attribute handler
       //
       // Catch zero-length defaults.
       //
       dst.length = *opt;
-      if (dst.length == 0) {
-         std::runtime_error("string bitpacking options applied to a zero-length string");
-      }
+      assert(dst.length > 0); // should've been validated by the string attribute handler
       if (dst.with_terminator) {
          --dst.length;
-         if (dst.length == 0)
-            std::runtime_error("string bitpacking options applied to a zero-length string (array of one character, to be spent on a null terminator)");
       }
       //
       // Pull the length from the coalesced options, if they supply one.

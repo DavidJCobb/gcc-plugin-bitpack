@@ -16,7 +16,8 @@ namespace gw {
    using namespace gcc_wrappers;
    
    constexpr const char* default_value_attr_name = "lu_bitpack_default_value";
-} 
+}
+#include "lu/strings/printf_string.h"
 
 namespace codegen::generate_omitted_default_for_read {
    extern bool is_omitted(gw::decl::field decl) {
@@ -167,41 +168,86 @@ namespace codegen::generate_omitted_default_for_read {
       return loop.enclosing;
    }
    
+   //
+   static gw::expr::base _for_string(
+      gw::value array,
+      tree      src_node,
+      bool      nonstring
+   ) {
+      const auto& ty = gw::builtin_types::get();
+      //
+      // Use `memcpy` to copy the string literal all at once.
+      //
+      gw::expr::string_constant str;
+      gw::type::base            str_char_type;
+      {
+         auto cst = TREE_OPERAND(TREE_OPERAND(src_node, 0), 0);
+         assert(cst != NULL_TREE && TREE_CODE(cst) == STRING_CST);
+         str.set_from_untyped(cst);
+         
+         str_char_type = gw::type::array::from_untyped(TREE_TYPE(cst)).value_type();
+      }
+      
+      gw::value src;
+      src.set_from_untyped(src_node);
+      
+      size_t char_size   = str_char_type.empty() ? 1 : str_char_type.size_in_bytes();
+      size_t string_size = str.size_of();
+      size_t array_size  = *array.value_type().as_array().extent();
+      if (nonstring) {
+         string_size -= 1; // exclude null terminator
+      }
+      
+      // Generate:
+      //    constexpr const size_t src_size = sizeof(src) - (nonstring ? sizeof('\0') : 0);
+      //    memcpy(array, src, src_size);
+      auto call_memcpy = gw::expr::call(
+         gw::decl::function::from_untyped(
+            lookup_name(get_identifier("memcpy"))
+         ),
+         // args:
+         array.convert_array_to_pointer(),
+         src,
+         gw::expr::integer_constant(ty.size, string_size * char_size)
+      );
+      
+      if (array_size > string_size) {
+         //
+         // Ensure that any leftover bytes are cleared.
+         //
+         // Generate:
+         //    memset(&array[src_size], 0, sizeof(array) - src_size);
+         auto call_memset = gw::expr::call(
+            gw::decl::function::from_untyped(
+               lookup_name(get_identifier("memset"))
+            ),
+            // args:
+            array.access_array_element(
+               gw::expr::integer_constant(ty.basic_int, string_size)
+            ).address_of(),
+            gw::expr::integer_constant(ty.basic_int, 0),
+            gw::expr::integer_constant(ty.size, (array_size - string_size) * char_size)
+         );
+         
+         gw::expr::local_block block;
+         block.statements().append(call_memcpy);
+         block.statements().append(call_memset);
+         return block;
+      }
+      
+      return call_memcpy;
+   }
+   
    // For an array of [arrays of [...]] primitives, which will all share the 
    // same constant value node (e.g. the same ADDR_EXPR for a string literal).
-   static gw::expr::base _for_primitive_array(gw::value array, tree src_node) {
+   static gw::expr::base _for_primitive_array(gw::value array, tree src_node, bool nonstring) {
       const auto& ty = gw::builtin_types::get();
       
       auto array_type = array.value_type().as_array();
       auto value_type = array_type.value_type();
       if (TREE_CODE(src_node) == ADDR_EXPR) { // string literal
          if (!value_type.is_array()) {
-            //
-            // Use `memcpy` to copy the string literal all at once.
-            //
-            gw::expr::string_constant str;
-            {
-               auto cst = TREE_OPERAND(TREE_OPERAND(src_node, 0), 0);
-               assert(cst != NULL_TREE && TREE_CODE(cst) == STRING_CST);
-               str.set_from_untyped(cst);
-            }
-            
-            gw::value src;
-            src.set_from_untyped(src_node);
-            
-            // memcpy(array, src, sizeof(array));
-            return gw::expr::call(
-               gw::decl::function::from_untyped(
-                  lookup_name(get_identifier("memcpy"))
-               ),
-               // args:
-               array.convert_array_to_pointer(),
-               src,
-               gw::expr::integer_constant(
-                  gw::builtin_types::get().size,
-                  str.length() * value_type.size_in_bytes()
-               )
-            );
+            return _for_string(array, src_node, nonstring);
          }
       }
       gw::flow::simple_for_loop loop(ty.basic_int);
@@ -216,7 +262,7 @@ namespace codegen::generate_omitted_default_for_read {
       {
          auto element = array.access_array_element(loop.counter.as_value());
          if (element.value_type().is_array()) {
-            expr = _for_primitive_array(element, src_node);
+            expr = _for_primitive_array(element, src_node, nonstring);
          } else {
             expr = _for_primitive(element, src_node);
          }
@@ -257,7 +303,9 @@ namespace codegen::generate_omitted_default_for_read {
          auto str = gw::expr::string_constant::from_untyped(value_node);
          value_node = str.to_string_literal(value_type).as_untyped();
       }
-      return _for_primitive_array(array, value_node);
+      
+      bool nonstring = decl.attributes().has_attribute("nonstring");
+      return _for_primitive_array(array, value_node, nonstring);
    }
    
    // Use for something that isn't a struct, array, union, or other container.

@@ -22,12 +22,15 @@ namespace gcc_wrappers {
          
          public:
             string_constant() {}
-            string_constant(std::string_view);
+            string_constant(const std::string&);
+            string_constant(const char*);
+            string_constant(const char*, size_t size_including_null);
             
             std::string value() const;
             std::string_view value_view() const;
             
-            size_t length() const;
+            size_t length() const; // number of characters; excludes null terminator
+            size_t size_of() const; // number of characters; includes null terminator
             
             // Each STRING_CST can only have a single type, but can be referenced 
             // by multiple ADDR_EXPRs (i.e. multiple string literals can share 

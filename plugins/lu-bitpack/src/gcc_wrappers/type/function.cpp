@@ -12,7 +12,7 @@ namespace gcc_wrappers::type {
    
    list_node function::arguments() const {
       assert(!empty());
-      return list_node(TYPE_ARG_TYPES(this->_node));
+      return list_node::from_untyped(TYPE_ARG_TYPES(this->_node));
    }
    
    base function::nth_argument_type(size_t n) const {

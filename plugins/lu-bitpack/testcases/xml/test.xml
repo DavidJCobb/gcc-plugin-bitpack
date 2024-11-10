@@ -25,6 +25,14 @@
             <array-rank extent="4" />
             <default-value-string>foo</default-value-string>
          </omitted>
+         <omitted c-type="u8" name="creatureName1">
+            <array-rank extent="7" />
+            <default-value-string>ABCDEFG</default-value-string>
+         </omitted>
+         <omitted c-type="u8" name="creatureName2">
+            <array-rank extent="7" />
+            <default-value-string>ABCDE</default-value-string>
+         </omitted>
       </struct-type>
    </types>
    <variables>

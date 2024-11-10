@@ -74,16 +74,19 @@ namespace gcc_wrappers {
    // Functions for mutating a list:
    //
    
+   void list_node::append(tree key, tree value) {
+      auto item = tree_cons(key, value, TREE_CHAIN(this->_node));
+      if (empty())
+         this->_node = item;
+      else
+         TREE_CHAIN(this->_node) = item;
+   }
+   
    void list_node::concat(list_node other) {
       this->_node = chainon(this->_node, other._node);
    }
    
-   void list_node::insert_at_head(tree key, tree value) {
+   void list_node::prepend(tree key, tree value) {
       this->_node = tree_cons(key, value, this->_node);
-   }
-   void list_node::insert_after(tree key, tree value) {
-      assert(!empty());
-      auto item = tree_cons(key, value, TREE_CHAIN(this->_node));
-      TREE_CHAIN(this->_node) = item;
    }
 }

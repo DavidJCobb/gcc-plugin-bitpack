@@ -4,8 +4,16 @@
 namespace gcc_wrappers::expr {
    WRAPPED_TREE_NODE_BOILERPLATE(string_constant)
    
-   string_constant::string_constant(std::string_view s) {
-      this->_node = build_string(s.size(), s.data());
+   string_constant::string_constant(const std::string& s) {
+      this->_node = build_string(s.size() + sizeof('\0'), s.c_str());
+   }
+   string_constant::string_constant(const char* s) {
+      auto view = std::string_view(s);
+      this->_node = build_string(view.size() + sizeof('\0'), view.data());
+   }
+   string_constant::string_constant(const char* s, size_t size_incl_null) {
+      assert(s[size_incl_null] == '\0');
+      this->_node = build_string(size_incl_null, s);
    }
    
    std::string string_constant::value() const {
@@ -25,6 +33,12 @@ namespace gcc_wrappers::expr {
    }
    
    size_t string_constant::length() const {
+      auto v = TREE_STRING_LENGTH(this->_node);
+      assert(v > 0);
+      --v;
+      return v;
+   }
+   size_t string_constant::size_of() const {
       return TREE_STRING_LENGTH(this->_node);
    }
    
@@ -46,7 +60,9 @@ namespace gcc_wrappers::expr {
       {
          auto prior = TREE_TYPE(this->_node);
          if (prior != NULL_TREE && prior != character_type.as_untyped()) {
-            return string_constant(this->value_view()).to_string_literal(character_type);
+            auto data  = this->value_view();
+            auto clone = string_constant(data.data(), data.size() + 1);
+            return clone.to_string_literal(character_type);
          }
       }
       
@@ -56,7 +72,7 @@ namespace gcc_wrappers::expr {
       // Based on `build_string_literal`:
       //
       
-      tree index  = build_index_type(size_int(this->length()));
+      tree index  = build_index_type(size_int(this->size_of()));
       tree e_type = build_type_variant(character_type.as_untyped(), 1, 0);
       tree a_type = build_array_type(e_type, index);
       
@@ -67,7 +83,7 @@ namespace gcc_wrappers::expr {
       
       tree l_type = build_pointer_type(e_type);
       
-      // &char_array[0]
+      // &__this_char_array[0]
       tree literal = build1(
          ADDR_EXPR,
          l_type,

@@ -14,12 +14,19 @@
 
 #pragma lu_bitpack enable
 
+#if __GNUC__ >= 8
+   #define NONSTRING __attribute__((nonstring))
+#else
+   #define NONSTRING 
+#endif
+
 #define LU_BP_BITCOUNT(n)   __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_DEFAULT(x)    __attribute__((lu_bitpack_default_value(x)))
 #define LU_BP_INHERIT(name) __attribute__((lu_bitpack_inherit(name)))
 #define LU_BP_OMIT          __attribute__((lu_bitpack_omit))
-#define LU_BP_STRING(info)  __attribute__((lu_bitpack_string(info)))
-#define LU_BP_STRING_WT     __attribute__((lu_bitpack_string("with-terminator")))
+#define LU_BP_STRING        __attribute__((lu_bitpack_string))
+#define LU_BP_STRING_NT     LU_BP_STRING
+#define LU_BP_STRING_UT     NONSTRING LU_BP_STRING
 
 #pragma lu_bitpack set_options ( \
    sector_count=9, \
@@ -66,11 +73,14 @@ static struct TestStruct {
    LU_BP_INHERIT("$24bit") u32 j;
    LU_BP_BITCOUNT(24)      u32 k;
    LU_BP_BITCOUNT(7)       u8  l[7];
-   LU_BP_STRING_WT         u8  name[6];
+   LU_BP_STRING            u8  name[6];
    
    LU_BP_OMIT LU_BP_DEFAULT(1.5)   float defaulted_f;
    LU_BP_OMIT LU_BP_DEFAULT(7)     u8    defaulted_i;
    LU_BP_OMIT LU_BP_DEFAULT("foo") u8    defaulted_s[4];
+   
+   LU_BP_OMIT LU_BP_STRING_UT LU_BP_DEFAULT("ABCDEFG") u8 creatureName1[7];
+   LU_BP_OMIT LU_BP_STRING_UT LU_BP_DEFAULT("ABCDE") u8 creatureName2[7];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);
@@ -134,15 +144,26 @@ void print_data() {
       printf(",\n");
    }
    printf("      },\n");
+   printf("      .creatureName1 = {\n");
+   for(int i = 0; i < 7; ++i) {
+      printf("         ");
+      print_char(sTestStruct.creatureName1[i]);
+      printf(",\n");
+   }
+   printf("      },\n");
+   printf("      .creatureName2 = {\n");
+   for(int i = 0; i < 7; ++i) {
+      printf("         ");
+      print_char(sTestStruct.creatureName2[i]);
+      printf(",\n");
+   }
+   printf("      },\n");
    printf("   }\n");
 }
 
 int main() {
-   u8 sector_0_buffer[64] = { 0 };
-   u8 sector_1_buffer[64] = { 0 };
-   u8 sector_2_buffer[64] = { 0 };
-   u8 sector_3_buffer[64] = { 0 };
-   u8 sector_4_buffer[64] = { 0 };
+   #define SECTOR_COUNT 6
+   u8 sector_buffers[SECTOR_COUNT][64] = { 0 };
    
    const char* divider = "=========================================================\n";
    
@@ -160,12 +181,14 @@ int main() {
    for(int i = 0; i < 7; ++i) {
       sTestStruct.l[i] = (i + 1) * 11;
    }
+   for(int i = 0; i < 7; ++i) {
+      sTestStruct.creatureName1[i] = 'A' + i;
+   }
+   for(int i = 0; i < 7; ++i) {
+      sTestStruct.creatureName2[i] = 'A' + i;
+   }
    
-   memset(sector_0_buffer, '~', sizeof(sector_0_buffer));
-   memset(sector_1_buffer, '~', sizeof(sector_1_buffer));
-   memset(sector_2_buffer, '~', sizeof(sector_2_buffer));
-   memset(sector_3_buffer, '~', sizeof(sector_3_buffer));
-   memset(sector_4_buffer, '~', sizeof(sector_4_buffer));
+   memset(&sector_buffers, '~', sizeof(sector_buffers));
    
    printf(divider);
    printf("Test data to save:\n");
@@ -176,42 +199,19 @@ int main() {
    printf("Testing generated functions...\n");
    printf(divider);
    
-   generated_save(sector_0_buffer, 0);
-   generated_save(sector_1_buffer, 1);
-   generated_save(sector_2_buffer, 2);
-   generated_save(sector_3_buffer, 3);
-   generated_save(sector_4_buffer, 4);
-   memset(&sTestStruct, 0, sizeof(sTestStruct));
+   for(int i = 0; i < SECTOR_COUNT; ++i) {
+      generated_save(sector_buffers[i], i);
+   }
+   memset(&sTestStruct, 0xCC, sizeof(sTestStruct));
    
-   printf("Sector 0 saved:\n");
-   print_buffer(sector_0_buffer, sizeof(sector_0_buffer));
-   printf("Sector 0 read:\n");
-   generated_read(sector_0_buffer, 0);
-   print_data();
    
-   printf("Sector 1 saved:\n");
-   print_buffer(sector_1_buffer, sizeof(sector_1_buffer));
-   printf("Sector 1 read:\n");
-   generated_read(sector_1_buffer, 1);
-   print_data();
-   
-   printf("Sector 2 saved:\n");
-   print_buffer(sector_2_buffer, sizeof(sector_2_buffer));
-   printf("Sector 2 read:\n");
-   generated_read(sector_2_buffer, 2);
-   print_data();
-   
-   printf("Sector 3 saved:\n");
-   print_buffer(sector_3_buffer, sizeof(sector_3_buffer));
-   printf("Sector 3 read:\n");
-   generated_read(sector_3_buffer, 3);
-   print_data();
-   
-   printf("Sector 4 saved:\n");
-   print_buffer(sector_4_buffer, sizeof(sector_4_buffer));
-   printf("Sector 4 read:\n");
-   generated_read(sector_4_buffer, 4);
-   print_data();
+   for(int i = 0; i < SECTOR_COUNT; ++i) {
+      printf("Sector %u saved:\n", i);
+      print_buffer(sector_buffers[i], sizeof(sector_buffers[i]));
+      printf("Sector %u read:\n", i);
+      generated_read(sector_buffers[i], i);
+      print_data();
+   }
    
    return 0;
 }
