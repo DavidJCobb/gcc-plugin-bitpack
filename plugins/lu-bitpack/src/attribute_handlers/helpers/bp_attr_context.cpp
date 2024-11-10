@@ -5,6 +5,7 @@
 #include <stringpool.h> // dependency of <attribs.h>
 #include <attribs.h>
 #include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/array.h"
 #include "basic_global_state.h"
 #include "debugprint.h"
@@ -258,30 +259,42 @@ namespace attribute_handlers::helpers {
          return gw::decl::field::from_untyped(node);
       return {};
    }
+   gw::decl::field bp_attr_context::target_typedef() const {
+      tree node = this->attribute_target[0];
+      if (TREE_CODE(node) == TYPE_DECL)
+         return gw::decl::type_def::from_untyped(node);
+      return {};
+   }
    gw::type::base bp_attr_context::target_type() const {
       tree node = this->attribute_target[0];
       if (TYPE_P(node))
          return gw::type::base::from_untyped(node);
-      if (TREE_CODE(node) == TYPE_DECL) {
-         //
-         // When attribute handlers are being invoked on a TYPE_DECL, 
-         // DECL_ORIGINAL_TYPE hasn't been set yet; the original type 
-         // is instead in TREE_TYPE.
-         //
-         auto orig = DECL_ORIGINAL_TYPE(node);
-         if (orig == NULL_TREE) {
-            orig = TREE_TYPE(node);
-         }
-         return gw::type::base::from_untyped(orig);
-      }
       return {};
    }
    
    gcc_wrappers::type::base bp_attr_context::type_of_target() const {
-      auto type = target_type();
-      if (!type.empty())
-         return type;
-      type = target_field().value_type();
+      auto node = this->attribute_target[0];
+      if (TYPE_P(node))
+         return gw::type::base::from_untyped(node);
+      assert(DECL_P(node));
+      
+      gw::type::base type;
+      switch (TREE_CODE(node)) {
+         case TYPE_DECL:
+            //
+            // When attribute handlers are being invoked on a TYPE_DECL, 
+            // DECL_ORIGINAL_TYPE hasn't been set yet; the original type 
+            // is instead in TREE_TYPE.
+            //
+            type = gw::type::base::from_untyped(TREE_TYPE(node));
+            break;
+         case FIELD_DECL:
+            type = gw::decl::field::from_untyped(node).value_type();;
+            break;
+         case VAR_DECL:
+            type = gw::decl::variable::from_untyped(node).value_type();;
+            break;
+      }
       assert(!type.empty());
       return type;
    }

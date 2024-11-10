@@ -66,8 +66,9 @@ namespace attribute_handlers::helpers {
          void check_and_report_contradictory_x_options(x_option_type here);
          
          // Casts. Return empty if they aren't what's being annotated.
-         gcc_wrappers::decl::field target_field() const;
-         gcc_wrappers::type::base  target_type() const;
+         gcc_wrappers::decl::field    target_field() const;
+         gcc_wrappers::decl::type_def target_typedef() const;
+         gcc_wrappers::type::base     target_type() const;
          
          gcc_wrappers::type::base type_of_target() const;
          
