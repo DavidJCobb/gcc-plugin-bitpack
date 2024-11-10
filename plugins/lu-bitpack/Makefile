@@ -227,3 +227,25 @@ testcase_attributes_bad: $(PLUGIN)
 	$(CCPLUGIN) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
 	$(CCPLUGIN) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
 	$(TESTDIR)/test
+
+.PHONY: testcase_array_opaque_buffers
+testcase_array_opaque_buffers: TESTDIR=testcases/array_opaque_buffers
+testcase_array_opaque_buffers: PLUGINARGS=-fplugin-arg-lu_bitpack-xml-out=$(TESTDIR)/test.xml
+testcase_array_opaque_buffers: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test
+
+.PHONY: testcase_array_typedef
+testcase_array_typedef: TESTDIR=testcases/array_typedef
+testcase_array_typedef: PLUGINARGS=-fplugin-arg-lu_bitpack-xml-out=$(TESTDIR)/test.xml
+testcase_array_typedef: $(PLUGIN)
+	- rm -f testcases/*.o
+	- rm -f $(TESTDIR)/*.o
+	$(CCPLUGIN) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(CCPLUGIN) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TESTDIR)/test

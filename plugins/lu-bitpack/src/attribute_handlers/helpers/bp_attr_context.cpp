@@ -7,6 +7,7 @@
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/type/array.h"
 #include "basic_global_state.h"
+#include "debugprint.h"
 namespace gw {
    using namespace gcc_wrappers;
 }
@@ -229,8 +230,7 @@ namespace attribute_handlers::helpers {
    void bp_attr_context::check_and_report_contradictory_x_options(x_option_type here) {
       auto type = target_type();
       if (type.empty()) {
-         auto decl = target_field();
-         if (_impl_check_x_options(decl.as_untyped(), here)) {
+         if (_impl_check_x_options(this->attribute_target[0], here)) {
             report_error("conflicts with attributes previously applied to this field");
             return;
          }
@@ -262,6 +262,18 @@ namespace attribute_handlers::helpers {
       tree node = this->attribute_target[0];
       if (TYPE_P(node))
          return gw::type::base::from_untyped(node);
+      if (TREE_CODE(node) == TYPE_DECL) {
+         //
+         // When attribute handlers are being invoked on a TYPE_DECL, 
+         // DECL_ORIGINAL_TYPE hasn't been set yet; the original type 
+         // is instead in TREE_TYPE.
+         //
+         auto orig = DECL_ORIGINAL_TYPE(node);
+         if (orig == NULL_TREE) {
+            orig = TREE_TYPE(node);
+         }
+         return gw::type::base::from_untyped(orig);
+      }
       return {};
    }
    
@@ -270,6 +282,7 @@ namespace attribute_handlers::helpers {
       if (!type.empty())
          return type;
       type = target_field().value_type();
+      assert(!type.empty());
       return type;
    }
    

@@ -51,8 +51,6 @@
    func_write_buffer = lu_BitstreamWrite_buffer \
 )
 
-#pragma lu_bitpack heritable integer "$24bit" ( bitcount = 24 )
-
 static struct TestStruct {
    bool8 a;
    bool8 b;

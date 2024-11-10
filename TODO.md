@@ -5,8 +5,6 @@
 
 ### Short-term
 
-* Devise a testcase for arrays of opaque buffers: entire array slices should use a single read-buffer and save-buffer call, rather than descending into the array and making multiple per-buffer calls.
-* Devise a testcase for attributes set on array typedefs.
 * Find all remaining uses of the "string character" type in the global bitpacking options, and get rid of them: the "string" bitpacking type should be valid for any array of [arrays of [...]] single-byte integrals. When we're sure we've achieved this, remove the global option itself.
 * XML output needs a tagname for transformed members (e.g. `<transformed/>`), as well as an attribute identifying the type to which they are transformed (i.e. don't *just* list the identifiers of the transform functions).
 * Pre-pack/post-unpack functions

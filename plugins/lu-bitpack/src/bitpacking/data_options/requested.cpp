@@ -192,7 +192,8 @@ namespace bitpacking::data_options {
             auto tran = *it;
             auto decl = tran.declaration();
             _load_impl(tran.as_untyped(), tran.attributes());
-            _load_impl(tran.as_untyped(), decl.attributes());
+            if (!decl.empty())
+               _load_impl(tran.as_untyped(), decl.attributes());
          }
       } else {
          _load_impl(type.as_untyped(), type.attributes());

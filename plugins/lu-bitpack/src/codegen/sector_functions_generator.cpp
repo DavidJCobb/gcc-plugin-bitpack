@@ -249,6 +249,8 @@ namespace codegen {
    }
    
    expr_pair sector_functions_generator::_serialize_array_slice(value_pair state_ptr, serialization_value& value, size_t start, size_t count) {
+      const auto& ty = gw::builtin_types::get_fast();
+      
       value.assert_valid();
       
       if (value.is_member()) {
@@ -280,8 +282,6 @@ namespace codegen {
             };
          }
       }
-      
-      const auto& ty = gw::builtin_types::get_fast();
       
       gw::flow::simple_for_loop read_loop(ty.basic_int);
       read_loop.counter_bounds = {
@@ -351,7 +351,7 @@ namespace codegen {
       
       expr_pair out;
       {  // Read
-         decl::variable transformed("__transformed_r", options.transformed_type);
+         gw::decl::variable transformed("__transformed_r", options.transformed_type);
       
          gw::expr::local_block block;
          auto statements = block.statements();
@@ -366,13 +366,13 @@ namespace codegen {
             options.post_unpack,
             // args:
             value.read.address_of(), // in situ
-            transformed.address_of() // transformed
+            transformed.as_value().address_of() // transformed
          ));
          
          out.read = block;
       }
       {  // Save
-         decl::variable transformed("__transformed_s", options.transformed_type);
+         gw::decl::variable transformed("__transformed_s", options.transformed_type);
       
          gw::expr::local_block block;
          auto statements = block.statements();
@@ -382,7 +382,7 @@ namespace codegen {
             options.post_unpack,
             // args:
             value.read.address_of(), // in situ
-            transformed.address_of() // transformed
+            transformed.as_value().address_of() // transformed
          ));
          
          // save transformed value:

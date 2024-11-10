@@ -1,0 +1,26 @@
+<data>
+   <types>
+      <struct-type c-type="TestStruct" name="TestStruct">
+         <string nonstring="true" c-type="u8" length="7" name="player_name">
+            <default-value-string>Abcdefg</default-value-string>
+         </string>
+         <string nonstring="true" c-type="u8" length="7" name="enemy_names">
+            <default-value-string>Abcdefg</default-value-string>
+            <array-rank extent="5" />
+         </string>
+         <integer min="0" bitcount="3" c-type="u8" name="smalls">
+            <array-rank extent="3" />
+         </integer>
+      </struct-type>
+   </types>
+   <variables>
+      <group>
+         <variable c-type="TestStruct" name="sTestStruct" />
+      </group>
+   </variables>
+   <sectors>
+      <sector id="0">
+         <value path="sTestStruct" />
+      </sector>
+   </sectors>
+</data>

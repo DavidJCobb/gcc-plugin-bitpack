@@ -1,0 +1,28 @@
+<data>
+   <types>
+      <struct-type c-type="TestStruct" name="TestStruct">
+         <opaque-buffer bytecount="8" c-type="OpaqueUnion" name="single" />
+         <opaque-buffer bytecount="8" c-type="OpaqueUnion" name="array">
+            <array-rank extent="5" />
+         </opaque-buffer>
+         <omitted c-type="u8" name="creatureName1">
+            <array-rank extent="7" />
+            <default-value-string>ABCDEFG</default-value-string>
+         </omitted>
+         <omitted c-type="u8" name="creatureName2">
+            <array-rank extent="7" />
+            <default-value-string>ABCDE</default-value-string>
+         </omitted>
+      </struct-type>
+   </types>
+   <variables>
+      <group>
+         <variable c-type="TestStruct" name="sTestStruct" />
+      </group>
+   </variables>
+   <sectors>
+      <sector id="0">
+         <value path="sTestStruct" />
+      </sector>
+   </sectors>
+</data>
