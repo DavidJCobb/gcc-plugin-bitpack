@@ -39,7 +39,6 @@ namespace bitpacking {
                std::string bitstream_state;
                std::string boolean;     // defaults to built-in `bool`
                std::string buffer_byte;
-               std::string string_char; // defaults to built-in `char`
             } types;
             
             void consume_pragma_kv_set(const gcc_helpers::pragma_kv_set&);
@@ -76,8 +75,8 @@ namespace bitpacking {
                gcc_wrappers::type::base    boolean;
                gcc_wrappers::type::base    buffer_byte;
                gcc_wrappers::type::base    buffer_byte_ptr;
-               gcc_wrappers::type::base    string_char;
             } types;
+            bool invalid = false;
             
             void resolve(const requested&);
             
@@ -86,22 +85,6 @@ namespace bitpacking {
             //
             
             bool type_is_boolean(const gcc_wrappers::type::base) const;
-            bool type_is_string(const gcc_wrappers::type::base) const;
-            bool type_is_string_or_array_thereof(const gcc_wrappers::type::base) const;
-            
-            // For any type that would pass `type_is_string_or_array_thereof`, 
-            // finds the underlying "string" type and returns its extent (which 
-            // will be its length if it requires a null terminator). For example, 
-            // given `char names[5][10]` and `char` as our string character type, 
-            // this returns 10.
-            //
-            // Fails an assertion if the type is not a string or array thereof.
-            std::optional<size_t> string_extent_for_type(const gcc_wrappers::type::base) const;
-            
-            // In general, strips all array ranks to get to the innermost value 
-            // type. However, if the type is a to-be-bitpacked string (or array 
-            // thereof), returns the string char array type instead.
-            gcc_wrappers::type::base innermost_value_type(gcc_wrappers::type::base) const;
       };
    }
 }

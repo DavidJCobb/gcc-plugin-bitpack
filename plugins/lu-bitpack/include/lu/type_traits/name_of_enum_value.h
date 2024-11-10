@@ -1,10 +1,11 @@
 #pragma once
 #include <array>
 #include <string_view>
+#include <type_traits>
 
 namespace lu {
-   namespace impl::_name_of_type {
-      template<typename T>
+   namespace impl::_name_of_enum_value {
+      template<auto Value>
       constexpr auto function_name() {
          return std::string_view{
             #if defined(__clang__) || defined(__GNUC__)
@@ -15,13 +16,13 @@ namespace lu {
          };
       }
 
-      template<typename T>
+      template<auto Value>
       constexpr auto compute() {
          constexpr auto prefix = std::string_view(
             #if defined(__clang__)
-               "[T = "
+               "[Value = "
             #elif defined(__GNUC__)
-               "with T = "
+               "with auto Value = "
             #elif defined (_MSC_VER)
                "compute<"
             #endif
@@ -56,17 +57,15 @@ namespace lu {
          return out;
       }
 
-      template<typename T>
+      template<auto Value>
       struct storage {
-         static constexpr const auto value = compute<T>();
+         static constexpr const auto value = compute<Value>();
       };
    }
 
-   // NOTE: IntelliSense often chokes on this when it's invoked a few templates deep. 
-   //       You may need to check `#ifndef __INTELLISENSE__` when using it.
-   template<typename T>
-   constexpr std::string_view name_of_type() {
-      constexpr const auto& arr = impl::_name_of_type::storage<T>::value;
+   template<auto Value> requires std::is_enum_v<std::decay_t<decltype(Value)>>
+   constexpr std::string_view name_of_enum_value() {
+      constexpr const auto& arr = impl::_name_of_enum_value::storage<Value>::value;
       return std::string_view(arr.data(), arr.size());
    }
 }

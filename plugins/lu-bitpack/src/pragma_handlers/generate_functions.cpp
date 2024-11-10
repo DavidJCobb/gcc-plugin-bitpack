@@ -169,6 +169,10 @@ namespace pragma_handlers {
             error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: in order to run code generation, you must use %<#pragma lu_bitpack enable%> before the compiler sees any bitpacking attributes");
             return;
          }
+         if (gs.global_options.computed.invalid) {
+            error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: unable to generate code due to a previous error in %<#pragma lu_bitpack set_options%>");
+            return;
+         }
          
          // now done immediately after the global options are read:
          //gs.global_options.computed.resolve(gs.global_options.requested);

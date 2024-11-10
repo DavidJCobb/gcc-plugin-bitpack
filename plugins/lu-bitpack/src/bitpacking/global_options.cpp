@@ -10,6 +10,8 @@
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/type/array.h"
 
+#include "debugprint.h"
+
 namespace bitpacking::global_options {
    void requested::consume_pragma_kv_set(const gcc_helpers::pragma_kv_set& set) {
       auto _pull_size = [&set](const char* key, const char* noun, size_t& dst) {
@@ -126,7 +128,6 @@ namespace bitpacking::global_options {
       
       _pull_identifier("bool_typename", "bool typename", this->types.boolean);
       _pull_identifier("buffer_byte_typename", "buffer byte typename", this->types.buffer_byte);
-      _pull_identifier("string_char_typename", "buffer byte typename", this->types.string_char);
       _pull_identifier("bitstream_state_typename", "bitstream state typename", this->types.bitstream_state);
    }
 }
@@ -293,6 +294,8 @@ namespace {
 
 namespace bitpacking::global_options {
    void computed::resolve(const requested& src) {
+      this->invalid = true;
+      
       const auto& ty = gw::builtin_types::get_fast();
       
       //
@@ -306,16 +309,10 @@ namespace bitpacking::global_options {
       // Resolve types:
       //
       
-      this->types.boolean     = ty.basic_bool;
-      this->types.string_char = ty.basic_char;
+      this->types.boolean = ty.basic_bool;
       if (!src.types.boolean.empty()) {
          if (src.types.boolean != "bool") {
             this->types.boolean = _get_type_decl(src.types.boolean.c_str());
-         }
-      }
-      if (!src.types.string_char.empty()) {
-         if (src.types.string_char != "char") {
-            this->types.string_char = _get_type_decl(src.types.string_char.c_str());
          }
       }
       {
@@ -331,7 +328,6 @@ namespace bitpacking::global_options {
       this->types.buffer_byte = _get_type_decl(src.types.buffer_byte.c_str());
       
       _check_exists("boolean", this->types.boolean);
-      _check_exists("string char", this->types.string_char);
       _check_exists("bitstream state", this->types.bitstream_state);
       _check_exists("buffer byte", this->types.buffer_byte);
       
@@ -437,7 +433,41 @@ namespace bitpacking::global_options {
             auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
-            _check_nth_argument    (noun, decl, ++i, ++it, element_type.add_pointer());
+            {
+               ++i;
+               ++it;
+               
+               auto arg_type = gw::type::base::from_untyped((*it).second);
+               if (arg_type.empty()) {
+                  throw std::runtime_error(lu::strings::printf_string(
+                     "too few arguments for the %s (%<%s%>) (only %u present)",
+                     noun,
+                     decl.name().data(),
+                     i
+                  ));
+               }
+               auto canonical = arg_type.canonical();
+               bool valid     = true;
+               if (!canonical.is_pointer()) {
+                  valid = false;
+               } else {
+                  auto el = canonical.remove_pointer();
+                  if (!el.is_void() && (!el.is_integer() || el.size_in_bytes() != 1)) {
+                     valid = false;
+                  }
+                  if (el.is_const()) {
+                     valid = false;
+                  }
+               }
+               if (!valid) {
+                  throw std::runtime_error(lu::strings::printf_string(
+                     "incorrect argument %u type for the %s (%<%s%>): must be a non-const pointer to void or to a single-byte integer type",
+                     (int)i,
+                     noun,
+                     decl.name().data()
+                  ));
+               }
+            }
             _check_nth_argument    (noun, decl, ++i, ++it, ty.uint16); // length
             _check_argument_endcap (noun, decl, ++it);
          };
@@ -446,8 +476,8 @@ namespace bitpacking::global_options {
          set.string_wt = _get_func_decl(src.functions.read.string_wt);
          set.buffer    = _get_func_decl(src.functions.read.buffer);
          
-         _check_span("strings with terminators", set.string_wt, this->types.string_char);
-         _check_span("strings with optional terminators", set.string_ut, this->types.string_char);
+         _check_span("strings with terminators", set.string_wt, {});
+         _check_span("strings with optional terminators", set.string_ut, {});
          _check_span("buffers", set.buffer, this->types.buffer_byte);
       }
       
@@ -513,7 +543,7 @@ namespace bitpacking::global_options {
          _check_integer("int16_t", set.s16, ty.int16);
          _check_integer("int32_t", set.s32, ty.int32);
          
-         // void lu_BitstreamRead_T(struct lu_BitstreamState*, const uint8_t*, uint16_t size)
+         // void lu_BitstreamWrite_T(struct lu_BitstreamState*, const uint8_t*, uint16_t size)
          auto _check_span = [op_name, stream_state_ptr_type, &ty](
             const char*        noun_type,
             gw::decl::function decl,
@@ -530,7 +560,38 @@ namespace bitpacking::global_options {
             auto   it = type.arguments().begin();
             size_t i  = 0;
             _check_nth_argument    (noun, decl,   i,   it, stream_state_ptr_type);
-            _check_nth_argument    (noun, decl, ++i, ++it, element_type.add_const().add_pointer());
+            {
+               ++i;
+               ++it;
+               
+               auto arg_type = gw::type::base::from_untyped((*it).second);
+               if (arg_type.empty()) {
+                  throw std::runtime_error(lu::strings::printf_string(
+                     "too few arguments for the %s (%<%s%>) (only %u present)",
+                     noun,
+                     decl.name().data(),
+                     i
+                  ));
+               }
+               auto canonical = arg_type.canonical();
+               bool valid     = true;
+               if (!canonical.is_pointer()) {
+                  valid = false;
+               } else {
+                  auto el = canonical.remove_pointer();
+                  if (!el.is_void() && (!el.is_integer() || el.size_in_bytes() != 1)) {
+                     valid = false;
+                  }
+               }
+               if (!valid) {
+                  throw std::runtime_error(lu::strings::printf_string(
+                     "incorrect argument %u type for the %s (%<%s%>): must be a pointer to void or to a single-byte integer type",
+                     i,
+                     noun,
+                     decl.name().data()
+                  ));
+               }
+            }
             _check_nth_argument    (noun, decl, ++i, ++it, ty.uint16); // length
             _check_argument_endcap (noun, decl, ++it);
          };
@@ -539,12 +600,13 @@ namespace bitpacking::global_options {
          set.string_wt = _get_func_decl(src.functions.write.string_wt);
          set.buffer    = _get_func_decl(src.functions.write.buffer);
          
-         _check_span("strings with terminators", set.string_wt, this->types.string_char);
-         _check_span("strings with optional terminators", set.string_ut, this->types.string_char);
+         _check_span("strings with terminators", set.string_wt, {});
+         _check_span("strings with optional terminators", set.string_ut, {});
          _check_span("buffers", set.buffer, this->types.buffer_byte);
       }
       
       // Done.
+      this->invalid = false;
    }
    
    //
@@ -553,50 +615,5 @@ namespace bitpacking::global_options {
    
    bool computed::type_is_boolean(const gw::type::base type) const {
       return type.is_type_or_transitive_typedef_thereof(this->types.boolean);
-   }
-   bool computed::type_is_string(const gw::type::base type) const {
-      if (type.empty() || !type.is_array())
-         return false;
-      return type.as_array().value_type().is_type_or_transitive_typedef_thereof(this->types.string_char);
-   }
-   bool computed::type_is_string_or_array_thereof(const gw::type::base type) const {
-      if (type.empty() || !type.is_array())
-         return false;
-      if (this->types.string_char.empty())
-         return false;
-      gw::type::array at = type.as_array();
-      gw::type::base  et = at.value_type();
-      while (et.is_array()) {
-         at = et.as_array();
-         et = at.value_type();
-      }
-      return et.is_type_or_transitive_typedef_thereof(this->types.string_char);
-   }
-   
-   std::optional<size_t> computed::string_extent_for_type(const gw::type::base type) const {
-      assert(type.is_array() && "invalid argument");
-      auto at = type.as_array();
-      auto et = at.value_type();
-      while (et.is_array()) {
-         at = et.as_array();
-         et = at.value_type();
-      }
-      if (et.is_type_or_transitive_typedef_thereof(this->types.string_char))
-         return at.extent();
-      assert(false && "invalid argument");
-   }
-   
-   gw::type::base computed::innermost_value_type(gw::type::base type) const {
-      if (!type.is_array())
-         return type;
-      gw::type::array at = type.as_array();
-      gw::type::base  et = at.value_type();
-      while (et.is_array()) {
-         at = et.as_array();
-         et = at.value_type();
-      }
-      if (et.is_type_or_transitive_typedef_thereof(this->types.string_char))
-         return at;
-      return et;
    }
 }

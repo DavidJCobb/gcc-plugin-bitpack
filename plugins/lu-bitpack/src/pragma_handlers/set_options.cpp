@@ -31,7 +31,12 @@ namespace pragma_handlers {
          state.global_options.requested.consume_pragma_kv_set(kv);
          state.global_options.computed.resolve(state.global_options.requested);
       } catch (std::runtime_error& e) {
-         error("%qs: incorrect data: %s", this_pragma_name, e.what());
+         std::string message;
+         message += "%<";
+         message += this_pragma_name;
+         message += "%>: incorrect data: ";
+         message += e.what();
+         error(message.c_str());
       }
       state.global_options_seen = true;
    }

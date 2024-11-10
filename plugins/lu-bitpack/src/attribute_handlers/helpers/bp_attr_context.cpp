@@ -148,11 +148,8 @@ namespace attribute_handlers::helpers {
    }
    
    void bp_attr_context::check_and_report_applied_to_integral() {
-      auto type = target_type();
-      if (type.empty()) {
-         type = target_field().value_type();
-         assert(!type.empty());
-      }
+      auto type = type_of_target();
+      assert(!type.empty());
       bool   is_array = type.is_array();
       size_t rank     = 0;
       while (type.is_array()) {
@@ -259,7 +256,7 @@ namespace attribute_handlers::helpers {
          return gw::decl::field::from_untyped(node);
       return {};
    }
-   gw::decl::field bp_attr_context::target_typedef() const {
+   gw::decl::type_def bp_attr_context::target_typedef() const {
       tree node = this->attribute_target[0];
       if (TREE_CODE(node) == TYPE_DECL)
          return gw::decl::type_def::from_untyped(node);
@@ -293,6 +290,8 @@ namespace attribute_handlers::helpers {
             break;
          case VAR_DECL:
             type = gw::decl::variable::from_untyped(node).value_type();;
+            break;
+         default:
             break;
       }
       assert(!type.empty());

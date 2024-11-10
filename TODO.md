@@ -5,7 +5,6 @@
 
 ### Short-term
 
-* Find all remaining uses of the "string character" type in the global bitpacking options, and get rid of them: the "string" bitpacking type should be valid for any array of [arrays of [...]] single-byte integrals. When we're sure we've achieved this, remove the global option itself.
 * XML output needs a tagname for transformed members (e.g. `<transformed/>`), as well as an attribute identifying the type to which they are transformed (i.e. don't *just* list the identifiers of the transform functions).
 * Pre-pack/post-unpack functions
   * The attribute should require specifying both functions at once, and should validate that they match each other and that the in situ type matches the type that the argument would affect. That way, we don't have to deal with resolving functions that come from different places (e.g. pre-pack from the type and post-unpack from the field), with the complications (e.g. type mismatches) that that brings now that we're no longer doing absolutely all error-checking at codegen-time.
