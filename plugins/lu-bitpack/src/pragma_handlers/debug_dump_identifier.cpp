@@ -9,7 +9,9 @@
 
 #include <print-tree.h> // debug_tree
 
-namespace pragma_handlers {
+#include "bitpacking/for_each_influencing_entity.h"
+
+namespace pragma_handlers { 
    extern void debug_dump_identifier(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack debug_dump_identifier";
       
@@ -48,6 +50,11 @@ namespace pragma_handlers {
          if (type != NULL_TREE) {
             debug_tree(type);
          }
+         
+         std::cerr << "\nDumping influencing entities...\n\n";
+         bitpacking::for_each_influencing_entity(gcc_wrappers::decl::type_def::from_untyped(decl), [](tree node) {
+            debug_tree(node);
+         });
       }
    }
 }

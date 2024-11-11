@@ -47,6 +47,17 @@ namespace attribute_handlers {
          return;
       }
       
+      bool both_are_individually_correct = true;
+      
+      if (!params.pre_pack.has_value()) {
+         context.report_error("does not specify a pre-pack function name");
+         both_are_individually_correct = false;
+      }
+      if (!params.post_unpack.has_value()) {
+         context.report_error("does not specify a post-unpack function name");
+         both_are_individually_correct = false;
+      }
+      
       gw::decl::function pre_pack;
       gw::decl::function post_unpack;
       
@@ -87,10 +98,36 @@ namespace attribute_handlers {
       if (!pre_pack.empty() && !bitpacking::can_be_pre_pack_function(pre_pack)) {
          auto name = pre_pack.name().data();
          context.report_error("the specified pre-pack function %<%s%> has the wrong signature (should be %<void %s(const InSituType*, PackedType*)%>", name, name);
+         both_are_individually_correct = false;
       }
       if (!post_unpack.empty() && !bitpacking::can_be_post_unpack_function(post_unpack)) {
          auto name = pre_pack.name().data();
          context.report_error("the specified post-unpack function %<%s%> has the wrong signature (should be %<void %s(InSituType*, const PackedType*)%>", name, name);
+         both_are_individually_correct = false;
+      }
+      
+      if (both_are_individually_correct) {
+         //
+         // Verify that the functions match each other.
+         //
+         auto mismatch_text = bitpacking::check_transform_functions_match_types(pre_pack, post_unpack);
+         if (!mismatch_text.empty()) {
+            mismatch_text.insert(0, "specifies incompatible functions: ");
+            context.report_error(mismatch_text);
+         }
+         //
+         // If the functions' in situ types match, verify that they match 
+         // the thing we're applying this attribute to.
+         //
+         auto in_situ = bitpacking::get_in_situ_type(pre_pack, post_unpack);
+         if (!in_situ.empty()) {
+            auto type = context.type_of_target();
+            if (in_situ.main_variant() != type.main_variant()) {
+               auto pp_a = in_situ.pretty_print();
+               auto pp_b = type.pretty_print();
+               context.report_error("specifies functions that transform type %<%s%>, but would be applied to type %<%s%>", pp_a.c_str(), pp_b.c_str());
+            }
+         }
       }
       
       if (context.has_any_errors()) {

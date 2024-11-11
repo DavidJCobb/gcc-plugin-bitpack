@@ -59,4 +59,32 @@ namespace bitpacking {
       }
       return {};
    }
+   
+   extern gcc_wrappers::type::base get_in_situ_type(
+      gcc_wrappers::decl::function pre_pack,
+      gcc_wrappers::decl::function post_unpack
+   ) {
+      auto type_a = pre_pack.function_type();
+      auto type_b = post_unpack.function_type();
+      
+      auto normal_type_a = type_a.nth_argument_type(0).remove_pointer().remove_const();
+      auto normal_type_b = type_b.nth_argument_type(0).remove_pointer().remove_const();
+      if (normal_type_a != normal_type_b)
+         return {};
+      return normal_type_a;
+   }
+   
+   extern gcc_wrappers::type::base get_transformed_type(
+      gcc_wrappers::decl::function pre_pack,
+      gcc_wrappers::decl::function post_unpack
+   ) {
+      auto type_a = pre_pack.function_type();
+      auto type_b = post_unpack.function_type();
+      
+      auto packed_type_a = type_a.nth_argument_type(1).remove_pointer().remove_const();
+      auto packed_type_b = type_b.nth_argument_type(1).remove_pointer().remove_const();
+      if (packed_type_a != packed_type_b)
+         return {};
+      return packed_type_a;
+   }
 }

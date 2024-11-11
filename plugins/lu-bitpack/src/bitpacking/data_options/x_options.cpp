@@ -30,12 +30,14 @@ namespace bitpacking::data_options::requested_x_options {
    }
    
    computed_x_options::integral integral::bake(
-      gw::decl::field decl,
-      member_kind&    out_kind
+      gw::type::base        type,
+      member_kind&          out_kind,
+      std::optional<size_t> bitfield_width
    ) const {
       const auto& global = basic_global_state::get().global_options.computed;
       
-      auto type = decl.value_type();
+      out_kind = member_kind::none;
+      
       while (type.is_array())
          type = type.as_array().value_type();
       
@@ -86,15 +88,8 @@ namespace bitpacking::data_options::requested_x_options {
             max = *this->max;
          } else {
             max = integral_type.maximum_value();
-            if (decl.is_bitfield()) {
-               auto bitfield_width = decl.size_in_bits();
-               assert(bitfield_width > 0);
-               if (bitfield_width >= sizeof(intmax_t) * 8) {
-                  throw std::runtime_error(lu::strings::printf_string("this member is a bitfield, and its width in bits (%zu) is too large for this plug-in to handle internally", bitfield_width));
-                  max = min;
-               } else {
-                  max = 1 << (bitfield_width - 1);
-               }
+            if (bitfield_width.has_value()) {
+               max = (intmax_t)1 << *bitfield_width;
             }
          }
          dst.min      = min;
@@ -107,18 +102,28 @@ namespace bitpacking::data_options::requested_x_options {
       return dst;
    }
    
+   computed_x_options::integral integral::bake(
+      gw::decl::field decl,
+      member_kind&    out_kind
+   ) const {
+      std::optional<size_t> bitfield_width;
+      if (decl.is_bitfield()) {
+         bitfield_width = decl.size_in_bits();
+      }
+      return bake(decl.value_type(), out_kind, bitfield_width);
+   }
+   
    //
    // string
    //
    
-   computed_x_options::string string::bake(gw::decl::field decl) const {
+   computed_x_options::string string::bake(gw::type::array array_type) const {
       computed_x_options::string dst;
       
       if (this->nonstring.has_value())
          dst.nonstring = *this->nonstring;
       
-      gw::type::array array_type = decl.value_type().as_array();
-      gw::type::base  value_type = array_type.value_type();
+      gw::type::base value_type = array_type.value_type();
       while (value_type.is_array()) {
          array_type = value_type.as_array();
          value_type = array_type.value_type();

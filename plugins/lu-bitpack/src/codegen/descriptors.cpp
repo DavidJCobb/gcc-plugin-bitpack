@@ -124,6 +124,16 @@ namespace codegen {
       gw::type::record type
    ) {
       this->type = type;
+      
+      if (!this->bitpacking_options.load(this->type)) {
+         auto pp      = this->type.pretty_print();
+         auto message = lu::strings::printf_string(
+            "unable to continue: a problem occurred while processing bitpacking options for struct type %<%s>",
+            pp.c_str()
+         );
+         throw std::runtime_error(message);
+      }
+      
       type.for_each_referenceable_field([this, &global](tree raw_decl) {
          auto decl = gw::decl::field::from_untyped(raw_decl);
          

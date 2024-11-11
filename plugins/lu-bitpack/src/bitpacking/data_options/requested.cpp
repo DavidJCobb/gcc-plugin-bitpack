@@ -1,4 +1,5 @@
 #include "bitpacking/data_options/requested.h"
+#include "bitpacking/for_each_influencing_entity.h"
 #include "attribute_handlers/helpers/type_transitively_has_attribute.h" // TODO: move this
 #include <vector>
 #include "gcc_wrappers/decl/type_def.h"
@@ -164,40 +165,23 @@ namespace bitpacking::data_options {
    }
     
    bool requested::load(gw::decl::field decl) {
-      load(decl.value_type());
-      _load_impl(decl.as_untyped(), decl.attributes());
+      for_each_influencing_entity(decl, [this](tree node) {
+         if (TYPE_P(node)) {
+            _load_impl(node, gw::type::base::from_untyped(node).attributes());
+         } else {
+            _load_impl(node, gw::decl::base::from_untyped(node).attributes());
+         }
+      });
       return this->failed;
    }
    bool requested::load(gw::type::base type) {
-      if (type.is_array()) {
-         load(type.as_array().value_type());
-      }
-      auto decl = type.declaration();
-      if (!decl.empty() && !decl.is_synonym_of().empty()) {
-         //
-         // Handle transitive typedefs. For example, given `typedef a b`, we want 
-         // to apply bitpacking options for `a` when we see `b`, before we apply 
-         // any bitpacking options for `b`.
-         //
-         std::vector<gw::type::base> transitives;
-         transitives.push_back(type);
-         do {
-            auto tran = decl.is_synonym_of();
-            if (tran.empty())
-               break;
-            transitives.push_back(tran);
-            decl = tran.declaration();
-         } while (!decl.empty());
-         for(auto it = transitives.rbegin(); it != transitives.rend(); ++it) {
-            auto tran = *it;
-            auto decl = tran.declaration();
-            _load_impl(tran.as_untyped(), tran.attributes());
-            if (!decl.empty())
-               _load_impl(tran.as_untyped(), decl.attributes());
+      for_each_influencing_entity(type, [this](tree node) {
+         if (TYPE_P(node)) {
+            _load_impl(node, gw::type::base::from_untyped(node).attributes());
+         } else {
+            _load_impl(node, gw::decl::base::from_untyped(node).attributes());
          }
-      } else {
-         _load_impl(type.as_untyped(), type.attributes());
-      }
+      });
       return this->failed;
    }
 }

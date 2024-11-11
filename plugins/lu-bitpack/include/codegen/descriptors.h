@@ -34,6 +34,8 @@ namespace codegen {
          gcc_wrappers::type::record type;
          std::vector<member_descriptor> members;
          
+         bitpacking::data_options::computed bitpacking_options;
+         
          struct_descriptor(const bitpacking::global_options::computed&, gcc_wrappers::type::record);
          size_t size_in_bits() const;
    };

@@ -16,8 +16,11 @@ SOURCES=\
         src/bitpacking/data_options/computed.cpp \
         src/bitpacking/data_options/requested.cpp \
         src/bitpacking/data_options/x_options.cpp \
+        src/bitpacking/attribute_attempted_on.cpp \
         src/bitpacking/global_options.cpp \
+        src/bitpacking/mark_for_invalid_attributes.cpp \
         src/bitpacking/transform_function_validation_helpers.cpp \
+        src/bitpacking/verify_bitpack_attributes.cpp \
         src/codegen/descriptors.cpp \
         src/codegen/generate_omitted_default_for_read.cpp \
         src/codegen/in_progress_func_pair.cpp \
@@ -158,26 +161,6 @@ testcase_anon_struct: $(PLUGIN)
 .PHONY: testcase_opaque_buffer
 testcase_opaque_buffer: TESTDIR=testcases/opaque_buffer
 testcase_opaque_buffer: $(PLUGIN)
-	- rm -f testcases/*.o
-	- rm -f $(TESTDIR)/*.o
-	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
-	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
-	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
-	$(TESTDIR)/test
-
-.PHONY: testcase_heritables
-testcase_heritables: TESTDIR=testcases/heritables
-testcase_heritables: $(PLUGIN)
-	- rm -f testcases/*.o
-	- rm -f $(TESTDIR)/*.o
-	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
-	$(CCPLUGIN) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
-	$(CCPLUGIN) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
-	$(TESTDIR)/test
-
-.PHONY: testcase_heritables_bad
-testcase_heritables_bad: TESTDIR=testcases/heritables_bad
-testcase_heritables_bad: $(PLUGIN)
 	- rm -f testcases/*.o
 	- rm -f $(TESTDIR)/*.o
 	$(CCPLUGIN) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases

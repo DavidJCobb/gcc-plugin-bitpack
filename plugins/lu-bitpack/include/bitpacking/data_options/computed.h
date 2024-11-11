@@ -27,8 +27,11 @@ namespace bitpacking::data_options {
             computed_x_options::transforms
          > data;
          
+      protected:
+         void _load_impl(const requested&, gcc_wrappers::type::base, std::optional<size_t> bitfield_width);
       public:
          bool load(gcc_wrappers::decl::field);
+         bool load(gcc_wrappers::type::base);
       
          constexpr bool is_buffer() const noexcept {
             return std::holds_alternative<computed_x_options::buffer>(this->data);

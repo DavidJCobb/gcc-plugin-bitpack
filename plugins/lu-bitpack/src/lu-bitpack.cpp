@@ -165,7 +165,7 @@ namespace _attributes {
    };
 }
 
-static void register_attributes(void* event_data, void* data) {
+static void register_attributes(void* event_data, void* user_data) {
    register_attribute(&_attributes::test_attribute);
    register_attribute(&_attributes::nonstring);
    register_attribute(&_attributes::internal_invalid);
@@ -185,7 +185,7 @@ static void register_attributes(void* event_data, void* data) {
 #include "pragma_handlers/generate_functions.h"
 #include "pragma_handlers/set_options.h"
 
-static void register_pragmas(void* event_data, void* data) {
+static void register_pragmas(void* event_data, void* user_data) {
    c_register_pragma_with_expansion(
       "lu_bitpack",
       "debug_dump_function",
@@ -214,6 +214,22 @@ static void register_pragmas(void* event_data, void* data) {
 }
 
 #include "basic_global_state.h"
+
+#include "bitpacking/verify_bitpack_attributes.h"
+
+static void on_decl_finished(void* event_data, void* user_data) {
+   auto node = (tree) event_data;
+   if (node == NULL_TREE)
+      return;
+   
+   if (!basic_global_state::get().enabled)
+      return;
+   
+   // Some bitpacking attributes can only be verified when a DECL is finished. 
+   // For example, a C bitfield may have transform options set on its type(s), 
+   // and if so, we need to error.
+   bitpacking::verify_bitpack_attributes(node);
+}
 
 int plugin_init (
    struct plugin_name_args*   plugin_info,
@@ -259,6 +275,12 @@ int plugin_init (
       plugin_info->base_name,
       PLUGIN_PRAGMAS,
       register_pragmas,
+      NULL
+   );
+   register_callback(
+      plugin_info->base_name,
+      PLUGIN_FINISH_DECL,
+      on_decl_finished,
       NULL
    );
    

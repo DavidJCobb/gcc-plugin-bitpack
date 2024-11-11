@@ -5,10 +5,12 @@
 
 ### Short-term
 
-* XML output needs a tagname for transformed members (e.g. `<transformed/>`), as well as an attribute identifying the type to which they are transformed (i.e. don't *just* list the identifiers of the transform functions).
+* Needed testcases
+  * Pre-pack/post-unpack functions whose in situ types don't match each other
+  * Pre-pack/post-unpack functions whose transformed types don't match each other
+  * Pre-pack/post-unpack functions whose in situ types don't match the type to which they're being applied
+  * Pre-pack/post-unpack functions attached to a C bitfield (directly or to its type)
 * Pre-pack/post-unpack functions
-  * The attribute should require specifying both functions at once, and should validate that they match each other and that the in situ type matches the type that the argument would affect. That way, we don't have to deal with resolving functions that come from different places (e.g. pre-pack from the type and post-unpack from the field), with the complications (e.g. type mismatches) that that brings now that we're no longer doing absolutely all error-checking at codegen-time.
-    * The precise operational definition of the type "matching" is that a pointer to the field['s innermost array values] could be passed as an argument. We'd want to check for main variant type equivalence, not typedef transitivity or anything like that.
   * Steps needed to allow the use of transforms on top-level structs
     * We need to store bitpacking options on `codegen::struct_descriptor`
     * XML needs to serialize transform options on struct descriptors

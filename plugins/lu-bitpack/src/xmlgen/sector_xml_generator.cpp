@@ -127,6 +127,24 @@ namespace xmlgen {
          case bitpacking::member_kind::structure:
             ptr->node_name = "struct";
             break;
+         case bitpacking::member_kind::transformed:
+            ptr->node_name = "transformed";
+            {
+               auto& options = computed.transform_options();
+               {
+                  auto type = options.transformed_type.pretty_print();
+                  ptr->set_attribute("transformed-c-type", type);
+               }
+               {
+                  auto name = options.pre_pack.fully_qualified_name();
+                  ptr->set_attribute("pre-pack-function", name);
+               }
+               {
+                  auto name = options.post_unpack.fully_qualified_name();
+                  ptr->set_attribute("post-unpack-function", name);
+               }
+            }
+            break;
          case bitpacking::member_kind::union_external_tag:
             ptr->node_name = "union";
             ptr->set_attribute("tag-type", "external");

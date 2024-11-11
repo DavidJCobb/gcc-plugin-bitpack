@@ -4,6 +4,8 @@
 #include <variant>
 #include "bitpacking/member_kind.h"
 #include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/array.h"
 
 namespace bitpacking::global_options {
    class computed;
@@ -52,16 +54,13 @@ namespace bitpacking::data_options {
          
          void coalesce(const integral& higher_prio);
          
-         // throws std::runtime_error on failure
-         computed_x_options::integral bake(
-            gcc_wrappers::decl::field,
-            member_kind& out_kind
-         ) const;
+         computed_x_options::integral bake(gcc_wrappers::type::base, member_kind& out_kind, std::optional<size_t> bitfield_width = {}) const;
+         computed_x_options::integral bake(gcc_wrappers::decl::field, member_kind& out_kind) const;
       };
       struct string {
          std::optional<bool> nonstring;
          
-         computed_x_options::string bake(gcc_wrappers::decl::field) const;
+         computed_x_options::string bake(gcc_wrappers::type::array) const;
       };
       using transforms = computed_x_options::transforms;
       

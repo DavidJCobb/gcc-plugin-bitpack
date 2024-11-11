@@ -12,6 +12,17 @@
 #include <stdbool.h> // bool
 #include <string.h> // memset
 
+// tests
+typedef int a;
+/*//
+typedef a   b;
+typedef b   c [3];
+typedef c   x [5];
+//*/
+typedef a b [3];
+typedef b x;
+#pragma lu_bitpack debug_dump_identifier x
+
 #pragma lu_bitpack enable
 
 #pragma lu_bitpack set_options ( \
