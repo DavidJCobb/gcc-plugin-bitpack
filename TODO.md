@@ -5,6 +5,9 @@
 
 ### Short-term
 
+* Finish replacing `struct_descriptor`, `member_descriptor`, and `member_descriptor_view` with `type_descriptor`, `data_descriptor`, and `data_descriptor_view`. The main goal of this change is to be able to support `VAR_DECL`s as top-level to-be-serialized identifiers: `data_descriptor` can wrap a `VAR_DECL` or a `FIELD_DECL`, while also capturing bitpacking options for structs so we can record them in the XML output.
+  * Maybe it'd be easier to just find-and-replace references to the old types en masse, and then fix compiler errors one by one afterward.
+  * `type_descriptor` and `data_descriptor` still need to properly compute the size in bits of the transformed type, when transform options are used.
 * Pre-pack/post-unpack functions
   * Steps needed to allow the use of transforms on top-level structs
     * We need to store bitpacking options on `codegen::struct_descriptor`
