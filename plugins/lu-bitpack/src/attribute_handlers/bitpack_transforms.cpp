@@ -82,11 +82,11 @@ namespace attribute_handlers {
             node = TREE_OPERAND(node, 0);
          }
          if (node == NULL_TREE) {
-            context.report_error("problem with the %s option: no function exists with identifier %qE", what, id);
+            context.report_error("specifies an identifier for the %s function, %qE, that does not exist", what, id);
             return;
          }
          if (TREE_CODE(node) != FUNCTION_DECL) {
-            context.report_error("problem with the %s option: identifier %qE does not refer to a function", what, id);
+            context.report_error("specifies an identifier for the %s function, %qE, that does not refer to a function declaration", what, id);
             return;
          }
          dst = gw::decl::function::from_untyped(node);
@@ -97,12 +97,12 @@ namespace attribute_handlers {
       
       if (!pre_pack.empty() && !bitpacking::can_be_pre_pack_function(pre_pack)) {
          auto name = pre_pack.name().data();
-         context.report_error("the specified pre-pack function %<%s%> has the wrong signature (should be %<void %s(const InSituType*, PackedType*)%>", name, name);
+         context.report_error("specifies a pre-pack function %<%s%> with the wrong signature (should be %<void %s(const InSituType*, PackedType*)%>)", name, name);
          both_are_individually_correct = false;
       }
       if (!post_unpack.empty() && !bitpacking::can_be_post_unpack_function(post_unpack)) {
          auto name = pre_pack.name().data();
-         context.report_error("the specified post-unpack function %<%s%> has the wrong signature (should be %<void %s(InSituType*, const PackedType*)%>", name, name);
+         context.report_error("specifies a post-unpack function %<%s%> with the wrong signature (should be %<void %s(InSituType*, const PackedType*)%>)", name, name);
          both_are_individually_correct = false;
       }
       
@@ -159,6 +159,21 @@ namespace attribute_handlers {
       
       helpers::bp_attr_context context(node_ptr, name, flags);
       context.check_and_report_contradictory_x_options(helpers::x_option_type::transforms);
+      
+      /*//
+      //
+      // Checked when the containing type finishes parsing, so we can 
+      // catch bitfields that are affected by the attribute by virtue 
+      // of their value types.
+      //
+      {
+         auto field = context.target_field();
+         if (!field.empty() && field.is_non_addressable()) {
+            context.report_error("applied to a non-addressable object (bit-fields, etc.)");
+         }
+      }
+      //*/
+      
       gw::expr::string_constant data;
       {
          auto next = TREE_VALUE(args);

@@ -17,7 +17,13 @@ namespace gcc_wrappers::type {
    
    base function::nth_argument_type(size_t n) const {
       assert(!empty());
-      return base::from_untyped(this->arguments().untyped_nth_value(n));
+      
+      function_args_iterator it;
+      function_args_iter_init(&it, this->_node);
+      for(size_t i = 0; i < n; ++i) {
+         function_args_iter_next(&it);
+      }
+      return base::from_untyped(function_args_iter_cond(&it));
    }
    
    bool function::is_varargs() const {

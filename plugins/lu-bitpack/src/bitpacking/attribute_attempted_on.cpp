@@ -1,4 +1,5 @@
 #include "bitpacking/attribute_attempted_on.h"
+#include <cassert>
 namespace {
    namespace gw {
       using namespace gcc_wrappers;

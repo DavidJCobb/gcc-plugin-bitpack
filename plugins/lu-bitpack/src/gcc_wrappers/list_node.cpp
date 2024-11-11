@@ -75,11 +75,18 @@ namespace gcc_wrappers {
    //
    
    void list_node::append(tree key, tree value) {
-      auto item = tree_cons(key, value, TREE_CHAIN(this->_node));
-      if (empty())
+      auto node = this->_node;
+      auto prev = NULL_TREE;
+      while (node != NULL_TREE) {
+         prev = node;
+         node = TREE_CHAIN(node);
+      }
+      auto item = tree_cons(key, value, NULL_TREE);
+      if (prev == NULL_TREE) {
          this->_node = item;
-      else
-         TREE_CHAIN(this->_node) = item;
+      } else {
+         TREE_CHAIN(prev) = item;
+      }
    }
    
    void list_node::concat(list_node other) {

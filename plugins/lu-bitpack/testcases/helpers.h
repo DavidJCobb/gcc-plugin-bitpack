@@ -9,7 +9,7 @@
 #define LU_BP_STRING_NT        LU_BP_STRING
 #define LU_BP_STRING_UT        __attribute__((lu_nonstring)) LU_BP_STRING
 #define LU_BP_TRANSFORM(pre_pack, post_unpack) \
-   __attribute__((lu_bitpack_transform("pre_pack="#pre_pack",post_unpack="#post_unpack)))
+   __attribute__((lu_bitpack_transforms("pre_pack="#pre_pack",post_unpack="#post_unpack)))
 
 #include <ctype.h>
 #include <stdio.h>

@@ -28,6 +28,10 @@ namespace gcc_wrappers {
             // Indicates whether this field is a bitfield. If so, 
             // `size_in_bits` is the field width.
             bool is_bitfield() const;
+            type::base bitfield_type() const; // return the type variant created for a bitfield
+            
+            bool is_non_addressable() const; // DECL_NONADDRESSABLE_P
+            bool is_padding() const;
             
             std::string pretty_print() const;
             

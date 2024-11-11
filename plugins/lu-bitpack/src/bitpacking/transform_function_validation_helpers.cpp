@@ -1,14 +1,21 @@
 #include "bitpacking/transform_function_validation_helpers.h"
 #include "lu/strings/printf_string.h"
 #include "gcc_wrappers/type/function.h"
+namespace {
+   namespace gw {
+      using namespace gcc_wrappers;
+   }
+}
+
+#include <diagnostic.h>
 
 namespace bitpacking {
-   extern bool can_be_transform_function(gcc_wrappers::decl::function decl) {
+   extern bool can_be_transform_function(gw::decl::function decl) {
       auto type = decl.function_type();
       auto args = type.arguments();
       if (args.size() != 3)
          return false;
-      if (TREE_CODE(args.untyped_back()) != VOID_TYPE)
+      if (type.is_varargs())
          return false;
       
       auto arg_a = type.nth_argument_type(0);
@@ -18,7 +25,7 @@ namespace bitpacking {
       
       return true;
    }
-   extern bool can_be_pre_pack_function(gcc_wrappers::decl::function decl) {
+   extern bool can_be_pre_pack_function(gw::decl::function decl) {
       if (!can_be_transform_function(decl))
          return false;
       auto type = decl.function_type();
@@ -26,7 +33,7 @@ namespace bitpacking {
          return false;
       return true;
    }
-   extern bool can_be_post_unpack_function(gcc_wrappers::decl::function decl) {
+   extern bool can_be_post_unpack_function(gw::decl::function decl) {
       if (!can_be_transform_function(decl))
          return false;
       auto type = decl.function_type();
@@ -36,8 +43,8 @@ namespace bitpacking {
    }
    
    extern std::string check_transform_functions_match_types(
-      gcc_wrappers::decl::function pre_pack,
-      gcc_wrappers::decl::function post_unpack
+      gw::decl::function pre_pack,
+      gw::decl::function post_unpack
    ) {
       auto type_a = pre_pack.function_type();
       auto type_b = post_unpack.function_type();
@@ -60,9 +67,9 @@ namespace bitpacking {
       return {};
    }
    
-   extern gcc_wrappers::type::base get_in_situ_type(
-      gcc_wrappers::decl::function pre_pack,
-      gcc_wrappers::decl::function post_unpack
+   extern gw::type::base get_in_situ_type(
+      gw::decl::function pre_pack,
+      gw::decl::function post_unpack
    ) {
       auto type_a = pre_pack.function_type();
       auto type_b = post_unpack.function_type();
@@ -74,9 +81,9 @@ namespace bitpacking {
       return normal_type_a;
    }
    
-   extern gcc_wrappers::type::base get_transformed_type(
-      gcc_wrappers::decl::function pre_pack,
-      gcc_wrappers::decl::function post_unpack
+   extern gw::type::base get_transformed_type(
+      gw::decl::function pre_pack,
+      gw::decl::function post_unpack
    ) {
       auto type_a = pre_pack.function_type();
       auto type_b = post_unpack.function_type();

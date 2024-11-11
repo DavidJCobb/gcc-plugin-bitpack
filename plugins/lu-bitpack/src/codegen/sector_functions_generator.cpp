@@ -360,7 +360,7 @@ namespace codegen {
          // read transformed value:
          // (need to check if it's a struct, array, or primitive)
          // (so really, i think we need to make `serialization_value`s and not just `value`s)
-         throw std::runtime_error("not implemented");
+         throw std::runtime_error("transforms codegen - not implemented");
          
          statements.append(gw::expr::call(
             options.post_unpack,
@@ -388,7 +388,7 @@ namespace codegen {
          // save transformed value:
          // (need to check if it's a struct, array, or primitive)
          // (so really, i think we need to make `serialization_value`s and not just `value`s)
-         throw std::runtime_error("not implemented");
+         throw std::runtime_error("transforms codegen - not implemented");
          
          out.save = block;
       }

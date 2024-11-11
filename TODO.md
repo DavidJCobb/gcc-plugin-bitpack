@@ -5,11 +5,6 @@
 
 ### Short-term
 
-* Needed testcases
-  * Pre-pack/post-unpack functions whose in situ types don't match each other
-  * Pre-pack/post-unpack functions whose transformed types don't match each other
-  * Pre-pack/post-unpack functions whose in situ types don't match the type to which they're being applied
-  * Pre-pack/post-unpack functions attached to a C bitfield (directly or to its type)
 * Pre-pack/post-unpack functions
   * Steps needed to allow the use of transforms on top-level structs
     * We need to store bitpacking options on `codegen::struct_descriptor`

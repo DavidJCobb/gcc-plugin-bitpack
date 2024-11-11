@@ -4,6 +4,8 @@
 #include "gcc_wrappers/scope.h"
 #include "gcc_wrappers/_boilerplate-impl.define.h"
 #include <cassert>
+#include <c-family/c-common.h> // DECL_C_BIT_FIELD
+#include <diagnostic.h> // debugging
 
 //
 // GCC has renamed some macros; prefer the new names over the old. 
@@ -23,19 +25,6 @@
       #error GCC may have renamed the macro used to get a FIELD_DECL&apos;s offset in bits. Update the code here to cope with that.
    #endif
    #define _GCC_DECL_FIELD_BIT_OFFSET DECL_FIELD_BIT_OFFSET
-#endif
-
-// _GCC_DECL_IS_BITFIELD
-#ifdef DECL_C_BIT_FIELD
-   #define _GCC_DECL_IS_BITFIELD DECL_C_BIT_FIELD
-#else
-   //
-   // Oldest known/supported name.
-   //
-   #ifndef DECL_BIT_FIELD
-      #error GCC may have renamed the macro used to get a C bitfield FIELD_DECL&apos;s bit width. Update the code here to cope with that.
-   #endif
-   #define _GCC_DECL_IS_BITFIELD DECL_BIT_FIELD
 #endif
 
 
@@ -62,18 +51,55 @@ namespace gcc_wrappers::decl {
    type::base field::value_type() const {
       if (empty())
          return {};
+      auto node = DECL_BIT_FIELD_TYPE(this->_node);
+      if (node != NULL_TREE) {
+         return type::base::from_untyped(node);
+      }
       return type::base::from_untyped(TREE_TYPE(this->_node));
    }
    
    size_t field::offset_in_bits() const {
+      assert(!empty());
       return TREE_INT_CST_LOW(_GCC_DECL_FIELD_BIT_OFFSET(this->_node));
    }
    size_t field::size_in_bits() const {
-      return TREE_INT_CST_LOW(DECL_SIZE(this->_node));
+      //
+      // NOTE: As of GCC 11, PLUGIN_FINISH_DECL fires before any bitfield information 
+      // is available for C bitfield declarations. DECL_NONADDRESSABLE_P can still be 
+      // used at that point, though.
+      //
+      // Based on a read of the source code, this seems to have been fixed in later 
+      // versions of GCC.
+      //
+      assert(!empty());
+      auto size_node = DECL_SIZE(this->_node);
+      if (size_node != NULL_TREE) {
+         assert(TREE_CODE(size_node) == INTEGER_CST);
+         return TREE_INT_CST_LOW(size_node);
+      }
+      auto type = this->value_type();
+      assert(!type.empty());
+      return type.size_in_bits();
    }
    
    bool field::is_bitfield() const {
-      return _GCC_DECL_IS_BITFIELD(this->_node);
+      assert(!empty());
+      return DECL_BIT_FIELD(this->_node);
+   }
+   type::base field::bitfield_type() const {
+      assert(!empty());
+      if (!is_bitfield())
+         return {};
+      return type::base::from_untyped(TREE_TYPE(this->_node));
+   }
+
+   bool field::is_non_addressable() const {
+      assert(!empty());
+      return DECL_NONADDRESSABLE_P(this->_node);
+   }
+   bool field::is_padding() const {
+      assert(!empty());
+      return DECL_PADDING_P(this->_node);
    }
    
    std::string field::pretty_print() const {
