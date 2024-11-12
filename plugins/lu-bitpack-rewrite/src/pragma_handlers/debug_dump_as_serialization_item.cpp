@@ -1,4 +1,5 @@
 #include "pragma_handlers/debug_dump_identifier.h"
+#include "lu/strings/printf_string.h"
 #include <iostream>
 #include <limits>
 #include <string_view>
@@ -68,6 +69,10 @@ namespace pragma_handlers {
             
             std::cerr << indent;
             std::cerr << " - ";
+            if (!item.flags.omitted) {
+               std::string bits = lu::strings::printf_string("{%05u bits} ", item.size_in_bits());
+               std::cerr << bits;
+            }
             if (item.flags.defaulted)
                std::cerr << "<D> ";
             if (item.flags.omitted)
