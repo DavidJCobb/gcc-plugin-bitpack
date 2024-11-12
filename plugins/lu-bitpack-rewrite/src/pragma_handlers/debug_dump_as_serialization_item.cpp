@@ -9,6 +9,8 @@
 
 #include "codegen/decl_descriptor.h"
 #include "codegen/serialization_item.h"
+#include "codegen/divide_items_by_sectors.h"
+#include "basic_global_state.h"
 
 namespace pragma_handlers { 
    extern void debug_dump_as_serialization_item(cpp_reader* reader) {
@@ -88,5 +90,43 @@ namespace pragma_handlers {
       };
       _dump(item);
       std::cerr << "Done.\n";
+      
+      auto& state = basic_global_state::get();
+      if (state.global_options_seen) {
+         size_t sector_size_in_bytes = state.global_options.computed.sectors.size_per;
+         
+         std::cerr << '\n';
+         std::cerr << "Dividing by sector size " << sector_size_in_bytes << " bytes (" << (sector_size_in_bytes * 8) << " bits):\n";
+         
+         std::vector<codegen::serialization_item> list;
+         list.push_back(item);
+         
+         try {
+            auto sectors = codegen::divide_items_by_sectors(sector_size_in_bytes * 8, list);
+            for(size_t i = 0; i < sectors.size(); ++i) {
+               std::cerr << "Sector " << i << ":\n";
+               
+               size_t offset = 0;
+               for(auto& item : sectors[i]) {
+                  std::cerr << " - ";
+                  if (!item.flags.omitted) {
+                     size_t size = item.size_in_bits();
+                     std::string info = lu::strings::printf_string("{%05u+%05u} ", offset, size);
+                     std::cerr << info;
+                     offset += size;
+                  }
+                  if (item.flags.defaulted)
+                     std::cerr << "<D> ";
+                  if (item.flags.omitted)
+                     std::cerr << "<O> ";
+                  std::cerr << item.to_string();
+                  std::cerr << '\n';
+               }
+            }
+         } catch (std::runtime_error& ex) {
+            std::cerr << "Divide failed:\n   " << ex.what() << '\n';
+         }
+         std::cerr << "Done.\n";
+      }
    }
 }

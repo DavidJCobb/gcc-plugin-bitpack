@@ -25,6 +25,7 @@ SOURCES=\
         src/bitpacking/transform_function_validation_helpers.cpp \
         src/bitpacking/verify_bitpack_attributes.cpp \
         src/codegen/decl_descriptor.cpp \
+        src/codegen/divide_items_by_sectors.cpp \
         src/codegen/serialization_item.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
         src/gcc_helpers/dump_function.cpp \

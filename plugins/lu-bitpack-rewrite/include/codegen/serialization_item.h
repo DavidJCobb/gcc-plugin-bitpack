@@ -21,9 +21,12 @@ namespace codegen {
          // or may not be an array.
          //
          // For example, given `int foo[7][4]`, the segment `foo[2:6]` is an array, but the 
-         // segment `foo[1][2:4]` is not.
+         // segment `foo[1][2:4]` is not. That said, the `size_in_bits` of `foo[1][2:4]` is 
+         // equal to the `size_in_bits` of `foo[1][0]` times two.
          //
          struct array_access_info {
+            bool operator==(const array_access_info&) const noexcept = default;
+            
             size_t start = 0;
             size_t count = 1;
          };
@@ -40,10 +43,15 @@ namespace codegen {
                
                bool is_array() const;
                size_t array_extent() const;
+               
+            public:
+               bool operator==(const segment&) const noexcept = default;
          };
          
       public:
-         struct {
+         struct _ {
+            bool operator==(const _&) const noexcept = default;
+            
             bool defaulted : 1 = false;
             bool omitted   : 1 = false;
          } flags;
