@@ -21,6 +21,7 @@ namespace gcc_wrappers {
             }
             
          public:
+            variable() {}
             variable(
                const char*       identifier_name,
                const type::base& value_type,

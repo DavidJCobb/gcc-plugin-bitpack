@@ -3,7 +3,9 @@
 #include <vector>
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/field.h"
+#include "gcc_wrappers/decl/param.h"
 #include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/type/array.h"
 
@@ -58,8 +60,13 @@ namespace bitpacking {
       return true;
    }
    
-   template<typename Functor> requires std::is_invocable_v<Functor, tree>
-   void for_each_influencing_entity(gcc_wrappers::decl::field decl, Functor&& functor) {
+   template<typename Functor, typename NodeWrapper> requires (
+      std::is_invocable_v<Functor, tree> &&
+      std::is_same_v<NodeWrapper, gcc_wrappers::decl::field> ||
+      std::is_same_v<NodeWrapper, gcc_wrappers::decl::param> ||
+      std::is_same_v<NodeWrapper, gcc_wrappers::decl::variable>
+   )
+   void for_each_influencing_entity(NodeWrapper decl, Functor&& functor) {
       if constexpr (std::is_invocable_r_v<Functor, bool, tree>) {
          if (!functor(decl.as_untyped()))
             return;

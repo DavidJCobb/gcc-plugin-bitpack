@@ -73,8 +73,7 @@ namespace bitpacking {
          // "decl finished" plug-in callback fires before attributes are attached; 
          // we have to react to the containing type being finished.
          //
-         type.for_each_referenceable_field([](tree raw) {
-            auto decl = gw::decl::field::from_untyped(raw);
+         type.for_each_referenceable_field([](gw::decl::field decl) {
             if (decl.is_non_addressable()) {
                _disallow_transforming_non_addressable(decl);
             }

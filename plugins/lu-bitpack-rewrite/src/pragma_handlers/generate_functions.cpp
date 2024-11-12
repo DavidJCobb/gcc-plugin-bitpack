@@ -7,13 +7,13 @@
 #include <diagnostic.h>
 
 #include "basic_global_state.h"
-#include "codegen/sector_functions_generator.h"
+//#include "codegen/sector_functions_generator.h"
 
 #include "gcc_helpers/c/at_file_scope.h"
 #include "gcc_wrappers/builtin_types.h"
 
 // for generating XML output:
-#include "xmlgen/sector_xml_generator.h"
+//#include "xmlgen/sector_xml_generator.h"
 #include <fstream>
 
 namespace pragma_handlers {
@@ -177,6 +177,9 @@ namespace pragma_handlers {
          // now done immediately after the global options are read:
          //gs.global_options.computed.resolve(gs.global_options.requested);
          
+         sorry("code generation is not yet implemented");
+         
+         /*//
          codegen::sector_functions_generator generator(gs.global_options.computed);
          generator.identifiers_to_serialize = identifier_groups;
          generator.top_level_function_names = {
@@ -196,6 +199,7 @@ namespace pragma_handlers {
                stream << xml_gen.bake();
             }
          }
+         //*/
       } catch (std::runtime_error& ex) {
          std::string message = "%<#pragma lu_bitpack generate_functions%>: ";
          message += ex.what();

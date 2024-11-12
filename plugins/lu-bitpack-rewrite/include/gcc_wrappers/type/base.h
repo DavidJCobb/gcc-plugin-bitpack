@@ -9,6 +9,7 @@ namespace gcc_wrappers {
    }
    namespace type {
       class array;
+      class container;
       class enumeration;
       class fixed_point;
       class floating_point;
@@ -88,6 +89,9 @@ namespace gcc_wrappers::type {
          
          array as_array();
          const array as_array() const;
+         
+         container as_container();
+         const container as_container() const;
          
          enumeration as_enum();
          const enumeration as_enum() const;

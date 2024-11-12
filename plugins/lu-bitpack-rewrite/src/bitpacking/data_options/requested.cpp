@@ -164,16 +164,6 @@ namespace bitpacking::data_options {
       }
    }
     
-   bool requested::load(gw::decl::field decl) {
-      for_each_influencing_entity(decl, [this](tree node) {
-         if (TYPE_P(node)) {
-            _load_impl(node, gw::type::base::from_untyped(node).attributes());
-         } else {
-            _load_impl(node, gw::decl::base::from_untyped(node).attributes());
-         }
-      });
-      return this->failed;
-   }
    bool requested::load(gw::type::base type) {
       for_each_influencing_entity(type, [this](tree node) {
          if (TYPE_P(node)) {

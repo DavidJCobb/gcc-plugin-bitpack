@@ -286,6 +286,15 @@ namespace gcc_wrappers::type {
       return array::from_untyped(this->_node);
    }
    
+   container base::as_container() {
+      assert(is_record() || is_union());
+      return container::from_untyped(this->_node);
+   }
+   const container base::as_container() const {
+      assert(is_record() || is_union());
+      return container::from_untyped(this->_node);
+   }
+   
    enumeration base::as_enum() {
       assert(is_enum());
       return enumeration::from_untyped(this->_node);

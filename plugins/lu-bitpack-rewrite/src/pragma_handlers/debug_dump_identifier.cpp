@@ -10,6 +10,8 @@
 #include <print-tree.h> // debug_tree
 
 #include "bitpacking/for_each_influencing_entity.h"
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/attribute.h"
 
 namespace pragma_handlers { 
    extern void debug_dump_identifier(cpp_reader* reader) {
@@ -35,6 +37,10 @@ namespace pragma_handlers {
          auto node = identifier_global_tag(id_node);
          if (node && TYPE_P(node)) {
             debug_tree(node);
+            std::cerr << "\nDumping attributes...\n\n";
+            for(auto attr : gcc_wrappers::type::base::from_untyped(node).attributes()) {
+               std::cerr << " - " << attr.name() << '\n';
+            }
             return;
          }
          

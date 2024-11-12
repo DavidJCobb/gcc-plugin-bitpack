@@ -15,6 +15,9 @@ namespace bitpacking::data_options {
       if (src.failed)
          return;
       
+      if (src.default_value_node != NULL_TREE)
+         this->default_value_node = src.default_value_node;
+      
       gw::type::base value_type = type;
       while (value_type.is_array())
          value_type = value_type.as_array().value_type();
@@ -70,6 +73,26 @@ namespace bitpacking::data_options {
       }
       this->_load_impl(src, decl.value_type(), bitfield_width);
       
+      return !src.failed;
+   }
+   bool computed::load(gw::decl::param decl) {
+      // We should only end up querying options for a parameter when we're 
+      // dealing with the struct pointer argument for a whole-struct function; 
+      // those functions are generated, so the parameters should never have 
+      // any arguments. Just act on the type.
+      auto type = decl.value_type();
+      
+      requested src;
+      src.load(type);
+      
+      this->_load_impl(src, type, {});
+      
+      return !src.failed;
+   }
+   bool computed::load(gw::decl::variable decl) {
+      requested src;
+      src.load(decl);
+      this->_load_impl(src, decl.value_type(), {});
       return !src.failed;
    }
    bool computed::load(gw::type::base type) {

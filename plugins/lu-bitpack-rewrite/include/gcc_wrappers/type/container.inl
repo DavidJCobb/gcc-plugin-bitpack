@@ -1,6 +1,7 @@
 #pragma once
 #include <type_traits>
 #include "gcc_wrappers/type/container.h"
+#include "gcc_wrappers/decl/variable.h"
 
 namespace gcc_wrappers::type {
    template<typename Functor>
@@ -8,11 +9,12 @@ namespace gcc_wrappers::type {
       for(auto item : this->all_members()) {
          if (TREE_CODE(item) != FIELD_DECL)
             continue;
+         auto decl = decl::field::from_untyped(item);
          if constexpr (std::is_invocable_r_v<bool, Functor, tree>) {
-            if (!functor(item))
+            if (!functor(decl))
                break;
          } else {
-            functor(item);
+            functor(decl);
          }
       }
    }
@@ -40,11 +42,12 @@ namespace gcc_wrappers::type {
             continue;
          }
          
+         auto decl = decl::field::from_untyped(item);
          if constexpr (std::is_invocable_r_v<bool, Functor, tree>) {
-            if (!functor(item))
+            if (!functor(decl))
                break;
          } else {
-            functor(item);
+            functor(decl);
          }
       }
    }
@@ -54,11 +57,12 @@ namespace gcc_wrappers::type {
       for(auto item : this->all_members()) {
          if (TREE_CODE(item) != VAR_DECL)
             continue;
+         auto decl = decl::variable::from_untyped(item);
          if constexpr (std::is_invocable_r_v<bool, Functor, tree>) {
-            if (!functor(item))
+            if (!functor(decl))
                break;
          } else {
-            functor(item);
+            functor(decl);
          }
       }
    }

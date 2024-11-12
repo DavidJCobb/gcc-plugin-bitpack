@@ -3,6 +3,8 @@
 #include <variant>
 #include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/decl/param.h"
+#include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/base.h"
 #include "bitpacking/data_options/x_options.h"
 #include "bitpacking/member_kind.h"
@@ -31,6 +33,8 @@ namespace bitpacking::data_options {
          void _load_impl(const requested&, gcc_wrappers::type::base, std::optional<size_t> bitfield_width);
       public:
          bool load(gcc_wrappers::decl::field);
+         bool load(gcc_wrappers::decl::param);
+         bool load(gcc_wrappers::decl::variable);
          bool load(gcc_wrappers::type::base);
       
          constexpr bool is_buffer() const noexcept {

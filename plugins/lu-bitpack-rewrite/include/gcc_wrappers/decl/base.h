@@ -49,6 +49,10 @@ namespace gcc_wrappers {
             void set_is_used(bool);
             
             scope context() const;
+            
+            bool operator==(const base other) const noexcept {
+               return this->as_untyped() == other.as_untyped();
+            }
       };
    }
 }

@@ -17,7 +17,9 @@ The old XML-based model entailed generating a list of "serialization items" repr
 2. Generate "serialization items" wrapping each.
 3. Loop over all serialization items, checking against the sector size and bits remaining. If a serialization item doesn't fit, then expand it and try again &mdash; recursively expanding items until they fit.
 4. Once we've got one flat list of serialization items per sector, generate the code from those.
-  * We'll want to detect when a group of consecutive serialization items have a common root, e.g. members of a transformed struct or the elements in a contiguous slice[^no-slices] of a containing array, and intelligently handle that case: we should transform once and serialize the transformed members, rather than repeatedly transforming once per member; we should use a for loop for array slices.
+  * We'll want to detect[^stems] when a group of consecutive serialization items have a common root, e.g. members of a transformed struct or the elements in a contiguous slice[^no-slices] of a containing array, and intelligently handle that case: we should transform once and serialize the transformed members, rather than repeatedly transforming once per member; we should use a for loop for array slices.
+
+[^stems]: Serialization items are analogous to paths, so detecting whether two serialization items have a common stem is conceptually similar to detecting whether two paths have a common stem.
 
 [^no-slices]: Encoding slice information into the serialization items is not viable.[^but-unions-need-slicing] If an array is right at the end of a sector, such that its first element won't fit, we would expand the array, recursively expand that first element as needed, and then we'd be left with all the other array elements expanded (i.e. `foo[1]`, `foo[2]`, `foo[3]`) in the next sector. No -- easiest to just only allow expanding serialization items, not trying to slice them, and then unify slices as a post-processing step.
 
@@ -27,9 +29,9 @@ Serialization items are best conceptualized as being similar to `serialization_v
 
 * `top_level_var_or_param`
 * `top_level_var_or_param.member[2]`
-* `((transformed_type) transformed_container).member`
-* `((transformed_type_inner) ((transformed_type_outer) transformed_container).transformed_member)`
-* `((transitively_transformed_type) (transformed_type) transformed_container)`
+* `((as transformed_type) transformed_container).member`
+* `((as transformed_type_inner) ((as transformed_type_outer) transformed_container).transformed_member)`
+* `((as transitively_transformed_type) (as transformed_type) transformed_container)`
 
 Of course, serialization items do need to have *some* way of knowing what object they describe (and what its type and bitpacking options are), so that we know how to expand them. We can achieve this by having them refer to descriptor objects stored elsewhere. But... how should we rewrite and simplify those? See the "Descriptors" section for info.
 
@@ -82,6 +84,8 @@ Assuming we have a single serialization item for `sBar` as a whole, that item wo
 * [`sBar.a.tag` is 1] `sBar.b.humidity`
 
 The union members preemptively expand because we can't serialize them as a whole (since we've already read part of them: the embedded tag).
+
+(We actually need to be able to store multiple AND-linked conditions, to account for nested unions. Generating the code for if/else trees would basically be similar to checking whether two paths have the same stem -- reusing an if/else branch for all consecutive items whose conditions have a common stem.)
 
 ### Descriptors
 
