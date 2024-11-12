@@ -22,12 +22,14 @@ A pointer to up to three tree nodes:
 * `node_ptr[1]` is the last pushed/merged declaration, if one exists.
 * `node_ptr[2]` may be the declaration of `node_ptr[0]`, if `node_ptr[0]` is not itself a declaration.
 
-Note that not all of the node's data will be ready yet, and some data will be actively wrong in implementation-defined ways. For example, as of this writing, a `FIELD_DECL` only has its `DECL_CONTEXT` set after attributes are applied.
+Note that not all of the node's data will be ready yet, and some data will be actively wrong in implementation-defined ways:
 
 * `FIELD_DECL`
   * `DECL_CONTEXT` isn't set until after attributes are applied.
 * `TYPE_DECL`
   * `TREE_TYPE` and `DECL_ORIGINAL_TYPE` are actively wrong until after attributes are set. When a `typedef` is initially parsed, its `TREE_TYPE` is actually the *original* type. Only after attributes are applied does GCC eventually clone the original type, name the new clone after the `TYPE_DECL`, and set the final properties on the `TYPE_DECL`.
+* `UNION_TYPE` (`union [attr] [name] {}` or `union [name] {} [attr]`)
+  * As of GCC 11.4.0, the type is always incomplete at the time that attribute handlers run, even when using postfix attributes.
 
 Some attributes are meant to make changes to the nodes they apply to, beyond simply being added to those nodes' attribute lists. If you need to alter a `*_DECL` node, then you should make your changes to the node directly. However, if you need to alter a `*_TYPE` node, then you should instead create a copy of the type, modify the copy, and overwrite `*node_ptr` with the copy.
 

@@ -5,7 +5,11 @@
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/type/array.h"
+#include "gcc_wrappers/type/untagged_union.h"
 #include "gcc_wrappers/builtin_types.h"
+#include "bitpacking/verify_union_external_tag.h"
+#include "bitpacking/verify_union_internal_tag.h"
+#include "bitpacking/verify_union_members.h"
 #include <diagnostic.h> // warning(), etc.
 namespace {
    namespace gw {
@@ -80,6 +84,10 @@ namespace bitpacking::data_options {
             this->default_value_node = attr.arguments().front().as_untyped();
             continue;
          }
+         if (key == "lu_bitpack_union_member_id") {
+            this->union_member_id = attr.arguments().front().as<gw::expr::integer_constant>().value<intmax_t>();
+            continue;
+         }
          
          // X-Options: buffer
          if (key == "lu_bitpack_as_opaque_buffer") {
@@ -137,6 +145,30 @@ namespace bitpacking::data_options {
             continue;
          }
          
+         // X-Options: tagged union
+         if (key == "lu_bitpack_union_external_tag") {
+warning(1, "external tag requested");
+            auto& dst_var  = this->x_options;
+            if (!std::holds_alternative<requested_x_options::tagged_union>(dst_var))
+               dst_var.emplace<requested_x_options::tagged_union>();
+            auto& dst_data = std::get<requested_x_options::tagged_union>(dst_var);
+            
+            dst_data.tag_identifier = IDENTIFIER_POINTER(attr.arguments().front().as_untyped());
+            dst_data.is_external    = true;
+            continue;
+         }
+         if (key == "lu_bitpack_union_internal_tag") {
+warning(1, "internal tag requested");
+            auto& dst_var  = this->x_options;
+            if (!std::holds_alternative<requested_x_options::tagged_union>(dst_var))
+               dst_var.emplace<requested_x_options::tagged_union>();
+            auto& dst_data = std::get<requested_x_options::tagged_union>(dst_var);
+            
+            dst_data.tag_identifier = IDENTIFIER_POINTER(attr.arguments().front().as_untyped());
+            dst_data.is_internal    = true;
+            continue;
+         }
+         
          // X-Options: transforms
          if (key == "lu_bitpack_transforms") {
             auto& dst_var  = this->x_options;
@@ -163,15 +195,38 @@ namespace bitpacking::data_options {
          }
       }
    }
-    
-   bool requested::load(gw::type::base type) {
-      for_each_influencing_entity(type, [this](tree node) {
-         if (TYPE_P(node)) {
-            _load_impl(node, gw::type::base::from_untyped(node).attributes());
-         } else {
-            _load_impl(node, gw::decl::base::from_untyped(node).attributes());
+   void requested::_validate_union(gcc_wrappers::type::base type) {
+      auto* casted = std::get_if<requested_x_options::tagged_union>(&this->x_options);
+      if (!casted)
+         return;
+      
+      if (casted->is_external && casted->is_internal) {
+         this->failed = true;
+         return;
+      }
+      
+      while (type.is_array()) {
+         type = type.as_array().value_type();
+      }
+      if (!type.is_union()) {
+         this->failed = true;
+         return;
+      }
+      auto union_type = type.as_union();
+      //
+      // Union types have already been validated, but we have no way of marking 
+      // types with an error sentinel, so we have to do extra error checking 
+      // here.
+      //
+      if (!verify_union_members(union_type, true)) {
+         this->failed = true;
+         return;
+      }
+      if (casted->is_internal) {
+         if (!verify_union_internal_tag(union_type, casted->tag_identifier, false)) {
+            this->failed = true;
+            return;
          }
-      });
-      return this->failed;
+      }
    }
 }

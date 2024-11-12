@@ -1,6 +1,7 @@
 #include "bitpacking/data_options/computed.h"
 #include "bitpacking/data_options/requested.h"
 #include "gcc_wrappers/type/array.h"
+#include "debugprint.h"
 namespace {
    namespace gw {
       using namespace gcc_wrappers;
@@ -17,6 +18,9 @@ namespace bitpacking::data_options {
       
       if (src.default_value_node != NULL_TREE)
          this->default_value_node = src.default_value_node;
+      
+      if (src.union_member_id.has_value())
+         this->union_member_id = *src.union_member_id;
       
       gw::type::base value_type = type;
       while (value_type.is_array())
@@ -35,6 +39,14 @@ namespace bitpacking::data_options {
       } else if (auto* casted = std::get_if<requested_x_options::transforms>(&src.x_options)) {
          this->kind = member_kind::transformed;
          this->data = *casted;
+      }  else if (auto* casted = std::get_if<requested_x_options::tagged_union>(&src.x_options)) {
+         this->kind = member_kind::union_external_tag;
+         if (casted->is_internal)
+            this->kind = member_kind::union_internal_tag;
+         this->data = computed_x_options::tagged_union{
+            .tag_identifier = casted->tag_identifier,
+            .is_internal    = casted->is_internal,
+         };
       } else {
          if (value_type.is_pointer() || value_type.is_boolean() || value_type.is_integer() || value_type.is_enum()) {
             this->data = requested_x_options::integral{}.bake(value_type, this->kind, bitfield_width);

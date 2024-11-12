@@ -125,7 +125,37 @@ When these attributes are applied to [fields that are of] an array type, the att
 
 Unions can only be serialized if they are internally or externally tagged: you must indicate what object serves as the union's tag, and what values correspond to which union members.
 
-An externally tagged union must exist inside of a struct. The tag may be any previously seen member of that struct (or any member thereof).
+An externally tagged union must exist inside of a struct.[^external-direct-container] The tag may be any previously seen member of that struct (or any member thereof).
+
+[^external-direct-container]:
+
+    The externally tagged union must be the direct child of a struct, and the tag identifier it specifies must be a previous-sibling member. Cases such as the following are not permitted, because they would make it possible to more easily spawn and serialize instances of the union orphaned from its tag (if not in C, then in C++).
+    
+    ```c++
+    struct Container {
+       int tag;
+       struct {
+          union {
+             // ...
+          } data;
+       } member;
+    };
+    
+    decltype(Container::member) orphaned;
+    ```
+    
+    The following example is allowed to be made an externally-tagged union (and it's valid because the attribute would apply exclusively to the `data` field, not to its union type):
+    
+    ```c
+    struct Container {
+       int tag;
+       union {
+          // ...
+       } data;
+    };
+    ```
+
+The available attributes are:
 
 <dl>
    <dt><code>__attribute__((lu_bitpack_union_external_tag("<var>name</var>")))</code></dt>
@@ -134,8 +164,11 @@ An externally tagged union must exist inside of a struct. The tag may be any pre
          <p>This attribute is only valid when applied to a struct data member whose type is a union type.</p>
       </dd>
    <dt><code>__attribute__((lu_bitpack_union_internal_tag("<var>name</var>")))</code></dt>
-      <dd><p>This attribute indicates that a union is internally tagged, and may be applied to a union type or value. The argument indicates the name of a field that acts as the union's tag: the field must exist inside of all of the union's members (which must all be of struct types), at the same offset within each, with the same type within each; and that type must be an integral type.</p></dd>
-   <dt><code>__attribute__((lu_bitpack_tagged_id(<var>n</var>)))</code></dt>
+      <dd>
+         <p>This attribute indicates that a union is internally tagged, and may be applied to a union type or value. The argument indicates the name of a field that acts as the union's tag: the field must exist inside of all of the union's members (which must all be of struct types), at the same offset within each, with the same type within each; and that type must be an integral type.</p>
+         <p>This attribute is only valid when applied to a union tag, a union typedef, or a struct data member whose type is a union type.</p>
+      </dd>
+   <dt><code>__attribute__((lu_bitpack_union_member_id(<var>n</var>)))</code></dt>
       <dd>
          <p>This attribute must be applied to each of a union's members, and they must all be given a unique integer constant <var>n</var>. If the union's tag value is equal to <var>n</var>, then its active member is the member whose tagged ID is <var>n</var>. If, at run-time (i.e. while your compiled program is reading or writing the union to a bitstream), the union's tag value isn't equal to the tagged IDs of any of its members, then the behavior is undefined.</p>
          <p>This attribute is only valid when applied directly to a member of a union.</p>

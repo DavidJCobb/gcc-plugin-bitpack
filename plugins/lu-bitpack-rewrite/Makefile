@@ -11,7 +11,10 @@ SOURCES=\
         src/attribute_handlers/bitpack_default_value.cpp \
         src/attribute_handlers/bitpack_range.cpp \
         src/attribute_handlers/bitpack_string.cpp \
+        src/attribute_handlers/bitpack_tagged_id.cpp \
         src/attribute_handlers/bitpack_transforms.cpp \
+        src/attribute_handlers/bitpack_union_external_tag.cpp \
+        src/attribute_handlers/bitpack_union_internal_tag.cpp \
         src/attribute_handlers/generic_bitpacking_data_option.cpp \
         src/attribute_handlers/generic_type_or_decl.cpp \
         src/attribute_handlers/test.cpp \
@@ -20,10 +23,14 @@ SOURCES=\
         src/bitpacking/data_options/requested.cpp \
         src/bitpacking/data_options/x_options.cpp \
         src/bitpacking/attribute_attempted_on.cpp \
+        src/bitpacking/get_union_bitpacking_info.cpp \
         src/bitpacking/global_options.cpp \
         src/bitpacking/mark_for_invalid_attributes.cpp \
         src/bitpacking/transform_function_validation_helpers.cpp \
         src/bitpacking/verify_bitpack_attributes.cpp \
+        src/bitpacking/verify_union_external_tag.cpp \
+        src/bitpacking/verify_union_internal_tag.cpp \
+        src/bitpacking/verify_union_members.cpp \
         src/codegen/decl_descriptor.cpp \
         src/codegen/divide_items_by_sectors.cpp \
         src/codegen/serialization_item.cpp \

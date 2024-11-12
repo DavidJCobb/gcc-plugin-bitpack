@@ -37,6 +37,9 @@ namespace gcc_wrappers::type {
          
          std::string name() const;
          std::string pretty_print() const;
+            
+         // The source location of the TYPE_DECL which declared this type, if any.
+         location_t source_location() const;
          
          // NOTE: This only includes attributes that GCC has decided to apply directly 
          // to the type (generally done when it's a struct or union). It notably does 

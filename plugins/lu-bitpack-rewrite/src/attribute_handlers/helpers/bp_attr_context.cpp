@@ -317,4 +317,9 @@ namespace attribute_handlers::helpers {
          this->attribute_target[1]
       );
    }
+   
+   void bp_attr_context::fail_silently() {
+      this->_mark_with_error_attribute();
+      this->_mark_with_named_error_attribute();
+   }
 }

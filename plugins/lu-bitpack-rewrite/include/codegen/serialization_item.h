@@ -71,9 +71,14 @@ namespace codegen {
             
             bool defaulted : 1 = false;
             bool omitted   : 1 = false;
+            bool padding   : 1 = false;
          } flags;
          std::vector<condition> conditions;
          std::vector<segment>   segments;
+         
+         // Only used, and the only thing that *is* used, if `padding` flag is set.
+         // Measured in bits.
+         size_t padding_size = 0;
          
       public:
          const decl_descriptor& descriptor() const noexcept;
@@ -83,8 +88,14 @@ namespace codegen {
          
          bool can_expand() const;
          
+         bool is_union() const;
+         
          std::vector<serialization_item> expanded() const;
          
          std::string to_string() const;
+         
+         // True if this item's condition list equals the other item's condition list with 
+         // more conditions added.
+         bool conditions_are_a_narrowing_of(const serialization_item&);
    };
 }

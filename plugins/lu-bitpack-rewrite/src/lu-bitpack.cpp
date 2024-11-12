@@ -25,6 +25,8 @@ static plugin_info _my_plugin_info = {
 #include "attribute_handlers/bitpack_string.h"
 #include "attribute_handlers/bitpack_tagged_id.h"
 #include "attribute_handlers/bitpack_transforms.h"
+#include "attribute_handlers/bitpack_union_external_tag.h"
+#include "attribute_handlers/bitpack_union_internal_tag.h"
 #include "attribute_handlers/generic_bitpacking_data_option.h"
 #include "attribute_handlers/generic_type_or_decl.h"
 #include "attribute_handlers/no_op.h"
@@ -120,6 +122,17 @@ namespace _attributes {
       .handler = &attribute_handlers::bitpack_default_value,
       .exclude = NULL
    };
+   static struct attribute_spec bitpack_omit = {
+      .name = "lu_bitpack_omit",
+      .min_length = 0, // min argcount
+      .max_length = 0, // max argcount
+      .decl_required = false,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::generic_bitpacking_data_option,
+      .exclude = NULL
+   };
    static struct attribute_spec bitpack_range = {
       .name = "lu_bitpack_range",
       .min_length = 2, // min argcount
@@ -142,17 +155,6 @@ namespace _attributes {
       .handler = &attribute_handlers::bitpack_string,
       .exclude = NULL
    };
-   static struct attribute_spec bitpack_tagged_id = {
-      .name = "lu_bitpack_tagged_id",
-      .min_length = 1, // min argcount
-      .max_length = 1, // max argcount
-      .decl_required = true,
-      .type_required = false,
-      .function_type_required = false,
-      .affects_type_identity  = true,
-      .handler = &attribute_handlers::bitpack_tagged_id,
-      .exclude = NULL
-   };
    static struct attribute_spec bitpack_transforms = {
       .name = "lu_bitpack_transforms",
       .min_length = 1, // min argcount
@@ -164,15 +166,37 @@ namespace _attributes {
       .handler = &attribute_handlers::bitpack_transforms,
       .exclude = NULL
    };
-   static struct attribute_spec bitpack_omit = {
-      .name = "lu_bitpack_omit",
-      .min_length = 0, // min argcount
-      .max_length = 0, // max argcount
+   static struct attribute_spec bitpack_union_external_tag = {
+      .name = "lu_bitpack_union_external_tag",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = true,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::bitpack_union_external_tag,
+      .exclude = NULL
+   };
+   static struct attribute_spec bitpack_union_internal_tag = {
+      .name = "lu_bitpack_union_internal_tag",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,
       .affects_type_identity  = true,
-      .handler = &attribute_handlers::generic_bitpacking_data_option,
+      .handler = &attribute_handlers::bitpack_union_internal_tag,
+      .exclude = NULL
+   };
+   static struct attribute_spec bitpack_union_member_id = {
+      .name = "lu_bitpack_union_member_id",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = true,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::bitpack_tagged_id,
       .exclude = NULL
    };
 }
@@ -185,11 +209,13 @@ static void register_attributes(void* event_data, void* user_data) {
    register_attribute(&_attributes::bitpack_as_opaque_buffer);
    register_attribute(&_attributes::bitpack_bitcount);
    register_attribute(&_attributes::bitpack_default_value);
+   register_attribute(&_attributes::bitpack_omit);
    register_attribute(&_attributes::bitpack_range);
    register_attribute(&_attributes::bitpack_string);
-   register_attribute(&_attributes::bitpack_tagged_id);
    register_attribute(&_attributes::bitpack_transforms);
-   register_attribute(&_attributes::bitpack_omit);
+   register_attribute(&_attributes::bitpack_union_external_tag);
+   register_attribute(&_attributes::bitpack_union_internal_tag);
+   register_attribute(&_attributes::bitpack_union_member_id);
 }
 
 #include "pragma_handlers/debug_dump_as_serialization_item.h"

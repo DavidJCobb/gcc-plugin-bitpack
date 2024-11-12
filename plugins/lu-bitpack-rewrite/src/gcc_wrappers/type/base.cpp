@@ -151,19 +151,32 @@ namespace gcc_wrappers::type {
          out = "const ";
       
       auto id = TYPE_NAME(this->_node);
-      switch (TREE_CODE(id)) {
-         case IDENTIFIER_NODE:
-            out += IDENTIFIER_POINTER(id);
-            break;
-         case TYPE_DECL:
-            out += IDENTIFIER_POINTER(DECL_NAME(id));
-            break;
-         default:
-            out += "<unnamed>";
-            break;
+      if (id == NULL_TREE) {
+         out += "<unnamed>";
+      } else {
+         switch (TREE_CODE(id)) {
+            case IDENTIFIER_NODE:
+               out += IDENTIFIER_POINTER(id);
+               break;
+            case TYPE_DECL:
+               out += IDENTIFIER_POINTER(DECL_NAME(id));
+               break;
+            default:
+               out += "<unnamed>";
+               break;
+         }
       }
       
       return out;
+   }
+   
+   location_t base::source_location() const {
+      if (empty())
+         return UNKNOWN_LOCATION;
+      auto decl = this->declaration();
+      if (decl.empty())
+         return UNKNOWN_LOCATION;
+      return decl.source_location();
    }
    
    attribute_list base::attributes() {

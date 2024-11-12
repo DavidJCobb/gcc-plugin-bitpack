@@ -33,6 +33,10 @@ namespace bitpacking::data_options {
          size_t length    = 0;
          bool   nonstring = false;
       };
+      struct tagged_union {
+         std::string tag_identifier;
+         bool        is_internal = false;
+      };
       struct transforms {
          gcc_wrappers::type::base     transformed_type;
          gcc_wrappers::decl::function pre_pack;
@@ -62,14 +66,11 @@ namespace bitpacking::data_options {
          
          computed_x_options::string bake(gcc_wrappers::type::array) const;
       };
+      struct tagged_union {
+         std::string tag_identifier;
+         bool        is_external = false;
+         bool        is_internal = false;
+      };
       using transforms = computed_x_options::transforms;
-      
-      using variant = std::variant<
-         std::monostate,
-         buffer,
-         integral,
-         string,
-         transforms
-      >;
    }
 }

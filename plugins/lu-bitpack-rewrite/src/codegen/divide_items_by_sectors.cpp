@@ -36,12 +36,45 @@ namespace codegen {
          }
          
          size_t bitcount = item.size_in_bits();
-         if (bitcount <= remaining) {
-            _insert_into_sector(item);
-            remaining -= bitcount;
-            continue;
+         if (item.is_union()) {
+            //
+            // We want to always expand unions, because we need to handle their 
+            // members via conditional branches and that's easiest to set up at 
+            // this stage in the process.
+            //
+            assert(item.can_expand());
+         } else {
+            if (bitcount <= remaining) {
+               //
+               // If the entire item can fit, then insert it unmodified.
+               //
+               _insert_into_sector(item);
+               remaining -= bitcount;
+               continue;
+            }
+            //
+            // Else, the item can't fit. Slice or expand it as appropriate.
+            //
+            if (item.flags.padding) {
+               //
+               // When multiple permutations of a union have different sizes, 
+               // we zero-pad the smaller ones to match the larger ones. This 
+               // padding can't be expanded, but it's easy to slice.
+               //
+               serialization_item a = item;
+               serialization_item b = item;
+               a.padding_size = remaining;
+               b.padding_size -= remaining;
+               _insert_into_sector(a);
+               _insert_into_sector(b);
+               continue;
+            }
          }
-         
+         //
+         // The item can't fit (or it's a union and we want to always expand it). 
+         // Expand it if possible; if not, push it to the next sector (after we 
+         // verify that it'll even fit there).
+         //
          if (item.can_expand()) {
             auto expanded = item.expanded();
             

@@ -18,11 +18,14 @@ namespace bitpacking::data_options {
          
          tree default_value_node = NULL_TREE;
          
+         std::optional<intmax_t> union_member_id;
+         
          std::variant<
             std::monostate,
             requested_x_options::buffer,
             requested_x_options::integral,
             requested_x_options::string,
+            requested_x_options::tagged_union,
             requested_x_options::transforms
          > x_options;
          
@@ -30,10 +33,9 @@ namespace bitpacking::data_options {
          
       protected:
          void _load_impl(tree, gcc_wrappers::attribute_list);
+         void _validate_union(gcc_wrappers::type::base);
    
       public:
-         bool load(gcc_wrappers::type::base);
-         
          template<typename Entity> requires (
             std::is_same_v<Entity, gcc_wrappers::type::base>  ||
             std::is_same_v<Entity, gcc_wrappers::decl::field> ||
@@ -47,6 +49,11 @@ namespace bitpacking::data_options {
                   _load_impl(node, gcc_wrappers::decl::base::from_untyped(node).attributes());
                }
             });
+            if constexpr (std::is_same_v<Entity, gcc_wrappers::type::base>) {
+               this->_validate_union(entity);
+            } else {
+               this->_validate_union(entity.value_type());
+            }
             return this->failed;
          }
    };

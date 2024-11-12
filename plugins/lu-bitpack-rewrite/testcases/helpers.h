@@ -17,12 +17,12 @@
 // located somewhere inside of a containing struct (named tag or typedef) 
 // and the attribute's argument must be a string denoting the name of a 
 // member of said struct that appears before the union does.
-#define LU_BP_UNION_TAG(n) __attribute__((lu_bitpack_union_external_tag(#n)))
+#define LU_BP_UNION_TAG(n) __attribute__((lu_bitpack_union_external_tag( #n )))
 
 // Not yet implemented.
 // Indicate which member-of-member of this union acts as its tag.
 // For example, `name` means that `__union.__any_member.name` is the tag.
-#define LU_BP_UNION_INTERNAL_TAG(n) __attribute__((lu_bitpack_union_internal_tag(#n)))
+#define LU_BP_UNION_INTERNAL_TAG(n) __attribute__((lu_bitpack_union_internal_tag( #n )))
 
 // Not yet implemented.
 // Use on a union member to specify the tag value that indicates that that 

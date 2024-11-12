@@ -98,6 +98,13 @@ namespace pragma_handlers {
          std::cerr << '\n';
          std::cerr << "Dividing by sector size " << sector_size_in_bytes << " bytes (" << (sector_size_in_bytes * 8) << " bits):\n";
          
+         // can't figure out how to print the offsets properly when dealing with 
+         // (potentially nested) conditions on items, so fuck it
+         std::cerr << "(note: positions shown will be inaccurate when dealing with conditional items, but sector division should still be accurate)\n";
+         
+         std::cerr << "\n";
+         std::cerr << "   { pos + size} Object path\n";
+         
          std::vector<codegen::serialization_item> list;
          list.push_back(item);
          
@@ -107,11 +114,13 @@ namespace pragma_handlers {
                std::cerr << "Sector " << i << ":\n";
                
                size_t offset = 0;
-               for(auto& item : sectors[i]) {
+               for(size_t j = 0; j < sectors[i].size(); ++j) {
+                  auto& item = sectors[i][j];
+                  
                   std::cerr << " - ";
                   if (!item.flags.omitted) {
                      size_t size = item.size_in_bits();
-                     std::string info = lu::strings::printf_string("{%05u+%05u} ", offset, size);
+                     auto   info = lu::strings::printf_string("{%05u+%05u} ", offset, size);
                      std::cerr << info;
                      offset += size;
                   }

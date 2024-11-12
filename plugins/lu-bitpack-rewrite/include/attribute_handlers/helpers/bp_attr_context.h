@@ -85,6 +85,8 @@ namespace attribute_handlers::helpers {
          
          void add_internal_attribute(lu::strings::zview attr_name, gcc_wrappers::list_node = {});
          
+         void fail_silently();
+         
          // Report an error, and apply sentinel attributes to the target so that 
          // we can check if it has any failed bitpacking attributes.
          template<typename... Args>

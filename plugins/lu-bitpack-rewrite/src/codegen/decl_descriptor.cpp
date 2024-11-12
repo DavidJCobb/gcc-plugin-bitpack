@@ -53,18 +53,21 @@ namespace codegen {
    }
 
    decl_descriptor::decl_descriptor(gcc_wrappers::decl::field decl) {
+      assert(!decl.empty());
       this->decl = decl;
       this->types.basic_type = decl.value_type();
       this->options.load(decl);
       this->_compute_types();
    }
    decl_descriptor::decl_descriptor(gcc_wrappers::decl::param decl) {
+      assert(!decl.empty());
       this->decl = decl;
       this->types.basic_type = decl.value_type();
       this->options.load(decl);
       this->_compute_types();
    }
    decl_descriptor::decl_descriptor(gcc_wrappers::decl::variable decl) {
+      assert(!decl.empty());
       this->decl = decl;
       this->types.basic_type = decl.value_type();
       this->options.load(decl);
@@ -78,16 +81,23 @@ namespace codegen {
       auto& dictionary = decl_dictionary::get_fast();
       
       std::vector<const decl_descriptor*> out;
-      type.as_container().for_each_referenceable_field([&dictionary, &out](gcc_wrappers::decl::field decl) {
-         const auto& item = dictionary.get_or_create_descriptor(decl);
-         out.push_back(&item);
-      });
+      if (type.is_record()) {
+         type.as_container().for_each_referenceable_field([&dictionary, &out](gcc_wrappers::decl::field decl) {
+            const auto& item = dictionary.get_or_create_descriptor(decl);
+            out.push_back(&item);
+         });
+      } else if (type.is_union()) {
+         type.as_container().for_each_field([&dictionary, &out](gcc_wrappers::decl::field decl) {
+            const auto& item = dictionary.get_or_create_descriptor(decl);
+            out.push_back(&item);
+         });
+      }
       return out;
    }
    
    size_t decl_descriptor::serialized_type_size_in_bits() const {
       if (options.is_buffer())
-         return options.buffer_options().bytecount;
+         return options.buffer_options().bytecount * 8;
       
       if (options.is_integral())
          return options.integral_options().bitcount;
@@ -134,18 +144,21 @@ namespace codegen {
    //
 
    const decl_descriptor& decl_dictionary::get_or_create_descriptor(gcc_wrappers::decl::field decl) {
+      assert(!decl.empty());
       auto& item = this->_data[decl];
       if (!item.get())
          item = std::make_unique<decl_descriptor>(decl);
       return *item.get();
    }
    const decl_descriptor& decl_dictionary::get_or_create_descriptor(gcc_wrappers::decl::param decl) {
+      assert(!decl.empty());
       auto& item = this->_data[decl];
       if (!item.get())
          item = std::make_unique<decl_descriptor>(decl);
       return *item.get();
    }
    const decl_descriptor& decl_dictionary::get_or_create_descriptor(gcc_wrappers::decl::variable decl) {
+      assert(!decl.empty());
       auto& item = this->_data[decl];
       if (!item.get())
          item = std::make_unique<decl_descriptor>(decl);

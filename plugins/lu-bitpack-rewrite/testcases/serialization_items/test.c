@@ -50,6 +50,10 @@ struct LU_BP_TRANSFORM(PackColor,UnpackColor) Color {
    u8 b;
 };
 
+//union LU_BP_BITCOUNT(3) Test {
+//};
+//LU_BP_BITCOUNT(3) typedef union {} Test2;
+
 static struct TestStruct {
    bool8 a;
    LU_BP_BITCOUNT(3) u8 b;
