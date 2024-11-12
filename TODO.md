@@ -1,6 +1,174 @@
 
 # To-do
 
+## `lu-bitpack-rewrite`
+
+I want to rewrite the codegen system, with the following goals:
+
+* Apply non-struct `VAR_DECL`s as identifiers to serialize.
+* Properly implement code generation for transforms.
+  * This is harder than it seems because a transformed type may be a struct or array, requiring us to recursively handle it (potentially splitting it across sector boundaries) the same as anything else.
+  * This is harder than it seems due to the need to handle transitive transforms, i.e. A to B to C such that when serializing an A, we use the A-to-B functions to make a B, use the B-to-C functions to make a C, and encode the C into the bitstream.
+* Put us in a better position to support tagged unions in the future, and the branching they will require.
+
+The old XML-based model entailed generating a list of "serialization items" representing every single field that we'd write into the serialized output, and then traversing over those and "expanding" them whenever an item didn't fit, such that we'd end up with one flat list of objects to serialize per sector and we'd then generate the code for those sectors. We need to go back to that model.
+
+1. Loop over all top-level identifiers, which we should allow to be `VAR_DECL`s of any type.
+2. Generate "serialization items" wrapping each.
+3. Loop over all serialization items, checking against the sector size and bits remaining. If a serialization item doesn't fit, then expand it and try again &mdash; recursively expanding items until they fit.
+4. Once we've got one flat list of serialization items per sector, generate the code from those.
+  * We'll want to detect when a group of consecutive serialization items have a common root, e.g. members of a transformed struct or the elements in a contiguous slice[^no-slices] of a containing array, and intelligently handle that case: we should transform once and serialize the transformed members, rather than repeatedly transforming once per member; we should use a for loop for array slices.
+
+[^no-slices]: Encoding slice information into the serialization items is not viable.[^but-unions-need-slicing] If an array is right at the end of a sector, such that its first element won't fit, we would expand the array, recursively expand that first element as needed, and then we'd be left with all the other array elements expanded (i.e. `foo[1]`, `foo[2]`, `foo[3]`) in the next sector. No -- easiest to just only allow expanding serialization items, not trying to slice them, and then unify slices as a post-processing step.
+
+### Serialization items
+
+Serialization items are best conceptualized as being similar to `serialization_value_path` in the previous codebase, except that they also capture transforms. Examples include:
+
+* `top_level_var_or_param`
+* `top_level_var_or_param.member[2]`
+* `((transformed_type) transformed_container).member`
+* `((transformed_type_inner) ((transformed_type_outer) transformed_container).transformed_member)`
+* `((transitively_transformed_type) (transformed_type) transformed_container)`
+
+Of course, serialization items do need to have *some* way of knowing what object they describe (and what its type and bitpacking options are), so that we know how to expand them. We can achieve this by having them refer to descriptor objects stored elsewhere. But... how should we rewrite and simplify those? See the "Descriptors" section for info.
+
+#### Unions
+
+We want to support tagged unions in the future. This... may actually be achievable. All we'd have to do is allow serialization items to optionally specify a condition (in the form of the serialization path to the tag field, and the value it must have). Then, we'd just preemptively expand unions. An example, with an externally tagged union:
+
+```c
+static struct Foo {
+   int tag;
+   LU_BP_UNION_TAG(tag) union {
+      LU_BP_TAGGED_ID(0) int a;
+      LU_BP_TAGGED_ID(1) int b;
+      LU_BP_TAGGED_ID(2) int c;
+   } bar;
+} sFoo;
+```
+
+Assuming we have a single serialization item for `sFoo` as a whole, that item would expand to:
+
+* `sFoo.tag`
+* [`sFoo.tag` is 0] `sFoo.bar.a`
+* [`sFoo.tag` is 1] `sFoo.bar.b`
+* [`sFoo.tag` is 2] `sFoo.bar.c`
+
+And if we have an internally tagged union?
+
+```c
+LU_BP_UNION_INTERNAL_TAG(tag)
+static union Bar {
+   LU_BP_TAGGED_ID(0) struct {
+      int tag;
+      int weather;
+      int soil;
+   } a;
+   LU_BP_TAGGED_ID(1) struct {
+      int tag;
+      int climate;
+      int humidity;
+   } b;
+} sBar;
+```
+
+Assuming we have a single serialization item for `sBar` as a whole, that item would expand to:
+
+* `sBar.a.tag` (just use the first union member that has the common tag)
+* [`sBar.a.tag` is 0] `sBar.a.weather`
+* [`sBar.a.tag` is 0] `sBar.a.soil`
+* [`sBar.a.tag` is 1] `sBar.b.climate`
+* [`sBar.a.tag` is 1] `sBar.b.humidity`
+
+The union members preemptively expand because we can't serialize them as a whole (since we've already read part of them: the embedded tag).
+
+### Descriptors
+
+In the old codebase, we have `struct_descriptor` and `member_descriptor` which reflect the bitpacking options applied to struct types and their members, along with `member_descriptor_view` which is used to traverse these values during codegen. In the new codebase, we just need the following:
+
+* `decl_descriptor`, to load and cache the bitpacking options that are in effect for any given `VAR_DECL`, `PARM_DECL`, or `FIELD_DECL`.
+  * If the `PARM_DECL` is a pointer, then we assume we're dealing with a whole-struct function's argument and we act on the pointed-to type.
+
+We'd store a map of `tree`s (i.e. tree node pointers) to `decl_descriptor` objects, and have [the path segments in] serialization items store non-owning pointers to the relevant `decl_descriptor`s.
+
+The only purpose that `struct_descriptor` has in the old codebase is as a means of generating and reusing `member_descriptor`s, and for dealing with top-level struct values (since `member_descriptor` in the old codebase is for `FIELD_DECL`s only). When we generate whole-struct functions for a type, we do index them by `struct_descriptor` in the old codebase, but this is little better than indexing them by the raw `gw::type::base`.
+
+In the new codebase, when we encounter a `DECL` whose value type is a struct (or an array thereof), we can just manually walk the struct's members each time and get-or-create `decl_descriptor`s for them. The only value a counterpart to `struct_descriptor` would offer is caching, for faster access to the `FIELD_DECL` descriptors. We could implement such a counterpart for that reason in the future, but for now, I want to keep things as minimalist as possible until I've got something working and until I've got a good mental model of it.
+
+Serialization items could be thought of, then, as:
+
+```c++
+namespace codegen::serialization_items {
+   class segment {
+      public:
+         struct array_access {
+            size_t start = 0;
+            size_t count = std::numeric_limits<size_t>::max();
+         };
+         
+         const decl_descriptor* desc = nullptr;
+         
+         // When inspecting an array, e.g. foo[2][3].
+         // When the accessor is foo[i], use a "slice" access with count = max.
+         std::vector<array_access> array_accesses;
+         
+         // Listed in order applied, such that the type to be written to the bitstream is 
+         // last in the list.
+         std::vector<gw::type::base> transformations;
+         
+      public:
+         const bitpacking::data_options::computed& options() const noexcept {
+            return desc->options;
+         }
+         
+         size_t size_in_bits() const noexcept {
+            auto  size    = desc->innermost_size_in_bits();
+            auto& extents = desc->array.extents;
+            for(size_t i = this->array_accesses.size(); i < extents.size(); ++i) {
+               size *= extents[i];
+            }
+            if (!this->array_accesses.empty()) {
+               auto&  access = this->array_accesses.back();
+               size_t count  = access.count;
+               if (access.count == std::numeric_limits<size_t>::max()) {
+                  size_t extent = extents[this->array_accesses.size() - 1];
+                  count = extent - access.start;
+               }
+               size *= count;
+            }
+            return size;
+         }
+   };
+   
+   // Called a "basic" path because we'll have to deal with tagged unions in the future too.
+   class basic {
+      public:
+         std::vector<segment> segments;
+         
+         const decl_descriptor& descriptor() const noexcept {
+            return *segments.back().desc;
+         }
+         const bitpacking::data_options::computed& options() const noexcept {
+            return *segments.back().options();
+         }
+         size_t size_in_bits() const noexcept {
+            return segments.back().size_in_bits();
+         }
+         
+         // Depends on the type of the referred-to DECL.
+         bool can_expand() const;
+         
+         // Behavior varies depending on whether the type of the referred-to DECL 
+         // is a struct (expand to its members) or an array (expand to its elements).
+         std::vector<basic> expand() const;
+   };
+}
+```
+
+The root segment of a serialization item would refer either to a `VAR_DECL` or a `PARM_DECL`. The latter would be the case when dealing with whole-struct functions.
+
+
 ## `lu-bitpack`
 
 ### Short-term
