@@ -16,6 +16,7 @@ namespace codegen {
 namespace codegen {
    class serialization_item {
       public:
+      
          // Where `count > 1`, this serialization item represents (a value somewhere within) 
          // a slice of an array, for the purposes of code generation. The segment itself may 
          // or may not be an array.
@@ -44,8 +45,24 @@ namespace codegen {
                bool is_array() const;
                size_t array_extent() const;
                
+               // Intentionally does not include transformations.
+               std::string to_string() const;
+               
             public:
                bool operator==(const segment&) const noexcept = default;
+         };
+         
+         // For serializing tagged unions: each union member (and the data therein) will be 
+         // conditional on the union tag value. Multiple AND-linked conditions may be present 
+         // (when dealing with nested unions).
+         //
+         struct condition {
+            bool operator==(const condition&) const noexcept = default;
+            
+            std::vector<segment> path;
+            intmax_t value = 0;
+            
+            std::string to_string() const;
          };
          
       public:
@@ -55,7 +72,8 @@ namespace codegen {
             bool defaulted : 1 = false;
             bool omitted   : 1 = false;
          } flags;
-         std::vector<segment> segments;
+         std::vector<condition> conditions;
+         std::vector<segment>   segments;
          
       public:
          const decl_descriptor& descriptor() const noexcept;

@@ -23,6 +23,7 @@ static plugin_info _my_plugin_info = {
 #include "attribute_handlers/bitpack_default_value.h"
 #include "attribute_handlers/bitpack_range.h"
 #include "attribute_handlers/bitpack_string.h"
+#include "attribute_handlers/bitpack_tagged_id.h"
 #include "attribute_handlers/bitpack_transforms.h"
 #include "attribute_handlers/generic_bitpacking_data_option.h"
 #include "attribute_handlers/generic_type_or_decl.h"
@@ -141,6 +142,17 @@ namespace _attributes {
       .handler = &attribute_handlers::bitpack_string,
       .exclude = NULL
    };
+   static struct attribute_spec bitpack_tagged_id = {
+      .name = "lu_bitpack_tagged_id",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = true,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = true,
+      .handler = &attribute_handlers::bitpack_tagged_id,
+      .exclude = NULL
+   };
    static struct attribute_spec bitpack_transforms = {
       .name = "lu_bitpack_transforms",
       .min_length = 1, // min argcount
@@ -175,6 +187,7 @@ static void register_attributes(void* event_data, void* user_data) {
    register_attribute(&_attributes::bitpack_default_value);
    register_attribute(&_attributes::bitpack_range);
    register_attribute(&_attributes::bitpack_string);
+   register_attribute(&_attributes::bitpack_tagged_id);
    register_attribute(&_attributes::bitpack_transforms);
    register_attribute(&_attributes::bitpack_omit);
 }

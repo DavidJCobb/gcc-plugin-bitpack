@@ -1,4 +1,5 @@
 #include "codegen/serialization_item.h"
+#include <inttypes.h>
 #include <limits>
 #include "lu/strings/printf_string.h"
 #include "codegen/decl_descriptor.h"
@@ -44,6 +45,44 @@ namespace codegen {
          return extents[accesses.size()];
       }
       return 1;
+   }
+   
+   std::string serialization_item::segment::to_string() const {
+      std::string out;
+      
+      out += this->desc->decl.name();
+      for(auto& access : this->array_accesses) {
+         out += '[';
+         if (access.count == 1) {
+            out += lu::strings::printf_string("%u", (int)access.start);
+         } else {
+            out += lu::strings::printf_string("%u:%u", (int)access.start, (int)(access.start + access.count));
+         }
+         out += ']';
+      }
+      
+      return out;
+   }
+   
+   //
+   // serialization_item::condition
+   //
+   
+   std::string serialization_item::condition::to_string() const {
+      std::string out;
+      
+      bool first = true;
+      for(auto& item : this->path) {
+         if (first)
+            out += '.';
+         first = false;
+         
+         out += item.to_string();
+      }
+      out += " == ";
+      out += lu::strings::printf_string("%" PRIdMAX, this->value);
+      
+      return out;
    }
    
    //
@@ -147,6 +186,21 @@ namespace codegen {
    std::string serialization_item::to_string() const {
       std::string out;
       
+      if (!this->conditions.empty()) {
+         out += 'if (';
+         
+         bool first = true;
+         for(auto& cnd : this->conditions) {
+            if (!first)
+               out += " && ";
+            first = false;
+            
+            out += cnd.to_string();
+         }
+         
+         out += ") ";
+      }
+      
       bool first = true;
       for(auto& segm : this->segments) {
          assert(segm.desc != nullptr);
@@ -171,16 +225,7 @@ namespace codegen {
          if (!first) {
             out += '.';
          }
-         out += desc.decl.name();
-         for(auto& access : segm.array_accesses) {
-            out += '[';
-            if (access.count == 1) {
-               out += lu::strings::printf_string("%u", (int)access.start);
-            } else {
-               out += lu::strings::printf_string("%u:%u", (int)access.start, (int)(access.start + access.count));
-            }
-            out += ']';
-         }
+         out += segm.to_string();
          
          if (transformed) {
             out += ')';

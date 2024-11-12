@@ -53,6 +53,12 @@ static bool _attr_present_or_attempted(gw::type::base type, lu::strings::zview a
 }
 
 static void _disallow_transforming_non_addressable(gw::decl::field decl) {
+   //
+   // Non-addressable fields shouldn't be allowed to use transform options. 
+   // We can only check this on the type, because as of GCC 11.4.0, the 
+   // "decl finished" plug-in callback fires before attributes are attached; 
+   // we have to react to the containing type being finished.
+   //
    if (_attr_present_or_attempted(decl, "lu_bitpack_transforms")) {
       error_at(
          decl.source_location(),
@@ -62,20 +68,34 @@ static void _disallow_transforming_non_addressable(gw::decl::field decl) {
       bitpacking::mark_for_invalid_attributes(decl);
    }
 }
+static void _disallow_union_member_attributes_on_non_union_member(gw::decl::field decl) {
+   //
+   // The `lu_bitpack_tagged_id` attribute is only permitted on the FIELD_DECLs 
+   // of a UNION_TYPE. We can only check this when the type is finished, because 
+   // DECL_CONTEXT isn't set on a FIELD_DECL at the time that its attributes are 
+   // being processed and applied.
+   //
+   if (bitpacking::attribute_attempted_on(decl.attributes(), "lu_bitpack_tagged_id")) {
+      error_at(
+         decl.source_location(),
+         "attribute %<lu_bitpack_tagged_id%> (applied to field %<%s%>) can only be applied to data members in a union type",
+         decl.name().data()
+      );
+      bitpacking::mark_for_invalid_attributes(decl);
+   }
+}
 
 namespace bitpacking { 
    extern void verify_bitpack_attributes(tree node) {
       if (TREE_CODE(node) == RECORD_TYPE || TREE_CODE(node) == UNION_TYPE) {
-         auto type = gw::type::container::from_untyped(node);
-         //
-         // Non-addressable fields shouldn't be allowed to use transform options. 
-         // We can only check this on the type, because as of GCC 11.4.0, the 
-         // "decl finished" plug-in callback fires before attributes are attached; 
-         // we have to react to the containing type being finished.
-         //
-         type.for_each_referenceable_field([](gw::decl::field decl) {
+         auto type     = gw::type::container::from_untyped(node);
+         bool is_union = type.is_union();
+         type.for_each_referenceable_field([is_union](gw::decl::field decl) {
             if (decl.is_non_addressable()) {
                _disallow_transforming_non_addressable(decl);
+            }
+            if (!is_union) {
+               _disallow_union_member_attributes_on_non_union_member(decl);
             }
          });
       }

@@ -89,6 +89,8 @@ namespace codegen {
             
             if (item.flags != prev.flags)
                continue;
+            if (item.conditions != prev.conditions)
+               continue;
             
             //
             // Check if all but the last path segment are identical.

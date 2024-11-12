@@ -66,6 +66,8 @@ The following groups of options are mutually exclusive.
 
 #### Integral options
 
+These options are only permitted on: `typedef`s of boolean, enum, or integer types; `typedef`s of (potentially multi-dimensional) arrays of such types; or fields whose types are booleans, enums, integers, or (potentially multi-dimensional) arrays thereof.
+
 When these attributes are applied to [fields that are of] an array type, the attributes are assumed to pertain to the innermost value type. For example, setting an explicit bitcount of 3 on <code>int field[5]</code> will cause the field's serialized representation to consume 15 bits in total.
 
 <dl>
@@ -109,8 +111,6 @@ Strings are not handled substantially different from opaque buffers, except that
 
 #### Transformation options
 
-(This functionality is not fully implemented; in particular, code generation is not done yet.)
-
 When these attributes are applied, they designate <dfn>transformation functions</dfn> that will be used to convert the value just before its serialized and just after it's deserialized. The value's ordinary type is the <dfn>in situ type</dfn>, whereas the type that is serialized into a bitstream is the <dfn>transformed</dfn> type.
 
 When these attributes are applied to [fields that are of] an array type, the attributes are assumed to pertain to the innermost value type.
@@ -120,6 +120,78 @@ When these attributes are applied to [fields that are of] an array type, the att
       <dd><p>Specify <dfn>pre-pack</dfn> and <dfn>post-unpack</dfn> functions by their identifiers. These functions must exist at file scope.</p>
       <p>The pre-pack function should have the signature <code>void pre(const <var>InSitu</var>*, <var>Transform</var>*)</code>. The post-unpack function should have the signature <code>void post(<var>InSitu</var>*, const <var>Transform</var>*)</code>.</p></dd>
 </dl>
+
+#### Union options
+
+Unions can only be serialized if they are internally or externally tagged: you must indicate what object serves as the union's tag, and what values correspond to which union members.
+
+An externally tagged union must exist inside of a struct. The tag may be any previously seen member of that struct (or any member thereof).
+
+<dl>
+   <dt><code>__attribute__((lu_bitpack_union_external_tag("<var>name</var>")))</code></dt>
+      <dd>
+         <p>This attribute indicates that a union is externally tagged, and may be applied to any union-type member of a struct. The argument indicates the name of another member of that struct (or any member thereof) which will serve as a tag for this union. The named member must be of integral type, and must appear in the struct definition before the annotated union.</p>
+         <p>This attribute is only valid when applied to a struct data member whose type is a union type.</p>
+      </dd>
+   <dt><code>__attribute__((lu_bitpack_union_internal_tag("<var>name</var>")))</code></dt>
+      <dd><p>This attribute indicates that a union is internally tagged, and may be applied to a union type or value. The argument indicates the name of a field that acts as the union's tag: the field must exist inside of all of the union's members (which must all be of struct types), at the same offset within each, with the same type within each; and that type must be an integral type.</p></dd>
+   <dt><code>__attribute__((lu_bitpack_tagged_id(<var>n</var>)))</code></dt>
+      <dd>
+         <p>This attribute must be applied to each of a union's members, and they must all be given a unique integer constant <var>n</var>. If the union's tag value is equal to <var>n</var>, then its active member is the member whose tagged ID is <var>n</var>. If, at run-time (i.e. while your compiled program is reading or writing the union to a bitstream), the union's tag value isn't equal to the tagged IDs of any of its members, then the behavior is undefined.</p>
+         <p>This attribute is only valid when applied directly to a member of a union.</p>
+      </dd>
+</dl>
+
+Examples:
+
+```c++
+//
+// Internally tagged union.
+// &instance.a.tag == &instance.b.tag == &instance.c.tag.
+//
+union __attribute__((lu_bitpack_union_internal_tag("tag"))) InternallyTagged {
+   __attribute__((lu_bitpack_tagged_id(0))) struct {
+      int   header;
+      int   tag;
+      float weather;
+   } a;
+   __attribute__((lu_bitpack_tagged_id(1))) struct {
+      int header;
+      int tag;
+      int climate;
+      int humidity;
+   } b;
+   __attribute__((lu_bitpack_tagged_id(2))) struct {
+      int header;
+      int tag;
+   } c;
+};
+
+//
+// Externally tagged union. The union exists inside of a struct, 
+// and a previously-seen member of that struct is the tag.
+//
+struct Foo {
+   int tag;
+   __attribute__((lu_bitpack_external_tag("tag"))) union {
+      __attribute__((lu_bitpack_tagged_id(0))) struct {
+         int   header;
+         int   tag;
+         float weather;
+      } a;
+      __attribute__((lu_bitpack_tagged_id(1))) struct {
+         int header;
+         int tag;
+         int climate;
+         int humidity;
+      } b;
+      __attribute__((lu_bitpack_tagged_id(2))) struct {
+         int header;
+         int tag;
+      } c;
+   } data;
+};
+```
 
 ### Generated XML
 
