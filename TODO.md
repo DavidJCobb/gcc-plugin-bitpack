@@ -12,6 +12,258 @@ Unions; then codegen. I don't want to inadvertently implement codegen in ways th
 * Implement code generation wherein each sector is based on a flat list of `serialization_item`s.
   * Where two serialization items refer to data located within the same transformed object, transform the object only once and take care of both serialization items then. (Basically: if the two paths have the same stem, handle them together.)
   * Where two serialization items have the same conditions, handle them together. Account for cases of one item's conditions being a superset of the other (i.e. nested if/else). Unions, and nested unions, are the test-case for this.
+* After codegen is done, we need to implement XML output again. It'll be a bit easier this time, since the same lists of `serialization_item`s that we use to generate the functions (whole-struct and per-sector) should also have sufficient information to generate the XML.
+* Devise a test-case for top-level integral, buffer, and string values.
+* Devise a test-case for top-level internally tagged unions.
+* Devise a test-case for top-level arrays (of each type: integral, buffer, string, internally tagged union, and struct).
+* After codegen is done, we need to implement stat tracking. It should be possible to annotate a type or declaration with `__attribute__((lu_bitpack_stats_category("foo")))` such that we know how many "foo" have made it into the serialized bitstream. We should also track the in-memory size (`sizeof`) versus the serialized size of "foo."
+
+### Code generation
+
+Example input struct (assume all fields are bitpacked; assume union members have sequential IDs):
+
+```c
+struct {
+   int tag;
+   union {
+      struct {
+         int a;
+         int b;
+      } permutation_0;
+      struct {
+         int a;
+      } permutation_1;
+      struct {
+         int tag;
+         union {
+            int permutation_x;
+            int permutation_y;
+         } data;
+      } permutation_2;
+      struct {
+         int a;
+      } permutation_3;
+   } data;
+   int b;
+   struct ToBeTransformed c;
+   struct ToBeTransformed d;
+      // .member_u
+      // .member_v
+      // ((ToBeTransformed) .member_w).innermost
+      // .member_x
+   int e;
+   struct ToBeTransitivelyTransformed f;
+   int g; // tag for h
+   union {
+      int permutation_0;
+   } h[5];
+} sTestStruct;
+```
+
+Serialization items:
+
+```
+sTestStruct.tag
+if (sTestStruct.tag == 0) sTestStruct.data.permutation_0.a
+if (sTestStruct.tag == 0) sTestStruct.data.permutation_0.b
+if (sTestStruct.tag == 1) sTestStruct.data.permutation_1.a
+if (sTestStruct.tag == 2) sTestStruct.data.permutation_2.tag
+if (sTestStruct.tag == 2 && sTestStruct.data.permutation_2.tag == 0) sTestStruct.data.permutation_2.data.permutation_x
+if (sTestStruct.tag == 2 && sTestStruct.data.permutation_2.tag == 1) sTestStruct.data.permutation_2.data.permutation_y
+if (sTestStruct.tag == 3) sTestStruct.data.permutation_3.a
+sTestStruct.b
+((TransformedC) sTestStruct.c)
+((TransformedD) sTestStruct.d).member_u
+((TransformedD) sTestStruct.d).member_v
+((TransformedDMemberW) ((TransformedD) sTestStruct.d).member_w).innermost
+((TransformedD) sTestStruct.d).member_x
+sTestStruct.e
+((TransformedFinal) (TransformedFirst) sTestStruct.f)
+sTestStruct.g
+if (sTestStruct.g == 0) sTestStruct.h[0:5].permutation_0
+```
+
+Generated functions will look vaguely like this:
+
+```c
+void __generated(struct lu_BitstreamState* state) {
+   __stream(state, sTestStruct.tag);
+   if (sTestStruct.tag == 0) {
+      __stream(sTestStruct.data.permutation_0.a);
+      __stream(sTestStruct.data.permutation_0.b);
+   } else if (sTestStruct.tag == 1) {
+      __stream(sTestStruct.data.permutation_1.a);
+   } else if (sTestStruct.tag == 2) {
+      __stream(sTestStruct.data.permutation_2.tag);
+      if (sTestStruct.data.permutation_2.tag == 0) {
+         __stream(sTestStruct.data.permutation_2.data.permutation_x);
+      } else if (sTestStruct.data.permutation_2.tag == 1) {
+         __stream(sTestStruct.data.permutation_2.data.permutation_y);
+      }
+   } else if (sTestStruct.tag == 3) {
+      __stream(sTestStruct.data.permutation_3.a);
+   }
+   __stream(sTestStruct.b);
+   {
+      struct TransformedC __transformed_0;
+      DoTransformation(&sTestStruct.c, &__transformed_0);
+      __stream(&__transformed_0);
+   }
+   {
+      struct TransformedD __transformed_0;
+      DoTransformation(&sTestStruct.d, &__transformed_0);
+      __stream(__transformed_0.member_u);
+      __stream(__transformed_0.member_v);
+      {
+         struct TransformedDMemberW __transformed_1;
+         DoTransformation(&__transformed_0.member_w, &__transformed_1);
+         __stream(__transformed_1.innermost);
+      }
+      __stream(__transformed_0.member_x);
+   }
+   __stream(sTestStruct.e);
+   {
+      struct TransformedFirst __transformed_0;
+      struct TransformedFinal __transformed_1;
+      DoTransform(&sTestStruct.f, &__transformed_0);
+      DoTransform(&__transformed_0, &__transformed_1);
+      __stream(&__transformed_1);
+   }
+   __stream(sTestStruct.g);
+   if (sTestStruct.g == 0) {
+      for(int i = 0; i < 5; ++i) {
+         __stream(sTestStruct.h[i].permutation_0);
+      }
+   }
+}
+```
+
+So we need to take the flat list of serialization items and generate a tree of blocks...
+
+* A block (if/else-if) for each condition.
+* A block for each transformation.
+* A block (for-loop) for each array slice.
+
+It would be easiest to convert the flat list of serialization items into a tree of blocks, and then generate code from the blocks, rather than trying to process a list and codegen a tree in real-time. But... what should go in the tree, and how should it be organized?
+
+A function is a collection of instructions. The following instruction types exist:
+
+* Instruction to serialize a **single** object.
+  * This can include zero-padding used for unions, or we can give them a subclass -- whatever's easiest.
+  * This can include omitted-and-defaulted values, or we can give them a subclass -- whatever's easiest.
+* For-loop over an array **slice**.
+* Block to **transform** a value.
+* **Branch** on a condition.
+
+The instruction types have the following elements:
+
+* Single
+  * Path to the to-be-serialized value.
+* Slice
+  * Start index
+  * Count
+  * Path to the array
+  * List of instructions which are relative to the current array element
+* Transform
+  * Path to the to-be-transformed value
+  * Type to transform to
+    * This needs to be a list, for transitive types
+  * List of instructions which are relative to the transformed value[^instruction-relative-to-temporary]
+* Branch
+  * Path to the value to be tested (the <dfn>condition operand</dfn>)
+  * Integer constant to which the condition operand must be equal
+  * List of instrutcions to execute if the condition is true
+  * Branch to execute if the condition is false[^why-false-nested]
+
+[^why-false-nested]: GCC parses if/else trees as ternary operators i.e. `cond_a ? body_a : (cond_b ? body_b : nothing)`. Ternaries (`COND_EXPR`) are allowed to have entire blocks (`BIND_EXPR`) as their true and false operands. We will therefore be generating branches the same way.
+
+[^instruction-relative-to-temporary]: This means that it must be possible for all instruction types to refer to local variables in the function and its blocks, in addition to referring to file-scope `VAR_DECL`s and the array indices and `FIELD_DECL`s nested therein. We could use `decl_descriptor`s for function locals (and function parameters, where necessary), but this would require every instruction to be bifurcated (because the generated "read" and "save" functions will have different locals): we'd need `descriptor_pair` akin to `expr_pair` and `value_pair`. I think that may still be the cleanest approach.
+
+I guess, then, that the above example would lead[^non-split-arrays] to these instructions:
+
+* **[Single]** sTestStruct.tag
+* **[Branch]** sTestStruct.tag == 0
+  * *[If True]*
+    * **[Single]** sTestStruct.data.permutation_0.a
+    * **[Single]** sTestStruct.data.permutation_0.b
+  * *[If False]*
+    * **[Branch]** sTestStruct.tag == 1
+      * *[If True]*
+        * **[Single]** sTestStruct.data.permutation_1.a
+      * *[If False]*
+        * **[Branch]** sTestStruct.tag == 2
+          * *[If True]*
+            * **[Single]** sTestStruct.data.permutation_2.tag
+            * **[Branch]** sTestStruct.data.permutation_2.tag == 0
+              * *[If True]*
+                * **[Single]** sTestStruct.data.permutation_2.data.permutation_x
+              * *[If False]*
+                * **[Branch]** sTestStruct.data.permutation_2.tag == 1
+                  * *[If True]*
+                    * **[Single]** sTestStruct.data.permutation_2.data.permutation_y
+                  * *[If False]*
+                    * *[none]*
+          * *[If False]*
+            * **[Branch]** sTestStruct.tag == 3
+              * *[If True]*
+                * **[Single]** sTestStruct.data.permutation_3.a
+              * *[If False]*
+                * *[none]*
+* **[Single]** sTestStruct.b
+* **[Transform]** sTestStruct.c
+  * *[Transformed Type]* `TransformedC`
+  * *[Transformed Variable]* `gw::decl::variable __read; gw::decl::variable __save;`
+  * *[Instructions]*
+    * **[Single]** <transformed variable>
+* **[Transform]** sTestStruct.d
+  * *[Transformed Type]* `TransformedD`
+  * *[Transformed Variable]* `gw::decl::variable __read; gw::decl::variable __save;`
+  * *[Instructions]*
+    * **[Single]** <transformed_d>.member_u
+    * **[Single]** <transformed_d>.member_v
+    * **[Transform]** <transformed_d>.member_w
+      * *[Transformed Type]* `TransformedDMemberW`
+      * *[Transformed Variable]* `gw::decl::variable __read; gw::decl::variable __save;`
+      * *[Instructions]*
+        * **[Single]** <transformed_d_w>.innermost
+    * **[Single]** <transformed_d>.member_x
+* **[Single]** sTestStruct.e
+* **[Transform]** sTestStruct.f
+  * *[Transformed Type]* `TransformedFirst` -> `TransformedFinal`
+  * *[Transformed Variable]*`gw::decl::variable __read; gw::decl::variable __save;`
+  * *[Instructions]*
+    * **[Single]** <transformed_f>
+* **[Single]** sTestStruct.g
+* **[Branch]** sTestStruct.g == 0
+  * *[If True]*
+    * **[Slice]** sTestStruct.h
+      * *[Start]* 0
+      * *[Count]* 5
+      * *[Instructions]*
+        * **[Single]** sTestStruct.h[0:5].permutation_0
+  * *[If False]*
+    * *[none]*
+
+[^non-split-arrays]: If an array fits entirely in a sector, then it won't be expanded even into a slice (i.e. we'll have `foo`, not `foo[0:10]`). We'll need to be on guard for that when we loop over serialization items, and make sure to convert these whole arrays into slices as well.
+
+Once we've processed a flat list of serialization items into a tree of instructions, those instructions then convert pretty directly to generated code:
+
+* Single
+  * Read:  function calls[^whole-struct-functions] and assignment operators as appropriate
+  * Write: function calls
+* Slice
+  * For-loop
+* Transform:
+  * A local block (`BIND_EXPR`)
+  * One local variable per type we transform to/through
+  * Statements applied to the last transformed variable go directly in the block
+* Branch:
+  * A conditional expression to test the condition value
+  * A `COND_EXPR` ternary, with a `BIND_EXPR` (local block) as the "if true" operand
+
+[^whole-struct-functions]: We want whole-struct functions to be shared across all sectors; yet we want to use the same code for generation a sector versus a whole struct function (i.e. in both cases we should be acting on a list of serialization items). The easiest way would be to just have a `whole_struct_function_dictionary` class which owns the functions, and allow different `function_generator`s to share it.
+
+
 
 
 ### Overall
