@@ -214,25 +214,25 @@ I guess, then, that the above example would lead[^non-split-arrays] to these ins
   * *[Transformed Type]* `TransformedC`
   * *[Transformed Variable]* `gw::decl::variable __read; gw::decl::variable __save;`
   * *[Instructions]*
-    * **[Single]** <transformed variable>
+    * **[Single]** &lt;transformed_c>
 * **[Transform]** sTestStruct.d
   * *[Transformed Type]* `TransformedD`
   * *[Transformed Variable]* `gw::decl::variable __read; gw::decl::variable __save;`
   * *[Instructions]*
-    * **[Single]** <transformed_d>.member_u
-    * **[Single]** <transformed_d>.member_v
-    * **[Transform]** <transformed_d>.member_w
+    * **[Single]** &lt;transformed_d>.member_u
+    * **[Single]** &lt;transformed_d>.member_v
+    * **[Transform]** &lt;transformed_d>.member_w
       * *[Transformed Type]* `TransformedDMemberW`
       * *[Transformed Variable]* `gw::decl::variable __read; gw::decl::variable __save;`
       * *[Instructions]*
-        * **[Single]** <transformed_d_w>.innermost
-    * **[Single]** <transformed_d>.member_x
+        * **[Single]** &lt;transformed_d_w>.innermost
+    * **[Single]** &lt;transformed_d>.member_x
 * **[Single]** sTestStruct.e
 * **[Transform]** sTestStruct.f
   * *[Transformed Type]* `TransformedFirst` -> `TransformedFinal`
   * *[Transformed Variable]*`gw::decl::variable __read; gw::decl::variable __save;`
   * *[Instructions]*
-    * **[Single]** <transformed_f>
+    * **[Single]** &lt;transformed_f>
 * **[Single]** sTestStruct.g
 * **[Branch]** sTestStruct.g == 0
   * *[If True]*
