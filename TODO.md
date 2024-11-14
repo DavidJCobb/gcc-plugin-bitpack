@@ -99,6 +99,7 @@ As for how to actually go about prototyping this in JavaScript? I honestly think
   * We should write a simple struct parser in JS, such that we can write C-style struct definitions and generate the appropriate serialization items, rendering them out as strings so we can verify them for correctness.
     * As a hack to avoid having to implement attributes and parsing thereof, the JS for this can assume that all unions are externally tagged by the containing struct's nearest previous-sibling member whose name starts with "tag," and that the unions' members have sequential unique IDs numbered from 0.
   * Serialization items, re-chunked items, and node classes can then hold references to `decl_descriptor`s rather than using strings to refer to fields.
+    * `VAR_DECL` descriptors created for nodes should, in JS, be given unique IDs based on a `static` counter on a class somewhere. Variable names don't matter in C++, but we'll want to ensure unique names in JS so that we can verify correct output by eye.
 * Node classes are non-namespaced, i.e. `transform` instead of `instructions.transform`. We should remedy this so that it's more analogous to how things will be organized in C++.
 * Rename the `branched` class to `instructions.union_switch`, and create an `instructions.union_case` class rather than using bare `container` instances.
 * Re-chunked items and their type definitions are all inlined directly into the list-to-tree function. We should pull re-chunked items out of that function and give them a proper namespace and proper class names.
