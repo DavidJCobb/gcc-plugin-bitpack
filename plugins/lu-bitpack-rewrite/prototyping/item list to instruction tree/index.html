@@ -30,6 +30,98 @@ section.input>div {
       height:  30em;
    }
 }
+
+.output-stage {
+   border:  1px solid #000;
+   padding: 1em;
+   
+   &>label {
+      display: block;
+      padding: .5em 1em;
+      margin:  -1em -1em 0 -1em;
+      border-bottom: 1px solid #000;
+      
+      font-weight: bold;
+      
+      background: #444;
+      color: #FFF;
+   }
+}
+#out-rechunked {
+   li {
+      font-family: "Lucida Console", monospace;
+      font-size:   .75em;
+      margin:      .25em 0;
+      
+      span {
+         display:    inline-block;
+         padding:    .125em .25em;
+         background; #CCC;
+         border:     1px solid #888;
+         
+         &.condition {
+            background:   #FEB;
+            border-color: #A96;
+         }
+         &.qualified-decl {
+            background:   #ADF;
+            border-color: #59B;
+            
+            &:not(:first-child)::before {
+               content: ".";
+            }
+         }
+         &.transform-list {
+            background:   #CFC;
+            border-color: #6A6;
+         }
+         
+         &+& {
+            border-left: 0;
+         }
+      }
+   }
+}
+#out-treed {
+   li {
+      &>span {
+         display:    inline-block;
+         padding:    .25em .5em;
+         border:     1px solid #888;
+         background: #CCC;
+      }
+      
+      &.branch-condition-value {
+         &>span {
+            background:   #FEB;
+            border-color: #A96;
+         }
+      }
+      
+      &.single {
+         &>span {
+            background:   #ADF;
+            border-color: #59B;
+         }
+      }
+      &.condition {
+         &>span {
+            background:   #FEB;
+            border-color: #A96;
+         }
+      }
+      &.transform {
+         &>span {
+            background:   #CFC;
+            border-color: #6A6;
+         }
+         &>.qualified-decl {
+            background:   #ADF;
+            border-color: #59B;
+         }
+      }
+   }
+}
       </style>
    </head>
    <body>
@@ -78,6 +170,15 @@ sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b</textarea>
             Output
          </header>
          <div>
+            <div class="output-stage">
+               <label>Rechunked</label>
+               <ul id="out-rechunked"></ul>
+            </div>
+            <div class="output-stage">
+               <label>Treed</label>
+               <ul id="out-treed"></ul>
+            </div>
+         
             <ul id="out-fully-exploded">
             </ul>
          </div>

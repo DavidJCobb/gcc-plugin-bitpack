@@ -2,7 +2,7 @@
 class instruction {
 };
 
-class root extends instruction {
+class container extends instruction {
    constructor() {
       super();
       this.instructions = [];
@@ -16,7 +16,7 @@ class single extends instruction {
    }
 };
 
-class indexed_group extends instruction {
+class indexed_group extends container {
    constructor() {
       super();
       this.array = {
@@ -24,16 +24,14 @@ class indexed_group extends instruction {
          start:  0,
          count:  0,
       };
-      this.instructions = [];
    }
 };
 
-class transform extends instruction {
+class transform extends container {
    constructor() {
       super();
       this.types  = [];
       this.object = null; // Array<serialization_item.basic_segment>
-      this.instructions = [];
    }
 };
 
@@ -43,6 +41,6 @@ class branch extends instruction {
       this.condition_operand = null; // Array<serialization_item.basic_segment>
       this.by_value = {};
       
-      // this.by_value[n] = Array<instruction>
+      // this.by_value[n] = Array<container>
    }
 };
