@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+   <head>
+      <title>Serialization list to tree</title>
+      <style>
+html {
+   font-family: Calibri, sans-serif;
+}
+
+section {
+   margin: .5em;
+   border: 1px solid #000;
+   
+   &>header {
+      background: #FF7400;
+      font-weight: bold;
+      
+      padding:.25em .5em;
+      border-bottom: 1px solid #000;
+   }
+   &>div {
+      padding: 1em;
+   }
+}
+
+section.input>div {
+   textarea {
+      display: block;
+      width:   60em;
+      height:  30em;
+   }
+}
+      </style>
+   </head>
+   <body>
+      <section class="input">
+         <header>
+            Input
+         </header>
+         <div>
+            <textarea id="in">sTestStruct.tag
+if (sTestStruct.tag == 0) sTestStruct.data.permutation_0.a
+if (sTestStruct.tag == 0) sTestStruct.data.permutation_0.b
+if (sTestStruct.tag == 1) sTestStruct.data.permutation_1.a
+if (sTestStruct.tag == 2) sTestStruct.data.permutation_2.tag
+if (sTestStruct.tag == 2 && sTestStruct.data.permutation_2.tag == 0) sTestStruct.data.permutation_2.data.permutation_x
+if (sTestStruct.tag == 2 && sTestStruct.data.permutation_2.tag == 1) sTestStruct.data.permutation_2.data.permutation_y
+if (sTestStruct.tag == 3) sTestStruct.data.permutation_3.a
+sTestStruct.b
+((TransformedC) sTestStruct.c)
+((TransformedD) sTestStruct.d).member_u
+((TransformedD) sTestStruct.d).member_v
+((TransformedDMemberW) ((TransformedD) sTestStruct.d).member_w).innermost
+((TransformedD) sTestStruct.d).member_x
+sTestStruct.e
+((TransformedFinal) (TransformedFirst) sTestStruct.f)
+sTestStruct.g
+if (sTestStruct.g == 0) sTestStruct.h[0:5].permutation_0</textarea>
+            <button id="go">To tree</button>
+         </div>
+      </section>
+      <section>
+         <header>
+            Output
+         </header>
+         <div>
+            <ul id="out">
+            </ul>
+         </div>
+      </section>
+      <script src="serialization_item.js"></script>
+      <script src="instruction.js"></script>
+      <script src="item_list_to_instruction_tree.js"></script>
+      <script>
+document.getElementById("go").addEventListener("click", function(e) {
+   let list = [];
+   {
+      let data = document.getElementById("in").value.split("\n");
+      for(let item of data) {
+         let instance = new serialization_item();
+         instance.from_string(item);
+         list.push(instance);
+      }
+   }
+   let tree = item_list_to_instruction_tree(list);
+});
+      </script>
+   </body>
+</html>

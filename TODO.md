@@ -3,6 +3,258 @@
 
 ## `lu-bitpack-rewrite`
 
+### Need another friggin' redesign lmao
+
+The way we group conditions within `serialization_item`s is not viable. It breaks down when a condition is nested inside of a transformation (i.e. a transformed type contains a union, and may need to be split across sectors):
+
+```c
+struct Transformed_A {
+   int tag;
+   union {
+      int a;
+   } data;
+};
+
+struct TestStruct {
+   int tag;
+   union {
+      struct ToBeTransformed_A a;
+   } data;
+} sTestStruct;
+```
+
+The generated code would be akin to:
+
+```c
+sTestStruct.tag;
+if (sTestStruct.tag == 0) {
+   {
+      Transformed_A __transformed_a;
+      __transform(&sTestStruct.data.a, &__transformed_a);
+      __transformed_a.tag;
+      if (__transformed_a.tag == 0) {
+         __transformed_a.data.a;
+      }
+   }
+}
+```
+
+We need an alternate representation for serialized items:
+
+```
+sTestStruct|tag
+sTestStruct|(tag == 0) data|a as Transformed_A
+sTestStruct|(tag == 0) data|a as Transformed_A|tag
+sTestStruct|(tag == 0) data|a as Transformed_A|(tag == 0)|data|a
+```
+
+Conclusions so far:
+
+* Each segment can have one condition.
+* If a segment is transformed, then the next segment is a member of the previous segment's transformed value.
+
+How should arrays work?
+
+```c
+struct TestStruct {
+   int a[5];
+   int tag;
+   union {
+      int a;
+      int b;
+      int c;
+   } data[2];
+   int footer[3][2];
+} sTestStruct;
+```
+
+This should produce serialization items that look like this when fully expanded:
+
+```
+sTestStruct|a[0]
+sTestStruct|a[1]
+sTestStruct|a[2]
+sTestStruct|a[3]
+sTestStruct|a[4]
+sTestStruct|tag
+sTestStruct|data[0]|(sTestStruct.tag == 0) a
+sTestStruct|data[0]|(sTestStruct.tag == 1) b
+sTestStruct|data[0]|(sTestStruct.tag == 2) c
+sTestStruct|data[1]|(sTestStruct.tag == 0) a
+sTestStruct|data[1]|(sTestStruct.tag == 1) b
+sTestStruct|data[1]|(sTestStruct.tag == 2) c
+sTestStruct|footer[0][0]
+sTestStruct|footer[0][1]
+sTestStruct|footer[1][0]
+sTestStruct|footer[1][1]
+sTestStruct|footer[2][0]
+sTestStruct|footer[2][1]
+```
+
+If `data|[n]` were not expanded[^cant-unexpand], then the array slices could coalesce to the following.
+
+```
+sTestStruct|a[0:5]
+sTestStruct|tag
+sTestStruct|data[0:2]|(sTestStruct.tag == 0) a
+sTestStruct|data[0:2]|(sTestStruct.tag == 1) b
+sTestStruct|data[0:2]|(sTestStruct.tag == 2) c
+sTestStruct|footer[0:3][0:2]
+```
+
+[^cant-unexpand]: Given an array of unions, once the unions are expanded into individual union members, it becomes impossible to coalesce the array-of-unions back into contiguous slices without doing very tricky look-aheads that require knowledge of what a full element looks like. In general, expansion is a "one-way" operation, and coalescing an expanded array into array slices is a special-case operation in the reverse direction.
+
+So the syntax that we want for serialization items, then, is:
+
+```c++
+class serialization_item {
+   public:
+      class segment {
+         struct {
+            const decl_descriptor* lhs = nullptr; // relative to previous non-array segment.
+            intmax_t               rhs = 0;
+         } condition;
+         
+         const decl_descriptor* desc = nullptr;
+         std::vector<array_access_info> array_accesses;
+         std::vector<gw::type::base> transformations;
+      };
+   
+   public:
+      std::vector<segment> segments;
+};
+```
+
+The string syntax for serialization items becomes:
+
+```
+serialization-item → segment ('|' segment)*
+
+   segment → condition? decl array-access* transformation*
+   
+      condition → '(' fully-qualified-decl " == " integer-constant ") "
+      
+         fully-qualified-decl → fully-qualified-decl-segment+
+         
+            fully-qualified-decl-segment → decl array-access*
+      
+      decl → VAR_DECL | PARM_DECL | FIELD_DECL
+      
+      array-access → array-access-single | array-access-multiple
+      
+         array-access-single → '[' integer-constant ']'
+         
+         array-access-multiple → '[' integer-constant ':' integer-constant ']'
+      
+      transformation → " as " typename
+```
+
+Notation:
+
+* `rule-name → matched-content`
+* quotation marks indicate char and string literal content to be matched
+* `foo*` means at least zero `foo`
+* `foo+` means at least one `foo`
+* `foo?` means zero or one `foo`
+* vertical bars are an "OR" operator
+* parentheses are a grouping operator
+
+#### Putting it all together
+
+Consider this code:
+
+```c
+struct Transformed_E {
+   int a;
+   int b;
+};
+struct Transformed_F {
+   int x;
+};
+struct Transformed_Z {
+   int tag;
+   union {
+      int a;
+      int b;
+   } data;
+};
+
+struct ToBeTransformed_E {
+   // empty
+};
+struct ToBeTransformed_Z {
+   // empty
+};
+
+static struct TestStruct {
+   int a;
+   int b;
+   int c[3];
+   int d[3][2];
+   struct ToBeTransformed_E e;
+   struct ToBeTransformed_F f[2];
+   int tag_x;
+   union {
+      int a;
+      int b;
+      int c;
+   } data_x;
+   int tag_y;
+   union {
+      int a;
+      int b;
+      int c;
+   } data_y[2];
+   struct ToBeTransformed_Z z;
+   struct ToBeTransformed_Z z_array[2];
+} sTestStruct;
+```
+
+The fully expanded serialization items would be:
+
+```
+sTestStruct|a
+sTestStruct|b
+sTestStruct|c[0]
+sTestStruct|c[1]
+sTestStruct|c[2]
+sTestStruct|d[0][0]
+sTestStruct|d[0][1]
+sTestStruct|d[1][0]
+sTestStruct|d[1][1]
+sTestStruct|d[2][0]
+sTestStruct|d[2][1]
+sTestStruct|e as Transformed_E|a
+sTestStruct|e as Transformed_E|b
+sTestStruct|f[0] as Transformed_F|x
+sTestStruct|f[1] as Transformed_F|x
+sTestStruct|tag_x
+sTestStruct|data_x|(sTestStruct.tag_x == 0) a
+sTestStruct|data_x|(sTestStruct.tag_x == 0) b
+sTestStruct|data_x|(sTestStruct.tag_x == 0) c
+sTestStruct|tag_y
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) a
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) b
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) c
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) a
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) b
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) c
+sTestStruct|z as Transformed_Z|tag
+sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) a
+sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) b
+sTestStruct|z[0] as Transformed_Z|tag
+sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 0) a
+sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 0) b
+sTestStruct|z[1] as Transformed_Z|tag
+sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 0) a
+sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 0) b
+```
+
+Details worth noting:
+
+* Given a condition `foo.bar.baz`, if `bar` is a transformed value, then `baz` is a member of the final transformed type.
+* Conditions need to be able to access qualified names, including with array indices, because the conditional operand may be a sibling of the union member (for externally tagged unions) *or* it may be inside of the union (for internally tagged unions). The syntax `(tag == 0) union_member|a` would allow us to have unqualified names for externally-tagged unions, but wouldn't free us of the need for a qualified name when dealing with internally tagged unions' members: `union_member|(a.tag == 0) b`.
+
 ### Short-term
 
 Unions; then codegen. I don't want to inadvertently implement codegen in ways that lock me out of doing unions in the future, so let's get union serialization items working first; and when we know we've got everything ready on the serialization item and sector splitting end of things, we can then work on codegen.

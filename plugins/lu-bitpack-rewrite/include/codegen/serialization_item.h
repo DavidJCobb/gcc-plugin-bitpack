@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "gcc_wrappers/type/base.h"
+#include "codegen/array_access_info.h"
 
 namespace bitpacking {
    namespace data_options {
@@ -16,22 +17,6 @@ namespace codegen {
 namespace codegen {
    class serialization_item {
       public:
-      
-         // Where `count > 1`, this serialization item represents (a value somewhere within) 
-         // a slice of an array, for the purposes of code generation. The segment itself may 
-         // or may not be an array.
-         //
-         // For example, given `int foo[7][4]`, the segment `foo[2:6]` is an array, but the 
-         // segment `foo[1][2:4]` is not. That said, the `size_in_bits` of `foo[1][2:4]` is 
-         // equal to the `size_in_bits` of `foo[1][0]` times two.
-         //
-         struct array_access_info {
-            bool operator==(const array_access_info&) const noexcept = default;
-            
-            size_t start = 0;
-            size_t count = 1;
-         };
-         
          struct segment {
             public:
                const decl_descriptor* desc = nullptr;
