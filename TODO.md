@@ -3,6 +3,112 @@
 
 ## `lu-bitpack-rewrite`
 
+### Short-term
+
+The current JavaScript prototype works perfectly but for one thing -- something that the JS can cope with, but the C++ can't.
+
+```c
+union InternallyTagged {
+   struct {
+      int tag;
+      int data;
+   } a;
+   struct {
+      int   tag;
+      float data;
+   } b;
+};
+
+static struct TestStruct {
+   struct {
+      int tag;
+      union {
+         int a;
+      } data;
+   } foo[2];
+   
+   union InternallyTagged bar[2];
+} sTestStruct;
+```
+
+Under the new design, this will produce the following serialization paths:
+
+```
+sTestStruct|foo[0]|tag
+sTestStruct|foo[0]|data|(sTestStruct.foo[0] == 0) a
+sTestStruct|foo[1]|tag
+sTestStruct|foo[1]|data|(sTestStruct.foo[1] == 0) a
+sTestStruct|bar[0]|a|tag
+sTestStruct|bar[0]|(sTestStruct.bar[0].a.tag == 0) a|data
+sTestStruct|bar[0]|(sTestStruct.bar[0].a.tag == 1) b|data
+sTestStruct|bar[1]|a|tag
+sTestStruct|bar[1]|(sTestStruct.bar[0].a.tag == 0) a|data
+sTestStruct|bar[1]|(sTestStruct.bar[0].a.tag == 1) b|data
+```
+
+We have to expand the items in order to get those per-union conditionals, you see, but if we do that, then we can't use a for-loop to serialize them.[^cant-unexpand] At least, not as-is. The problem is that the following notation indicates two for-loops, not one for-loop accessing the same values:
+
+```
+sTestStruct|foo[0:2]|tag
+sTestStruct|foo[0:2]|data|(sTestStruct.foo[0:2] == 0) a
+```
+
+For the second of those serialization items, there's the additional challenge of finding a way to explicitly indicate, in the data, that those two array accesses &mdash; in the member access on `foo` and in the conditional for `sTestStruct.foo[n].data.a` &mdash; are using the *same* `n`?
+
+(There's also the challenge of actually coalescing these array accesses. I think what would have to happen is: when we're doing sector splitting, force-expanding unions should be a post-process step done after the array-merge-to-slice post-process step. If we see a plain union, we force-expand it; if we see an array of unions (or a slice thereof), then we make note of the slice bounds (for all ranks, if it's multi-dimensional), expand the array down to its element type, expand it again to get at the union, and then discard all but the first expansion and clobber the `array_access_info`s with the slice bounds that we noted down.)
+
+We need to solve both of these problems. The former issue can be solved if we modify re-chunked items so that we also split at array slices, taking advantage of the (currently unused) `indexed_group` node type: array slices would become a type of parent node, with multi-dimensional accesses having nested nodes. In C++, this would mean that array slice nodes could store a pair of `VAR_DECL`s to represent the loop counter; those could be referred to by `decl_descriptor`s in a `decl_pair`, which would allow anything else that refers to things by `decl_pair`s to refer to them as well. That leaves the challenge of *actually making* the array access in the conditional refer to those descriptors.
+
+So:
+
+Changes to sector splitting (do this last, but I'm listing it first as context for the other changes and what data they'd be consuming):
+
+* Don't force-expand unions on sight during the main loop.
+* Update post-processing to have two steps:
+  * Merge one-by-one arrays into array slices, as we presently do.
+  * Do these steps repeatedly until they produce no further changes:
+    * Force-expand any serialization items whose types: are `RECORD_TYPE`s; lack names; and lack an associated and named `TYPE_DECL`. These are anonymous structs, and while we could generate whole-struct functions for them, they are unlikely to be instantiated multiple times and so should be handled directly, instead. (TIP: `gw::type::base::name()` returns empty if both of the latter two criteria are true.)
+    * Force-expand any serialization items whose types are `UNION_TYPE`s.
+    * If we see a serialization item that is an array of unions, then:
+      * Copy the `std::vector<array_access_info>` of the array-item's last segment.
+      * Take any missing array ranks in the copy, and fill them with zero-to-end slices of the end-segment's `decl_descriptor`'s array ranks. (So given a field `union {} foo[4][3][2]`and a serialization item `foo[1]`, we'd produce `foo[1][0:3][0:2]`.)
+      * Overwrite the array-item's last segment with the updated `std::vector<array_access_info>`. (Internally, this means the item won't be considered an array anymore; it'll be considered a single value but with a variable index.)
+      * Expand this no-longer-an-array item.
+
+**The above change** will make it possible to force-expand arrays of unions while still using array-slice notation, such that we can still generate for-loops. It **should of course be implemented only after we've fully fleshed out re-chunking of items and generation of node trees *and* implemented both in C++.**
+
+Changes to re-chunked items:
+
+* Array indices should be considered another kind of branch-node-to-be, and so should be another place where re-chunked items get split at. When dealing with multi-dimensional arrays, each array access is a new chunk.
+
+The above change, in combination with the below changes, will make it possible for `foo[0:2]|a` followed by `foo[0:2]|b` to exist within the same for-loop (thereby serializing them in the right order: `foo[0].a`, `foo[0].b`, `foo[1].a`, `foo[1].b`), rather than using separate for-loops (and therefore serializing things in the wrong order: `foo[0].a`, `foo[1].a`, `foo[0].b`, `foo[1].b`).
+
+Changes to instruction tree generation:
+
+* Nodes no longer refer to values via what JavaScript calls `serialization_item.basic_segment`, which can encode array indices. Rather, they need to use something similar, except that array accesses can be encoded as a single index *or* as a `decl_pair` (referring to the `VAR_DECL`s of an ancestor array-slice node).
+* Array slices are a new node type. (As with re-chunked items, multi-dimensional accesses produce multiple, nested, nodes.) In C++, this node generates a pair of `VAR_DECL`s for its loop counters (read and save) and a `decl_pair` to wrap them.
+  * This node will need to be able to contain nested nodes in order to allow for `foo[x:y]|bar`; yet for codegen purposes, we must remember that `foo[x:y]` may be a leaf node (e.g. slice of an array of ints).
+* When conditions in a "switch" node refer to members of a transformed value, we must resolve that to the transformed `VAR_DECL`s.
+* When conditions in a "switch" node have array-slice access, we must resolve that to the array-index `VAR_DECL`s on the appropriate ancestor array-slice node.
+
+The above changes will make it possible for union data to depend on a union tag when the union is in an array.
+
+As for how to actually go about prototyping this in JavaScript? I honestly think it might be best if we modify the JavaScript code to:
+
+* Have an analogue to `decl_descriptor`, rather than acting solely in terms of serialization items that describe fields as strings. This will make the code more similar to the C++ side, which will help me maintain a consistent mental model between what I have to do in each language. This will also give us a way to more directly model references to created `VAR_DECL`s while prototyping node tree generation.
+  * We should write a simple struct parser in JS, such that we can write C-style struct definitions and generate the appropriate serialization items, rendering them out as strings so we can verify them for correctness.
+    * As a hack to avoid having to implement attributes and parsing thereof, the JS for this can assume that all unions are externally tagged by the containing struct's nearest previous-sibling member whose name starts with "tag," and that the unions' members have sequential unique IDs numbered from 0.
+  * Serialization items, re-chunked items, and node classes can then hold references to `decl_descriptor`s rather than using strings to refer to fields.
+* Node classes are non-namespaced, i.e. `transform` instead of `instructions.transform`. We should remedy this so that it's more analogous to how things will be organized in C++.
+* Rename the `branched` class to `instructions.union_switch`, and create an `instructions.union_case` class rather than using bare `container` instances.
+* Re-chunked items and their type definitions are all inlined directly into the list-to-tree function. We should pull re-chunked items out of that function and give them a proper namespace and proper class names.
+  * `rechunked_segments.array_slice`
+  * `rechunked_segments.condition`
+  * `rechunked_segments.qualified_decl`
+  * `rechunked_segments.transform`
+  * `rechunked_item`
+* Implement having re-chunked items split at array accesses, where multi-dimensional arrays mean multiple splits; and then have the node tree generation algorithm handle array-slice chunks.
+
 ### Need another friggin' redesign lmao
 
 The way we group conditions within `serialization_item`s is not viable. It breaks down when a condition is nested inside of a transformation (i.e. a transformed type contains a union, and may need to be split across sectors):
