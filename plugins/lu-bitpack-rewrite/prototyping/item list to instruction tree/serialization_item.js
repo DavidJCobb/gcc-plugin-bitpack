@@ -22,10 +22,24 @@ class serialization_item {
          this.array_accesses = [];
       }
       
+      compare(other) {
+         if (this.object_name != other.object_name)
+            return false;
+         if (this.array_accesses.length != other.array_accesses.length)
+            return false;
+         for(let i = 0; i < this.array_accesses.length; ++i) {
+            if (this.array_accesses[i].start != other.array_accesses[i].start)
+               return false;
+            if (this.array_accesses[i].count != other.array_accesses[i].count)
+               return false;
+         }
+         return true;
+      }
+      
       to_string() {
          let out = this.object_name;
          for(let a of this.array_accesses) {
-            if (a.count > 1) {
+            if (a.count == 1) {
                out += `[${a.start}]`;
             } else {
                out += `[${a.start}:${a.start+a.count}]`;
@@ -45,31 +59,43 @@ class serialization_item {
          if (!text.endsWith("]"))
             throw new Error("invalid");
          text = text.substring(i + 1);
-         text = text.substring(0, text.length - 1);
+         text = text.substring(0, text.length - 1); // clear trailing ']'
          text = text.split("][");
          for(let frag of text) {
             frag = frag.split(":");
             
             let item = new array_access_info();
             item.start = +frag[0];
+            item.count = 1;
             this.array_accesses.push(item);
             if (frag[1]) {
-               let end = +item[1];
+               let end = +frag[1];
                item.count = end - item.start;
             }
          }
       }
    };
-   static segment = class segment extends this.basic_segment {
-      constructor() {
-         super();
-         this.transformations = []; // Array<String>
-      }
-   };
+   
    static condition = class condition {
       constructor() {
-         this.segments = []; // Array<basic_segment>
-         this.value    = 0;
+         this.segments = []; // LHS // Array<basic_segment>
+         this.value    = 0;  // RHS
+      }
+      
+      compare_lhs(other) {
+         if (this.segments.length != other.segments.length)
+            return false;
+         for(let i = 0; i < this.segments.length; ++i)
+            if (!this.segments[i].compare(other.segments[i]))
+               return false;
+         return true;
+      }
+      compare(other) {
+         if (this.value != other.value)
+            return false;
+         if (!this.compare_lhs(other))
+            return false;
+         return true;
       }
       
       to_string() {
@@ -83,190 +109,110 @@ class serialization_item {
          out += this.value;
          return out;
       }
+      from_string(text) {
+         text = text.split(" == ");
+         this.value = +text[1];
+         
+         text = text[0].split(".");
+         for(let frag of text) {
+            let item = new serialization_item.basic_segment();
+            item.from_string(frag);
+            this.segments.push(item);
+         }
+      }
+   };
+   
+   static segment = class segment extends this.basic_segment {
+      constructor() {
+         super();
+         this.condition       = null;
+         this.transformations = []; // Array<String>
+      }
+      
+      compare(other) {
+         if (!super.compare(other))
+            return false;
+         if (this.condition) {
+            if (!other.condition)
+               return false;
+            if (!this.condition.compare(other.condition))
+               return false;
+         } else {
+            if (other.condition)
+               return false;
+         }
+         if (this.transformations.length != other.transformations.length)
+            return false;
+         for(let i = 0; i < this.transformations.length; ++i)
+            if (this.transformations[i] != other.transformations[i])
+               return false;
+         return true;
+      }
+      
+      to_string() {
+         let out = "";
+         if (this.condition) {
+            out = "(" + this.condition.to_string() + ") ";
+         }
+         out += super.to_string();
+         for(let tran of this.transformations)
+            out += ` as ${tran}`;
+         return out;
+      }
+      from_string(text) {
+         if (text.startsWith("(")) {
+            let i   = text.indexOf(") ");
+            let cnd = text.substring(1, i);
+            this.condition = new serialization_item.condition();
+            this.condition.from_string(cnd);
+            text = text.substring(i + 2);
+         }
+         let match = text.match(/^([^\[\] ]+(?:\[[\d:\[\]]+\])?)((?: as .+)*)$/);
+         if (!match)
+            throw new Error("invalid");
+         super.from_string(match[1]);
+         
+         match = match[2].substring(4).split(" as ");
+         if (match.length > 0 && !!match[0])
+            this.transformations = match;
+      }
    };
    
    constructor() {
-      this.conditions = [];
-      this.segments   = []; // Array<segment>
+      this.segments = []; // Array<segment>
+   }
+   
+   compare_stem(stem_segment_count, other) {
+      if (other.segments.length < stem_segment_count)
+         return false;
+      if (this.segments.length < stem_segment_count)
+         return false;
+      for(let i = 0; i < stem_segment_count; ++i) {
+         let a = this.segments[i];
+         let b = other.segments[i];
+         if (!a.compare(b))
+            return false;
+      }
+      return true;
    }
    
    from_string(s) {
-      //
-      // Handle leading conditions.
-      //
-      if (s.startsWith("if (")) {
-         let match = s.match(/^if \(([^\(\)]+ == -?\d+)( && [^\(\)]+ == -?\d+)*\) /);
-         let items = (match[1] + (match[2] || "")).split(" && ");
-         for(let item of items) {
-            item = item.split(" == ");
-            
-            let cnd = new serialization_item.condition();
-            this.conditions.push(cnd);
-            cnd.value = +item[1];
-            
-            item = item[0].split(".");
-            for(let e of item) {
-               let segm  = new serialization_item.basic_segment();
-               cnd.segments.push(segm);
-               segm.from_string(e);
-            }
-         }
-         s = s.substring(match[0].length);
+      s = s.split("|");
+      for(let frag of s) {
+         let segm = new this.constructor.segment();
+         segm.from_string(frag);
+         this.segments.push(segm);
       }
-      
-      /*
-      
-         path → transformed-path | basic-segment-list
-         
-            transformed-path → transformed-segment-list ('.' basic-segment-list)*
-         
-            transformed-segment-list → '(' transformed-type-list path ')'
-            
-               transformed-type-list → (transformed-type ' ')+
-               
-                  transformed-type → '(' typename ')'
-         
-            basic-segment-list → basic-segment ('.' basic-segment)*
-      
-      */
-      let i = 0;
-      
-      let extract_path;
-      let extract_trans_path;
-      let extract_trans_segm_list;
-      let extract_trans_type_list;
-      let extract_trans_type;
-      let extract_basic_segm_list;
-      
-      extract_path = function() {
-         let result = extract_trans_path();
-         if (result === null)
-            result = { path: extract_basic_segm_list() };
-         return result;
-      };
-      extract_trans_path = function() {
-         let result = extract_trans_segm_list();
-         if (result === null)
-            return null;
-         let path = "";
-         if (s[i] == ".") {
-            ++i;
-            path = extract_basic_segm_list();
-         }
-         return {
-            nest: result,
-            path: path
-         };
-      };
-      extract_trans_segm_list = function() {
-         if (s[i] != "(")
-            return null;
-         ++i;
-         let types = extract_trans_type_list();
-         let nest  = extract_path();
-         if (s[i] != ")")
-            throw new Error("syntax error in path");
-         ++i;
-         return {
-            types: types,
-            nest:  nest,
-         };
-      };
-      extract_trans_type_list = function() {
-         let result = [];
-         let type   = extract_trans_type();
-         while (type !== null) {
-            result.push(type);
-            if (s[i] == " ")
-               ++i;
-            type = extract_trans_type();
-         }
-         return result;
-      };
-      extract_trans_type = function() {
-         if (s[i] != "(" || s[i + 1] == "(")
-            return null;
-         let n = s.indexOf(")", i);
-         if (n < 0)
-            return null;
-         let type = s.substring(i + 1, n);
-         i = n + 1;
-         return type;
-      };
-      extract_basic_segm_list = function() {
-         let a = s.indexOf(")", i);
-         if (a >= 0) {
-            let text = s.substring(i, a);
-            i = a;
-            return text;
-         }
-         let text = s.substring(i);
-         i = s.length;
-         return text;
-      };
-      
-      let extracted = extract_path();
-      
-      let self = this;
-      function _walk(item) {
-         if (item + "" === item) {
-            item = item.split(".");
-            for(let frag of item) {
-               let segm  = new serialization_item.segment();
-               self.segments.push(segm);
-               segm.from_string(frag);
-            }
-            return;
-         }
-         if (item.nest) {
-            _walk(item.nest);
-            
-            let back = self.segments[self.segments.length - 1];
-            let list = item.types;
-            if (list) {
-               for(let i = 0; i < list.length; ++i)
-               back.transformations.push(list[i] + "");
-            }
-         }
-         if (item.path)
-            _walk(item.path);
-      }
-      _walk(extracted);
    }
-   
    to_string() {
       let out = "";
-      if (this.conditions.length > 0) {
-         out += "if (";
-         for(let i = 0; i < this.conditions.length; ++i) {
-            let cnd = this.conditions[i];
-            if (i > 0)
-               out += " && ";
-            out += cnd.to_string();
-         }
-         out += ") ";
-      }
-      
-      let path = "";
       for(let i = 0; i < this.segments.length; ++i) {
+         if (i > 0)
+            out += "|";
          let segm = this.segments[i];
-         if (segm.transformations.length > 0) {
-            let prefix = "(";
-            for(let tran of segm.transformations) {
-               prefix += "(" + tran + ") ";
-            }
-            path = prefix + path;
-         }
-         for(let i = 0; i < this.segments.length; ++i) {
-            if (i > 0)
-               path += ".";
-            path += this.segments[i].to_string();
-         }
-         if (segm.transformations.length > 0) {
-            path += ")";
-         }
+         out += segm.to_string();
       }
-      
-      return out + path;
+      return out;
    }
+   
 };

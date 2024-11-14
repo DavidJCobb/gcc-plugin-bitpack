@@ -193,6 +193,18 @@ static struct TestStruct {
    int d[3][2];
    struct ToBeTransformed_E e;
    struct ToBeTransformed_F f[2];
+   
+   int tag_g;
+   union {
+      int a;
+      struct {
+         int tag;
+         union {
+            int a;
+         } data;
+      } b;
+   } data_g;
+   
    int tag_x;
    union {
       int a;
@@ -228,26 +240,30 @@ sTestStruct|e as Transformed_E|a
 sTestStruct|e as Transformed_E|b
 sTestStruct|f[0] as Transformed_F|x
 sTestStruct|f[1] as Transformed_F|x
+sTestStruct|tag_g
+sTestStruct|data_g|(sTestStruct.tag_g == 0) a
+sTestStruct|data_g|(sTestStruct.tag_g == 1) b|tag
+sTestStruct|data_g|(sTestStruct.tag_g == 1) b|data|(sTestStruct.data_g.b.tag == 0) a
 sTestStruct|tag_x
 sTestStruct|data_x|(sTestStruct.tag_x == 0) a
-sTestStruct|data_x|(sTestStruct.tag_x == 0) b
-sTestStruct|data_x|(sTestStruct.tag_x == 0) c
+sTestStruct|data_x|(sTestStruct.tag_x == 1) b
+sTestStruct|data_x|(sTestStruct.tag_x == 2) c
 sTestStruct|tag_y
 sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) a
-sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) b
-sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) c
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 1) b
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 2) c
 sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) a
-sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) b
-sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) c
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 1) b
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 2) c
 sTestStruct|z as Transformed_Z|tag
 sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) a
 sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) b
 sTestStruct|z[0] as Transformed_Z|tag
 sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 0) a
-sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 0) b
+sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 1) b
 sTestStruct|z[1] as Transformed_Z|tag
 sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 0) a
-sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 0) b
+sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b
 ```
 
 Details worth noting:

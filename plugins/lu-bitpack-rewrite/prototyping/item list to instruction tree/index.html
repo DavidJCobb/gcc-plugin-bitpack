@@ -38,24 +38,38 @@ section.input>div {
             Input
          </header>
          <div>
-            <textarea id="in">sTestStruct.tag
-if (sTestStruct.tag == 0) sTestStruct.data.permutation_0.a
-if (sTestStruct.tag == 0) sTestStruct.data.permutation_0.b
-if (sTestStruct.tag == 1) sTestStruct.data.permutation_1.a
-if (sTestStruct.tag == 2) sTestStruct.data.permutation_2.tag
-if (sTestStruct.tag == 2 && sTestStruct.data.permutation_2.tag == 0) sTestStruct.data.permutation_2.data.permutation_x
-if (sTestStruct.tag == 2 && sTestStruct.data.permutation_2.tag == 1) sTestStruct.data.permutation_2.data.permutation_y
-if (sTestStruct.tag == 3) sTestStruct.data.permutation_3.a
-sTestStruct.b
-((TransformedC) sTestStruct.c)
-((TransformedD) sTestStruct.d).member_u
-((TransformedD) sTestStruct.d).member_v
-((TransformedDMemberW) ((TransformedD) sTestStruct.d).member_w).innermost
-((TransformedD) sTestStruct.d).member_x
-sTestStruct.e
-((TransformedFinal) (TransformedFirst) sTestStruct.f)
-sTestStruct.g
-if (sTestStruct.g == 0) sTestStruct.h[0:5].permutation_0</textarea>
+            <textarea id="in">sTestStruct|a
+sTestStruct|b
+sTestStruct|c[0:3]
+sTestStruct|d[0:3][0:2]
+sTestStruct|e as Transformed_E|a
+sTestStruct|e as Transformed_E|b
+sTestStruct|f[0] as Transformed_F|x
+sTestStruct|f[1] as Transformed_F|x
+sTestStruct|tag_g
+sTestStruct|data_g|(sTestStruct.tag_g == 0) a
+sTestStruct|data_g|(sTestStruct.tag_g == 1) b|tag
+sTestStruct|data_g|(sTestStruct.tag_g == 1) b|data|(sTestStruct.data_g.b.tag == 0) a
+sTestStruct|tag_x
+sTestStruct|data_x|(sTestStruct.tag_x == 0) a
+sTestStruct|data_x|(sTestStruct.tag_x == 1) b
+sTestStruct|data_x|(sTestStruct.tag_x == 2) c
+sTestStruct|tag_y
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) a
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 1) b
+sTestStruct|data_y[0]|(sTestStruct.tag_y == 2) c
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) a
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 1) b
+sTestStruct|data_y[1]|(sTestStruct.tag_y == 2) c
+sTestStruct|z as Transformed_Z|tag
+sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) a
+sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) b
+sTestStruct|z[0] as Transformed_Z|tag
+sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 0) a
+sTestStruct|z[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 1) b
+sTestStruct|z[1] as Transformed_Z|tag
+sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 0) a
+sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b</textarea>
             <button id="go">To tree</button>
          </div>
       </section>
@@ -64,7 +78,7 @@ if (sTestStruct.g == 0) sTestStruct.h[0:5].permutation_0</textarea>
             Output
          </header>
          <div>
-            <ul id="out">
+            <ul id="out-fully-exploded">
             </ul>
          </div>
       </section>
