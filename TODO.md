@@ -112,6 +112,8 @@ As for how to actually go about prototyping this in JavaScript? I honestly think
 
 ### Need another friggin' redesign lmao
 
+(IN PROGRESS. TO-DO LIST ABOVE IS THE CURRENT TASKS FOR THIS.)
+
 The way we group conditions within `serialization_item`s is not viable. It breaks down when a condition is nested inside of a transformation (i.e. a transformed type contains a union, and may need to be split across sectors):
 
 ```c
