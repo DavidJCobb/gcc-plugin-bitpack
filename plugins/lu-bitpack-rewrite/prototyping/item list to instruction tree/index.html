@@ -35,8 +35,21 @@ section.input>div {
    border:  1px solid #000;
    padding: 1em;
    
-   &>label {
-      display: block;
+   &:not([open]) {
+      padding-top:    0;
+      padding-bottom: 0;
+      
+      &>summary {
+         margin-top: 0;
+         border-bottom-width: 0;
+      }
+   }
+   
+   &+& {
+      margin-top: 1em;
+   }
+   
+   &>summary {
       padding: .5em 1em;
       margin:  -1em -1em 0 -1em;
       border-bottom: 1px solid #000;
@@ -50,8 +63,8 @@ section.input>div {
 #out-rechunked {
    li {
       font-family: "Lucida Console", monospace;
-      font-size:   .75em;
-      margin:      .25em 0;
+      font-size:   .75rem;
+      margin:      .25rem 0;
       
       span {
          display:    inline-block;
@@ -84,11 +97,19 @@ section.input>div {
 }
 #out-treed {
    li {
+      font-family: "Lucida Console", monospace;
+      font-size:   .75rem;
+      margin:      .25rem 0;
+      
       &>span {
          display:    inline-block;
-         padding:    .25em .5em;
+         padding:    .125em .25em;
          border:     1px solid #888;
          background: #CCC;
+         
+         &+& {
+            border-left: 0;
+         }
       }
       
       &.branch-condition-value {
@@ -170,19 +191,32 @@ sTestStruct|z[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b</textarea>
             Output
          </header>
          <div>
-            <div class="output-stage">
-               <label>Rechunked</label>
+            <details class="output-stage" open>
+               <summary>Rechunked</summary>
                <ul id="out-rechunked"></ul>
-            </div>
-            <div class="output-stage">
-               <label>Treed</label>
+            </details>
+            <details class="output-stage" open>
+               <summary>Treed</summary>
                <ul id="out-treed"></ul>
-            </div>
+            </details>
          
             <ul id="out-fully-exploded">
             </ul>
          </div>
       </section>
+      <script>
+{
+   // I don't think I will ever *not* be salty that JavaScript assertions don't halt 
+   // execution. Imagine screwing up assertions even more badly than Python, and now 
+   // imagine having that screw-up cemented into your ecosystem for decades. Insane.
+   let orig = console.assert;
+   console.assert = function(cnd, ...args) {
+      orig(cnd, ...args);
+      if (!cnd)
+         throw new Error("Assertion failed.");
+   };
+}
+      </script>
       <script src="serialization_item.js"></script>
       <script src="instruction.js"></script>
       <script src="item_list_to_instruction_tree.js"></script>

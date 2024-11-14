@@ -145,6 +145,15 @@ function item_list_to_instruction_tree(items) {
          append(segm) {
             this.decl_path.push(segm);
          }
+         
+         compare(other) {
+            if (this.decl_path.length != other.decl_path.length)
+               return false;
+            for(let i = 0; i < this.decl_path.length; ++i)
+               if (!this.decl_path[i].compare(other.decl_path[i]))
+                  return false;
+            return true;
+         }
       };
       
       let rechunked_items = [];
@@ -228,6 +237,107 @@ function item_list_to_instruction_tree(items) {
       }
       
       let root  = new container();
+      {
+         let stack = []; // { chunk: prev_chunk, node: generated_node }
+         let size  = rechunked_items.length;
+         for(let i = 0; i < size; ++i) {
+            let item    = rechunked_items[i];
+            let j       = 0;
+            let in_cond = false;
+               let prev = rechunked_items[i - 1];
+               let last = 0;
+            if (i > 0) {
+               
+               for(; j < prev.length && j < item.length; ++last, ++j) {
+                  in_cond = false;
+                  let chunk_a = prev[j];
+                  let chunk_b = item[j];
+                  if (chunk_a.constructor != chunk_b.constructor)
+                     break;
+                  if (chunk_a instanceof serialization_item.condition) {
+                     if (chunk_a.compare_lhs(chunk_b)) {
+                        //
+                        // For condition nodes, we append to `stack` the condition node 
+                        // itself *and* its by-value (i.e. RHS) node.
+                        //
+                        in_cond = true;
+                        ++last;
+                     }
+                  }
+                  if (!chunk_a.compare(chunk_b))
+                     break;
+                  
+                  in_cond = false;
+               }
+               if (j < prev.length) {
+                  stack.splice(last, stack.length - last); // remove from k onward
+               }
+            }
+            
+            // j == point of divergence
+            let decl_path = [];
+            for(let k = 0; k < j; ++k) {
+               let chunk = item[k];
+               if (chunk instanceof QualifiedDecl)
+                  decl_path = decl_path.concat(chunk.decl_path);
+            }
+            for(; j < item.length; ++j) {
+               let parent = null;
+               {
+                  let n = stack.findLastIndex(function(e) { return e.node != null; });
+                  if (n < 0)
+                     parent = root;
+                  else
+                     parent = stack[n].node;
+               }
+               
+               let chunk = item[j];
+               if (chunk instanceof serialization_item.condition) {
+                  let node;
+                  if (in_cond) {
+                     //node = stack[stack.length - 1].node;
+                     node = parent;
+                     console.assert(node instanceof branch);
+                  } else {
+                     node = new branch();
+                     node.condition_operand = chunk.segments;
+                     parent.instructions.push(node);
+                     stack.push({ chunk: chunk, node: node });
+                  }
+                  
+                  let bran = new container();
+                  node.by_value[chunk.value] = bran;
+                  stack.push({ chunk: chunk, node: bran });
+                  in_cond = false;
+                  continue;
+               }
+               console.assert(!in_cond);
+               
+               if (chunk instanceof QualifiedDecl) {
+                  decl_path = decl_path.concat(chunk.decl_path);
+                  
+                  if (j == item.length - 1) {
+                     let node = new single();
+                     node.object = decl_path;
+                     parent.instructions.push(node);
+                  }
+                  stack.push({ chunk: chunk, node: null });
+                  continue;
+               }
+               if (chunk instanceof TransformList) {
+                  let node = new transform();
+                  //node.object = decl_path.concat(chunk.decl_path);
+                  node.object = decl_path;
+                  node.types  = chunk.types;
+                  parent.instructions.push(node);
+                  stack.push({ chunk: chunk, node: node });
+                  continue;
+               }
+               console.assert(false); // unreachable
+            }
+         }
+      }
+if (false) {
       let depth = [];
       let nodes = [];
       let cnd_v = [];
@@ -319,6 +429,7 @@ function item_list_to_instruction_tree(items) {
             }
          }
       }
+}
       console.log(root);
       //
       // Debugprint.
@@ -355,12 +466,12 @@ function item_list_to_instruction_tree(items) {
                b_li.append(span);
                span.textContent = "== " + cv;
                
-               b_ul = document.createElement("ul");
-               b_li.append(b_ul);
+               i_ul = document.createElement("ul");
+               b_li.append(i_ul);
                
-               let list = node.by_value[cv];
+               let list = node.by_value[cv].instructions;
                for(let child of list)
-                  _dump_node(child, b_ul);
+                  _dump_node(child, i_ul);
             }
          }
          function _dump_node(node, ul) {
