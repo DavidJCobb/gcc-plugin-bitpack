@@ -247,6 +247,9 @@ function rechunked_items_to_instruction_tree(items) {
             
             let chunk = item.chunks[j];
             console.assert(!!chunk);
+            
+            const is_last_chunk = j == item.chunks.length - 1;
+            
             if (chunk instanceof rechunked.chunks.condition) {
                let node;
                if (parent instanceof instructions.union_switch) {
@@ -272,7 +275,14 @@ function rechunked_items_to_instruction_tree(items) {
                      let lhs_src = chunk.lhs;
                      let common_c = 0;
                      let common_s = 0;
-                     
+                     //
+                     // If we're branching on some member of an array of structs i.e. 
+                     // `foo[0:2].bar == 2`, then we need to map the array index within 
+                     // the condition to the generated VAR_DECL for our array loop.
+                     //
+                     // First, find a common stem between the condition and the current 
+                     // stack.
+                     //
                      for(; common_c < lhs_src.chunks.length; ++common_s, ++common_c) {
                         if (common_c >= j)
                            break;
@@ -283,6 +293,10 @@ function rechunked_items_to_instruction_tree(items) {
                         if (!a.compare(b))
                            break;
                      }
+                     //
+                     // Once we've found the common stem, access values via the stack 
+                     // nodes.
+                     //
                      for(let i = 0; i < common_s; ++i) {
                         let chunk = stack[i].chunk;
                         let node  = stack[i].node;
@@ -295,13 +309,18 @@ function rechunked_items_to_instruction_tree(items) {
                            lhs.access_array_element(node.loop_index_desc);
                         }
                      }
+                     //
+                     // Finally, access values within the non-common tail of the condition.
+                     //
                      for(; common_c < lhs_src.chunks.length; ++common_c) {
                         let chunk = lhs_src.chunks[common_c];
                         if (chunk instanceof rechunked.chunks.qualified_decl) {
                            for(let desc of chunk.descriptors)
                               lhs.access_member(desc);
                         } else if (chunk instanceof rechunked.chunks.array_slice) {
-                           lhs.access_array_element(node.loop_index_desc);
+                           if (chunk.count != 1)
+                              throw new Error("unable to resolve loop variable for array slice in condition");
+                           lhs.access_array_element(chunk.start);
                         } else {
                            console.assert(false, "unreachable");
                         }
@@ -323,6 +342,24 @@ function rechunked_items_to_instruction_tree(items) {
             console.assert(!(parent instanceof instructions.union_switch));
             
             if (chunk instanceof rechunked.chunks.array_slice) {
+               if (is_last_chunk) {
+                  //
+                  // This is an array of non-transformed primitive values (i.e. values that 
+                  // are not arrays themselves, and have no members).
+                  //
+                  if (chunk.count == 1) {
+                     //
+                     // Don't generate a for-loop for a single-element array, nor for a 
+                     // single-element slice of an array.
+                     //
+                     let node = new instructions.single();
+                     node.value = value.clone();
+                     node.value.access_array_element(chunk.start)
+                     parent.instructions.push(node);
+                     stack.push({ chunk: chunk, node: null });
+                     continue;
+                  }
+               }
                let node = new instructions.array_slice();
                node.array.value = value.clone();
                node.array.start = chunk.start;
@@ -337,7 +374,7 @@ function rechunked_items_to_instruction_tree(items) {
                for(let desc of chunk.descriptors)
                   value.access_member(desc);
                
-               if (j == item.chunks.length - 1) {
+               if (is_last_chunk) {
                   //
                   // We should only create a node in response to a QualifiedDecl chunk if 
                   // that chunk is the endcap chunk, because these nodes are leaf nodes.

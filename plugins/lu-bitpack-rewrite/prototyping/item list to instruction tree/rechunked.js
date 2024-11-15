@@ -15,13 +15,8 @@ rechunked.chunks.transform = class transform extends rechunked.chunks.base {
    compare(other) {
       if (this.types.length != other.types.length)
          return false;
-      if (this.decl_path.length != other.decl_path.length)
-         return false;
       for(let i = 0; i < this.types.length; ++i)
          if (this.types[i] != other.types[i])
-            return false;
-      for(let i = 0; i < this.decl_path.length; ++i)
-         if (!this.decl_path[i].compare(other.decl_path[i]))
             return false;
       return true;
    }
@@ -104,11 +99,9 @@ rechunked.chunks.condition = class condition extends rechunked.chunks.base {
 
 rechunked.condition_lhs = class condition_lhs {
    constructor(parent, seri_cnd) {
-      this.parent      = parent;
-      this.relative_to = -1; // index of a chunk in the containing rechunked item
-      this.chunks      = [];
+      this.chunks = [];
       
-      if (parent && seri_cnd) {
+      if (seri_cnd) {
          for(let segm of seri_cnd.segments) {
             let back = null;
             if (this.chunks.length > 0)
@@ -128,28 +121,13 @@ rechunked.condition_lhs = class condition_lhs {
                back.count = aai.count;
                this.chunks.push(back);
             }
-         }
-         
-         /*let end = Math.min(this.chunks.length, parent.chunks.length);
-         {
-            let i = 0;
-            let j = 0;
-            for(; i < this.chunks.length && j < parent.chunks.length; ++i, ++j) {
-               let a = this.chunks[i];
-               let b = parent.chunks[j];
-               if (
-                  b instanceof rechunked.chunks.qualified_decl ||
-                  b instanceof rechunked.chunks.array_slice
-               ) {
-                  if (!a.compare(b))
-                     break;
-               } else {
-                  --i;
-               }
+            
+            if (segm.descriptor.transformed_types.length > 0) {
+               let back = new rechunked.chunks.transform();
+               back.types = segm.descriptor.transformed_types;
+               this.chunks.push(back);
             }
-            this.relative_to = j - 1;
-            this.chunks.splice(0, i);
-         }*/
+         }
       }
    }
    
@@ -173,13 +151,6 @@ rechunked.condition_lhs = class condition_lhs {
          }
       }
       
-      if (this.relative_to >= 0) {
-         if (this.parent) {
-            _chunk_list_to_string(this.parent.chunks, this.relative_to + 1);
-         } else {
-            out += `[#${this.relative_to}...]`;
-         }
-      }
       _chunk_list_to_string(this.chunks);
       return out;
    }

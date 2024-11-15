@@ -152,6 +152,40 @@ let struct_parser;
          return value * seen_sign;
       }
       
+      extract_attribute() {
+         this.skip_whitespace();
+         
+         let prior = this.pos;
+         let ident = this.extract_identifier();
+         if (ident == "__attribute__") {
+            this.skip_whitespace();
+            if (this.extract_char("(") && this.extract_char("(")) {
+               let name = this.extract_identifier();
+               if (name === null)
+                  throw new Error("attribute name expected");
+               
+               let value = null;
+               if (this.extract_char("(")) {
+                  let token = this.extract_integer_literal();
+                  if (token === null) {
+                     token = this.extract_identifier();
+                     if (token === null) {
+                        throw new Error("integer or identifier expected (other attribute args are not supported right now)");
+                     }
+                  }
+                  value = token;
+                  if (!this.extract_char(")"))
+                     throw new Error("expected ')' to close attribute arguments");
+               }
+               if (!this.extract_char(')') || !this.extract_char(')'))
+                  throw new Error("expected '))' to close attribute");
+               return { name: name, value: value };
+            }
+         }
+         this.pos = prior;
+         return null;
+      }
+      
       extract_array_extent() {
          this.skip_whitespace();
          if (!this.extract_char('['))
@@ -165,6 +199,15 @@ let struct_parser;
       }
       
       extract_declaration() {
+         let attributes = {};
+         {
+            let pair = this.extract_attribute();
+            while (pair !== null) {
+               attributes[pair.name] = pair.value;
+               pair = this.extract_attribute();
+            }
+         }
+         
          let token = this.extract_identifier();
          if (token === null)
             return null;
@@ -186,8 +229,9 @@ let struct_parser;
             throw new Error("expected identifier");
          
          let decl = new c_decl();
-         decl.name = ident;
-         decl.type = type;
+         decl.name       = ident;
+         decl.type       = type;
+         decl.attributes = attributes;
          
          let rank = this.extract_array_extent();
          while (rank !== null) {
@@ -202,9 +246,18 @@ let struct_parser;
       }
       
       extract_tag_declaration(keyword) {
-         let subject  = new (keyword == "struct" ? c_struct : c_union)();
+         let subject    = new (keyword == "struct" ? c_struct : c_union)();
+         let attributes = {};
+         {
+            let pair = this.extract_attribute();
+            while (pair !== null) {
+               attributes[pair.name] = pair.value;
+               pair = this.extract_attribute();
+            }
+         }
          let tag_name = this.extract_identifier();
-         subject.name = tag_name;
+         subject.name       = tag_name;
+         subject.attributes = attributes;
          
          let definition = this.extract_char("{");
          if (!tag_name && !definition)

@@ -1,3 +1,25 @@
+class c_type_dictionary {
+   static #instance = null;
+   static get() {
+      if (this.#instance)
+         return this.#instance;
+      return (this.#instance = new c_type_dictionary());
+   }
+   
+   constructor() {
+      this.types = [];
+   }
+   clear() {
+      this.types = [];
+   }
+   lookup_name(name) {
+      for(let type of this.types)
+         if (type.name == name)
+            return type;
+      return null;
+   }
+};
+
 class c_decl {
    static #counter = 0;
    
@@ -8,8 +30,10 @@ class c_decl {
       this.name          = null;
       this.type          = null;
       this.array_extents = [];
+      this.attributes    = {};
       
       this.#id = ++c_decl.#counter;
+      c_type_dictionary.get().types.push(this);
    }
    get id() {
       return this.#id;
@@ -21,6 +45,21 @@ class c_decl {
       if (this.type + "" === this.type)
          return this.type;
       return "";
+   }
+   
+   get serialized_type() {
+      let type = this.type;
+      let name = this.attributes["transform_to"];
+      if (type && !name) {
+         name = type.attributes["transform_to"];
+      }
+      while (name) {
+         type = c_type_dictionary.get().lookup_name(name);
+         if (!type)
+            throw new Error("transformed type `" + name + "` is not defined");
+         name = type.attributes["transform_to"];
+      }
+      return type;
    }
    
    #_make_si_segment() {
@@ -36,10 +75,11 @@ class c_decl {
       return segm;
    }
    as_expanded_serialization_item_list(previous_item) {
-      if (this.type instanceof c_union) {
+      let type = this.serialized_type;
+      if (type instanceof c_union) {
          let items = [];
-         for(let i = 0; i < this.type.members.length; ++i) {
-            let memb = this.type.members[i];
+         for(let i = 0; i < type.members.length; ++i) {
+            let memb = type.members[i];
             let subs = memb.as_expanded_serialization_item_list(null);
             for(let item of subs) {
                let cnd = new serialization_item.condition();
@@ -54,10 +94,10 @@ class c_decl {
          }
          return items;
       }
-      if (this.type instanceof c_struct) {
+      if (type instanceof c_struct) {
          let items = [];
-         for(let i = 0; i < this.type.members.length; ++i) {
-            let memb = this.type.members[i];
+         for(let i = 0; i < type.members.length; ++i) {
+            let memb = type.members[i];
             let prev = null;
             if (memb.type instanceof c_union) {
                prev = items[items.length - 1];
@@ -84,7 +124,8 @@ class c_type {
    #id = -1;
    
    constructor() {
-      this.name = null;
+      this.name       = null;
+      this.attributes = {};
       
       this.#id = ++c_type.#counter;
    }

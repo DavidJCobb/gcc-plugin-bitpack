@@ -22,6 +22,7 @@ instructions.container = class container extends instructions.base {
    }
 };
 
+// Represents access into an array via a for-loop.
 instructions.array_slice = class array_slice extends instructions.container {
    static loop_index_type = (function() {
       let type = new c_type();
@@ -56,7 +57,7 @@ instructions.transform = class transform extends instructions.container {
       this.transformed_decl.name = "__transformed_" + this.transformed_decl.id;
       this.transformed_decl.type = type_list[type_list.length - 1];
       
-      this.transformed_desc = decl_descriptor_dictionary.get().describe(this.transformed__decl);
+      this.transformed_desc = decl_descriptor_dictionary.get().describe(this.transformed_decl);
    }
 };
 

@@ -124,32 +124,20 @@ section.input>div {
             
             span {
                display: inline-block;
+            }
+            span:not(.pill) {
                border:  0 solid transparent;
                border-width: 1px 0;
-            }
-            span.condition,
-            span.transforms {
-               display:       inline-block;
-               padding:       .125em .25em;
-               background;    #CCC;
-               border:        1px solid #888;
-               border-radius: 5px;
-            }
-            span:not(:is(.condition, .transforms)) {
                margin: .125em 0;
+            }
+            .pill {
+               border-radius: 5px;
             }
             span.condition {
                margin-right: 1ch;
             }
-            span.transforms {
+            span.transform {
                margin-left: 1ch;
-            }
-            
-            &>.condition {
-               display:      inline-block;
-               padding:      .125em .25em;
-               background:   var(--cond-back);
-               border-color: var(--cond-line);
             }
          }
       }
@@ -179,36 +167,6 @@ section.input>div {
       font-family: "Lucida Console", monospace;
       font-size:   .75rem;
       margin:      .25rem 0;
-      
-      &.branch-condition-value {
-         &>span {
-            background:   var(--cond-back);
-            border-color: var(--cond-line);
-         }
-      }
-      
-      &.single {
-         &>span {
-            background:   var(--decl-back);
-            border-color: var(--decl-line);
-         }
-      }
-      &.condition {
-         &>span {
-            background:   var(--cond-back);
-            border-color: var(--cond-line);
-         }
-      }
-      &.transform {
-         &>span {
-            background:   var(--type-back);
-            border-color: var(--type-line);
-         }
-         &>.qualified-decl {
-            background:   var(--decl-back);
-            border-color: var(--decl-line);
-         }
-      }
    }
 }
 #out-decl-and-type {
@@ -243,6 +201,42 @@ section.input>div {
          </header>
          <div>
             <textarea id="in-struct">
+struct PackedColor {
+   int r;
+   int g;
+};
+struct __attribute__((transform_to(PackedColor))) Color {
+   int r;
+   int g;
+   int b;
+};
+
+struct PackedNestedInner {
+   int a;
+   int b;
+   int c;
+   int tag;
+   union {
+      int a;
+      int b;
+      int c;
+   } data;
+};
+struct __attribute__((transform_to(PackedNestedInner))) NestedInner {};
+struct PackedNestedOuter {
+   int a;
+   struct NestedInner b[2];
+};
+struct __attribute__((transform_to(PackedNestedOuter))) NestedOuter {};
+
+struct TransitiveFinal {
+   int a;
+};
+struct __attribute__((transform_to(TransitiveFinal))) TransitiveMiddle {
+};
+struct __attribute__((transform_to(TransitiveMiddle ))) TransitiveStart {
+};
+
 static struct TestStruct {
    int a[3];
    int b[3];
@@ -271,8 +265,13 @@ static struct TestStruct {
          } d;
       } data;
    } z;
+
+   int single_array_element[1];
+
+   struct Color color_a;
+   struct NestedOuter nested_trans;
+   struct TransitiveStart transitive_trans;
 } sTestStruct;
-            
             </textarea>
             <button id="go-struct">Load structs</button>
          </div>
@@ -282,7 +281,7 @@ static struct TestStruct {
             Output
          </header>
          <div>
-            <details class="output-stage" open>
+            <details class="output-stage">
                <summary>Declarations and types</summary>
                <ul id="out-decl-and-type"></ul>
             </details>
@@ -332,9 +331,17 @@ static struct TestStruct {
       <script src="rechunked_items_to_instruction_tree.js"></script>
       <script>
 document.getElementById("go-struct").addEventListener("click", function(e) {
+   c_type_dictionary.get().clear();
+   //
    let parser = new struct_parser(document.getElementById("in-struct").value);
    console.log(parser);
    parser.parse();
+   //
+   {
+      let dict = c_type_dictionary.get();
+      for(let type of parser.results.types)
+         dict.types.push(type);
+   }
    
    //
    // Render the produced structs.
@@ -439,6 +446,7 @@ document.getElementById("go-struct").addEventListener("click", function(e) {
    // Create decl descriptor dictionary.
    //
    let dictionary = decl_descriptor_dictionary.get();
+   dictionary.clear();
    //
    // Create serialization items.
    //
@@ -519,6 +527,7 @@ document.getElementById("go-struct").addEventListener("click", function(e) {
             let tran_list = segm.descriptor.transformed_types;
             if (tran_list.length > 0) {
                let span = document.createElement("span");
+               span.classList.add("pill");
                span.classList.add("transform");
                li.append(span);
                let text = "";
@@ -640,6 +649,14 @@ document.getElementById("go-struct").addEventListener("click", function(e) {
             span.classList.add("decl");
             li.append(span);
             span.textContent = node.transformed_desc.name;
+            
+            li.append(" of type ");
+            
+            span = document.createElement("span");
+            span.classList.add("pill");
+            span.classList.add("type");
+            li.append(span);
+            span.textContent = node.types[node.types.length - 1].name;
          } else if (node instanceof instructions.union_switch) {
             li.append("branch on ");
             let span = document.createElement("span");
