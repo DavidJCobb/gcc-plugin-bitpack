@@ -5,6 +5,40 @@
       <style>
 html {
    font-family: Calibri, sans-serif;
+   
+   --decl-back: #ADF;
+   --decl-line: #59B;
+   
+   --type-back: #CFC;
+   --type-line: #6A6;
+   
+   --cond-back: #FEB;
+   --cond-line: #A96;
+}
+
+.pill {
+   display:    inline-block;
+   padding:    .125em .25em;
+   background: #CCC;
+   border:     1px solid #888;
+   
+   &.condition {
+      background:   var(--cond-back);
+      border-color: var(--cond-line);
+   }
+   &.decl {
+      background:   var(--decl-back);
+      border-color: var(--decl-line);
+   }
+   &.type,
+   &.transform {
+      background:   var(--type-back);
+      border-color: var(--type-line);
+   }
+   &.slice {
+      background:   #FCC;
+      border-color: #A66;
+   }
 }
 
 section {
@@ -60,6 +94,67 @@ section.input>div {
       color: #FFF;
    }
 }
+#out-serialization-items {
+   &>li {
+      font-family: "Lucida Console", monospace;
+      font-size:   .75rem;
+      margin:      .25rem 0;
+      
+      &>ul {
+         list-style: none;
+         padding:    0;
+         margin:     0;
+         
+         display:         flex;
+         flex-flow:       row nowrap;
+         align-items:     stretch;
+         justify-content: start;
+         
+         &>li {
+            list-style: none;
+            padding:    .125em .25em;
+            margin:     0;
+            
+            background: transparent;
+            
+            border: 1px solid #888;
+            &:not(:first-child) {
+               border-left: 0;
+            }
+            
+            span {
+               display: inline-block;
+               border:  0 solid transparent;
+               border-width: 1px 0;
+            }
+            span.condition,
+            span.transforms {
+               display:       inline-block;
+               padding:       .125em .25em;
+               background;    #CCC;
+               border:        1px solid #888;
+               border-radius: 5px;
+            }
+            span:not(:is(.condition, .transforms)) {
+               margin: .125em 0;
+            }
+            span.condition {
+               margin-right: 1ch;
+            }
+            span.transforms {
+               margin-left: 1ch;
+            }
+            
+            &>.condition {
+               display:      inline-block;
+               padding:      .125em .25em;
+               background:   var(--cond-back);
+               border-color: var(--cond-line);
+            }
+         }
+      }
+   }
+}
 #out-rechunked {
    li {
       font-family: "Lucida Console", monospace;
@@ -67,26 +162,10 @@ section.input>div {
       margin:      .25rem 0;
       
       span {
-         display:    inline-block;
-         padding:    .125em .25em;
-         background; #CCC;
-         border:     1px solid #888;
-         
-         &.condition {
-            background:   #FEB;
-            border-color: #A96;
-         }
-         &.qualified-decl {
-            background:   #ADF;
-            border-color: #59B;
-            
+         &.decl {
             &:not(:first-child)::before {
                content: ".";
             }
-         }
-         &.transform-list {
-            background:   #CFC;
-            border-color: #6A6;
          }
          
          &+& {
@@ -101,44 +180,56 @@ section.input>div {
       font-size:   .75rem;
       margin:      .25rem 0;
       
-      &>span {
-         display:    inline-block;
-         padding:    .125em .25em;
-         border:     1px solid #888;
-         background: #CCC;
-         
-         &+& {
-            border-left: 0;
-         }
-      }
-      
       &.branch-condition-value {
          &>span {
-            background:   #FEB;
-            border-color: #A96;
+            background:   var(--cond-back);
+            border-color: var(--cond-line);
          }
       }
       
       &.single {
          &>span {
-            background:   #ADF;
-            border-color: #59B;
+            background:   var(--decl-back);
+            border-color: var(--decl-line);
          }
       }
       &.condition {
          &>span {
-            background:   #FEB;
-            border-color: #A96;
+            background:   var(--cond-back);
+            border-color: var(--cond-line);
          }
       }
       &.transform {
          &>span {
-            background:   #CFC;
-            border-color: #6A6;
+            background:   var(--type-back);
+            border-color: var(--type-line);
          }
          &>.qualified-decl {
-            background:   #ADF;
-            border-color: #59B;
+            background:   var(--decl-back);
+            border-color: var(--decl-line);
+         }
+      }
+   }
+}
+#out-decl-and-type {
+   li {
+      font-family: "Lucida Console", monospace;
+      font-size:   .75rem;
+      margin:      .25rem 0;
+      
+      span.type-id,
+      span.decl-id {
+         margin-right: 1ch;
+         &::before {
+            font-weight: bold;
+            content: "ID#";
+         }
+      }
+      
+      span.type.anonymous {
+         font-style: italic;
+         &::before {
+            content: "anonymous:ID#";
          }
       }
    }
@@ -151,39 +242,39 @@ section.input>div {
             Input
          </header>
          <div>
-            <textarea id="in">sTestStruct|a
-sTestStruct|b
-sTestStruct|c[0:3]
-sTestStruct|d[0:3][0:2]
-sTestStruct|e as Transformed_E|a
-sTestStruct|e as Transformed_E|b
-sTestStruct|f[0] as Transformed_F|x
-sTestStruct|f[1] as Transformed_F|x
-sTestStruct|tag_g
-sTestStruct|data_g|(sTestStruct.tag_g == 0) a
-sTestStruct|data_g|(sTestStruct.tag_g == 1) b|tag
-sTestStruct|data_g|(sTestStruct.tag_g == 1) b|data|(sTestStruct.data_g.b.tag == 0) a
-sTestStruct|tag_x
-sTestStruct|data_x|(sTestStruct.tag_x == 0) a
-sTestStruct|data_x|(sTestStruct.tag_x == 1) b
-sTestStruct|data_x|(sTestStruct.tag_x == 2) c
-sTestStruct|tag_y
-sTestStruct|data_y[0]|(sTestStruct.tag_y == 0) a
-sTestStruct|data_y[0]|(sTestStruct.tag_y == 1) b
-sTestStruct|data_y[0]|(sTestStruct.tag_y == 2) c
-sTestStruct|data_y[1]|(sTestStruct.tag_y == 0) a
-sTestStruct|data_y[1]|(sTestStruct.tag_y == 1) b
-sTestStruct|data_y[1]|(sTestStruct.tag_y == 2) c
-sTestStruct|z as Transformed_Z|tag
-sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) a
-sTestStruct|z as Transformed_Z|data|(sTestStruct.z.tag == 0) b
-sTestStruct|z_array[0] as Transformed_Z|tag
-sTestStruct|z_array[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 0) a
-sTestStruct|z_array[0] as Transformed_Z|data|(sTestStruct.z[0].tag == 1) b
-sTestStruct|z_array[1] as Transformed_Z|tag
-sTestStruct|z_array[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 0) a
-sTestStruct|z_array[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b</textarea>
-            <button id="go">To tree</button>
+            <textarea id="in-struct">
+static struct TestStruct {
+   int a[3];
+   int b[3];
+   struct {
+      int tag;
+      union {
+         int a;
+         int b;
+         int c[2];
+      } data;
+   } foo[2];
+   int x;
+   int y;
+   struct {
+      int tag;
+      union {
+         int a;
+         int b;
+         int c[2];
+         struct {
+            int tag;
+            union {
+               int a;
+               int b;
+            } data;
+         } d;
+      } data;
+   } z;
+} sTestStruct;
+            
+            </textarea>
+            <button id="go-struct">Load structs</button>
          </div>
       </section>
       <section>
@@ -192,11 +283,24 @@ sTestStruct|z_array[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b</text
          </header>
          <div>
             <details class="output-stage" open>
+               <summary>Declarations and types</summary>
+               <ul id="out-decl-and-type"></ul>
+            </details>
+            <details class="output-stage" open>
+               <summary>Serialization items</summary>
+               <p>Serialization items are similar to paths, and for the most part, they represent objects that we definitely intend to write to the bitstream. (In C++, we may also have serialization items for omitted-and-defaulted values, and for zero-padding.)</p>
+               <p>In C++, serialization items can be "expanded:" an array expands to its elements, while a struct or union expands to its members. To figure out what values go in what sectors, we start with a flat serialization list of the top-level <code>VAR_DECL</code>s to serialize, and we attempt to allot them to sectors. If an item doesn't fit in a sector, but can be expanded, then we expand it and try to allot the expanded items. If an item doesn't fit in the current sector and can't be expanded, then we move to the next sector.</p>
+               <ul id="out-serialization-items"></ul>
+            </details>
+            <details class="output-stage" open>
                <summary>Rechunked</summary>
+               <p>Serialization items are useful for assigning values to sectors, but they're less useful for actually generating code: they represent a flat list, but we're going to be generating a tree of blocks, such as for-loops for arrays and array slices, or anonymous blocks for transforms. It would be easiest to convert from serialization items to a tree of nodes, but it's easier still to first convert serialization items to <dfn>re-chunked items</dfn>. These are still a flat list of paths, but each path is divided at the places where we'd create parent and child nodes in a node tree.</p>
                <ul id="out-rechunked"></ul>
             </details>
             <details class="output-stage" open>
                <summary>Treed</summary>
+               <p>The final step before codegen is to convert re-chunked items into a tree of "instruction" nodes. These nodes map much more closely to the block tree that we would generate inside of a bitstream read/write function.</p>
+               <p>Array slice nodes (in <span class="pill slice">red</span>) are for-loops with a local variable acting as an index.</p>
                <ul id="out-treed"></ul>
             </details>
          
@@ -217,11 +321,378 @@ sTestStruct|z_array[1] as Transformed_Z|data|(sTestStruct.z[1].tag == 1) b</text
    };
 }
       </script>
+      <script src="c-info.js"></script>
+      <script src="struct_parser.js"></script>
+      <script src="decl_descriptor.js"></script>
+      <script src="array_access_info.js"></script>
       <script src="serialization_item.js"></script>
+      <script src="rechunked.js"></script>
+      <script src="value_path.js"></script>
       <script src="instruction.js"></script>
-      <script src="item_list_to_instruction_tree.js"></script>
+      <script src="rechunked_items_to_instruction_tree.js"></script>
       <script>
-document.getElementById("go").addEventListener("click", function(e) {
+document.getElementById("go-struct").addEventListener("click", function(e) {
+   let parser = new struct_parser(document.getElementById("in-struct").value);
+   console.log(parser);
+   parser.parse();
+   
+   //
+   // Render the produced structs.
+   //
+   let ul = document.getElementById("out-decl-and-type");
+   ul.replaceChildren();
+   //
+   function _render_decl(decl) {
+      let li = document.createElement("li");
+      li.className = "decl";
+      {
+         let span = document.createElement("span");
+         span.classList.add("pill");
+         span.classList.add("type");
+         span.textContent = decl.typename;
+         li.append(span);
+         if (!decl.typename) {
+            span.classList.add("anonymous");
+            span.textContent = decl.type.id;
+         }
+      }
+      li.append(" ");
+      {
+         let span = document.createElement("span");
+         span.classList.add("name");
+         span.classList.add("pill");
+         span.classList.add("decl");
+         {
+            let text = decl.name;
+            for(let extent of decl.array_extents) {
+               text += `[${extent}]`;
+            }
+            span.textContent = text;
+         }
+         li.append(span);
+      }
+      return li;
+   }
+   //
+   for(let type of parser.results.types) {
+      let li = document.createElement("li");
+      li.className = "type";
+      ul.append(li);
+      {
+         let span = document.createElement("span");
+         span.classList.add("pill");
+         span.classList.add("type-id");
+         span.textContent = type.id;
+         li.append(span);
+      }
+      
+      if (type instanceof c_container) {
+         let span = document.createElement("span");
+         span.className = "keyword";
+         if (type instanceof c_struct)
+            span.textContent = "struct";
+         else
+            span.textContent = "union";
+         li.append(span);
+         if (type.name)
+            li.append(" ");
+      }
+      if (type.name) {
+         let span = document.createElement("span");
+         span.classList.add("pill");
+         span.classList.add("type");
+         span.classList.add("name");
+         span.textContent = type.name;
+         li.append(span);
+      }
+      
+      if (type instanceof c_container) {
+         let m_ul = document.createElement("ul");
+         m_ul.className = "members";
+         li.append(m_ul);
+         
+         for(let decl of type.members)
+            m_ul.append(_render_decl(decl));
+      }
+   }
+   
+   for(let decl of parser.results.variables) {
+      let li = _render_decl(decl);
+      ul.append(li);
+      li.classList.add("variable");
+   }
+   
+   //
+   // Create serialization items assuming a test DECL of `sTestStruct`. 
+   // First, find `sTestStruct`.
+   //
+   let decl = null;
+   for(let item of parser.results.variables) {
+      if (item.name == "sTestStruct") {
+         decl = item;
+         break;
+      }
+   }
+   if (!decl)
+      throw new Error("`sTestStruct` decl not found");
+   //
+   // Create decl descriptor dictionary.
+   //
+   let dictionary = decl_descriptor_dictionary.get();
+   //
+   // Create serialization items.
+   //
+   function _to_items(decl, union_tag) {
+      return decl.as_expanded_serialization_item_list(null);
+      
+      function _make_segment(decl) {
+         let desc = dictionary.describe(decl);
+         let segm = new serialization_item.segment();
+         segm.descriptor = desc;
+         for(let extent of decl.array_extents) {
+            let aai = new array_access_info();
+            aai.start = 0;
+            aai.count = extent;
+            segm.array_accesses.push(aai);
+         }
+         return segm;
+      }
+      
+      if (decl.type instanceof c_container) {
+         let items = [];
+         let prev  = null;
+         let i     = 0;
+         for(let member of decl.type.members) {
+            let is_union = member.type instanceof c_union;
+            let mi       = _to_items(member, is_union ? prev : null);
+            for(let i = 0; i < mi.length; ++i) {
+               let item = mi[i];
+               let segm = _make_segment(decl);
+               item.segments.unshift(segm);
+               
+               if (union_tag) {
+                  item.condition = new serialization_item.condition();
+                  item.segments  = union_tag.segments;
+                  item.value     = i;
+               }
+            }
+            items = items.concat(mi);
+            prev  = mi[0];
+         }
+         return items;
+      }
+      let item = new serialization_item();
+      item.segments.push( _make_segment(decl) );
+      return [ item ];
+   }
+   let items = _to_items(decl);
+   //
+   // Render serialization items.
+   //
+   {
+      let ul = document.getElementById("out-serialization-items");
+      ul.replaceChildren();
+      for(let item of items) {
+         let li = document.createElement("li");
+         ul.append(li);
+         
+         let s_ul = document.createElement("ul");
+         li.append(s_ul);
+         for(let segm of item.segments) {
+            let li = document.createElement("li");
+            li.classList.add("segment");
+            s_ul.append(li);
+            
+            if (segm.condition) {
+               let span = document.createElement("span");
+               span.classList.add("pill");
+               span.classList.add("condition");
+               li.append(span);
+               span.textContent = segm.condition.to_string();
+            }
+            {
+               let span = document.createElement("span");
+               span.classList.add("decl");
+               li.append(span);
+               span.textContent = serialization_item.basic_segment.prototype.to_string.call(segm);
+            }
+            let tran_list = segm.descriptor.transformed_types;
+            if (tran_list.length > 0) {
+               let span = document.createElement("span");
+               span.classList.add("transform");
+               li.append(span);
+               let text = "";
+               for(let tran of tran_list)
+                  text += " as " + tran.name;
+               span.textContent = text;
+            }
+         }
+      }
+   }
+   
+   let rechunked_items = [];
+   for(let item of items) {
+      let rech = new rechunked.item();
+      rech.from_serialization_item(item);
+      rechunked_items.push(rech);
+   }
+   //
+   // Render re-chunked items.
+   //
+   {
+      let ul = document.getElementById("out-rechunked");
+      ul.replaceChildren();
+      
+      for(let item of rechunked_items) {
+         let li = document.createElement("li");
+         ul.append(li);
+         for(let chunk of item.chunks) {
+            let span = document.createElement("span");
+            span.classList.add("pill");
+            if (chunk instanceof rechunked.chunks.condition) {
+               span.classList.add("condition");
+               span.textContent = chunk.to_string();
+            } else if (chunk instanceof rechunked.chunks.array_slice) {
+               span.classList.add("slice");
+               span.textContent = chunk.to_string();
+            } else if (chunk instanceof rechunked.chunks.qualified_decl) {
+               span.classList.add("decl");
+               let text = "";
+               for(let desc of chunk.descriptors) {
+                  if (text)
+                     text += '.';
+                  text += desc.name;
+               }
+               span.textContent = text;
+            } else if (chunk instanceof rechunked.chunks.transform) {
+               span.classList.add("transform");
+               let text = "";
+               for(let type of chunk.types)
+                  text += " as " + type.name;
+               span.textContent = text;
+            }
+            li.append(span);
+         }
+      }
+   }
+   
+   let tree = rechunked_items_to_instruction_tree(rechunked_items);
+   console.log(tree);
+   //let tree = item_list_to_instruction_tree(items);
+   //
+   // Render tree.
+   //
+   {
+      let ul = document.getElementById("out-treed");
+      
+      function _render_node(node) {
+         let li = document.createElement("li");
+         if (node instanceof instructions.array_slice) {
+            li.classList.add("array-slice");
+         } else if (node instanceof instructions.single) {
+            li.classList.add("single");
+         } else if (node instanceof instructions.transform) {
+            li.classList.add("transform");
+         } else if (node instanceof instructions.union_switch) {
+            li.classList.add("union-switch");
+         } else if (node instanceof instructions.union_case) {
+            li.classList.add("union-case");
+         }
+         
+         //
+         // Node text.
+         //
+         if (node instanceof instructions.array_slice) {
+            let span = document.createElement("span");
+            li.append(span);
+            span.classList.add("pill");
+            span.classList.add("slice");
+            span.textContent = node.array.value.to_string();
+            
+            li.append(" from ");
+            li.append(node.array.start);
+            li.append(" until ");
+            li.append(node.array.start + node.array.count);
+            li.append(" with index ");
+            
+            span = document.createElement("span");
+            span.classList.add("pill");
+            span.classList.add("decl");
+            li.append(span);
+            span.textContent = node.loop_index_desc.name;
+         } else if (node instanceof instructions.single) {
+            let span = document.createElement("span");
+            span.classList.add("pill");
+            span.classList.add("decl");
+            li.append(span);
+            span.textContent = node.value.to_string();
+         } else if (node instanceof instructions.transform) {
+            let span = document.createElement("span");
+            span.classList.add("pill");
+            span.classList.add("decl");
+            li.append(span);
+            span.textContent = node.to_be_transformed_value.to_string();
+            
+            li.append(" as ");
+            
+            span = document.createElement("span");
+            span.classList.add("pill");
+            span.classList.add("decl");
+            li.append(span);
+            span.textContent = node.transformed_desc.name;
+         } else if (node instanceof instructions.union_switch) {
+            li.append("branch on ");
+            let span = document.createElement("span");
+            span.classList.add("pill");
+            span.classList.add("decl");
+            li.append(span);
+            span.textContent = node.condition_operand.to_string();
+            li.append(":");
+         } else {
+            li.append("untyped node");
+         }
+         
+         //
+         // Node children.
+         //
+         if (node instanceof instructions.container) {
+            let c_ul = document.createElement("ul");
+            li.append(c_ul);
+            for(let child of node.instructions)
+               c_ul.append(_render_node(child));
+         } else if (node instanceof instructions.union_switch) {
+            let c_ul = document.createElement("ul");
+            c_ul.className = "cases";
+            li.append(c_ul);
+            
+            for(let value of Object.keys(node.by_value)) {
+               let c_li = document.createElement("li");
+               c_ul.append(c_li);
+               let span = document.createElement("span");
+               span.classList.add("pill");
+               span.classList.add("condition");
+               span.textContent = "== " + value;
+               c_li.append(span);
+               
+               let b_ul = document.createElement("ul");
+               c_li.append(b_ul);
+               for(let child of node.by_value[value].instructions)
+                  b_ul.append(_render_node(child));
+            }
+         }
+         
+         return li;
+      }
+      
+      ul.append(_render_node(tree));
+   }
+   
+   
+   
+   
+   
+});
+/*document.getElementById("go").addEventListener("click", function(e) {
    let list = [];
    {
       let data = document.getElementById("in").value.split("\n");
@@ -232,7 +703,7 @@ document.getElementById("go").addEventListener("click", function(e) {
       }
    }
    let tree = item_list_to_instruction_tree(list);
-});
+});*/
       </script>
    </body>
 </html>

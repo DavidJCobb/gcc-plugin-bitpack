@@ -1,75 +1,78 @@
 
-class instruction {
+let instructions = {};
+
+// abstract
+instructions.base = class base {
+   constructor() {
+   }
 };
 
-class container extends instruction {
+instructions.single = class single extends instructions.base {
+   constructor() {
+      super();
+      this.value = null; // value_path
+   }
+};
+
+// abstract
+instructions.container = class container extends instructions.base {
    constructor() {
       super();
       this.instructions = [];
    }
 };
 
-class single extends instruction {
-   constructor() {
-      super();
-      
-      // In C++, this is a list of `decl_pair`s representing the path to the 
-      // value to serialize.
-      this.object = null; // Array<serialization_item.basic_segment>
-   }
-};
-
-// We may not actually need this. Pretend for a moment that everywhere I 
-// wrote `decl_pair` in this file, I was referring instead to a struct that 
-// held `decl_descriptor` pointers *and* a list of `array_access_info`. We 
-// can recursively handle for-loops when we do codegen.
-class indexed_group extends container {
+instructions.array_slice = class array_slice extends instructions.container {
+   static loop_index_type = (function() {
+      let type = new c_type();
+      type.name = "int";
+      return type;
+   })();
+   
    constructor() {
       super();
       this.array = {
-         
-         // In C++, we'd want this to be a list of `decl_pair`s representing 
-         // the path to the array whose elements we'll serialize in a loop.
-         object: null, // Array<serialization_item.basic_segment>
-         
-         start:  0,
-         count:  0,
+         value: null, // value_path to array
+         start: 0,
+         count: 0,
       };
+      
+      this.loop_index_decl = new c_decl();
+      this.loop_index_decl.name = "__i_" + this.loop_index_decl.id;
+      this.loop_index_decl.type = this.constructor.loop_index_type;
+      
+      this.loop_index_desc = decl_descriptor_dictionary.get().describe(this.loop_index_decl);
    }
 };
 
-class transform extends container {
-   constructor() {
+instructions.transform = class transform extends instructions.container {
+   constructor(type_list) {
       super();
-      this.types  = [];
+      this.types = type_list;
       
-      // In C++, we'd want this to be:
-      // 
-      //  - A list of `decl_pair`s representing the to-be-transformed value
-      // 
-      //  - A pair of `VAR_DECL`s representing function-local variables to hold 
-      //    the final transformed value
-      // 
-      //  - A `decl_pair` wrapping those `VAR_DECL`s; member access will be 
-      //    relative to this `decl_pair`
-      // 
-      this.object = null; // Array<serialization_item.basic_segment>
+      this.to_be_transformed_value = null; // value_path
+      
+      this.transformed_decl      = new c_decl();
+      this.transformed_decl.name = "__transformed_" + this.transformed_decl.id;
+      this.transformed_decl.type = type_list[type_list.length - 1];
+      
+      this.transformed_desc = decl_descriptor_dictionary.get().describe(this.transformed__decl);
    }
 };
 
-// TODO: Rename to `union_switch`
-// TODO: Create a `union_case` class to match, and use that for by-value nodes
-//       instead of generic `container` nodes
-class branch extends instruction {
+instructions.union_switch = class union_switch extends instructions.base {
    constructor() {
       super();
       
-      // In C++, this will be a list of `decl_pair`s representing the path to the 
-      // tag value that we'll be checking as a condition.
-      this.condition_operand = null; // Array<serialization_item.basic_segment>
+      this.condition_operand = null; // value_path
       
+      // std::unordered_map<intmax_t, std::unique_ptr<union_case>>
       this.by_value = {};
-      
-      // this.by_value[n] = Array<container>
+   }
+};
+
+instructions.union_case = class union_case extends instructions.container {
+   constructor() {
+      super();
    }
 };

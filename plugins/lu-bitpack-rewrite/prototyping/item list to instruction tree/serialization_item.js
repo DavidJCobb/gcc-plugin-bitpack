@@ -1,78 +1,27 @@
 
-// just enough for JS
-class decl_descriptor {
-   constructor() {
-      this.transformed_types = [];
-   }
-};
-
-class array_access_info {
-   constructor(o) {
-      this.start = o?.start || 0;
-      this.count = o?.count;
-      if (!this.count && this.count !== 0)
-         this.count = 1;
-   }
-};
-
 class serialization_item {
    static basic_segment = class basic_segment {
       constructor() {
-         this.object_name    = "";
+         this.descriptor     = null; // decl_descriptor
          this.array_accesses = [];
       }
       
       compare(other) {
-         if (this.object_name != other.object_name)
+         if (this.descriptor != other.descriptor)
             return false;
          if (this.array_accesses.length != other.array_accesses.length)
             return false;
-         for(let i = 0; i < this.array_accesses.length; ++i) {
-            if (this.array_accesses[i].start != other.array_accesses[i].start)
+         for(let i = 0; i < this.array_accesses.length; ++i)
+            if (!this.array_accesses[i].compare(other.array_accesses[i]))
                return false;
-            if (this.array_accesses[i].count != other.array_accesses[i].count)
-               return false;
-         }
          return true;
       }
       
       to_string() {
-         let out = this.object_name;
-         for(let a of this.array_accesses) {
-            if (a.count == 1) {
-               out += `[${a.start}]`;
-            } else {
-               out += `[${a.start}:${a.start+a.count}]`;
-            }
-         }
+         let out = this.descriptor.name;
+         for(let a of this.array_accesses)
+            out += a.to_string();
          return out;
-      }
-      from_string(text) {
-         this.array_accesses = [];
-         
-         let i = text.indexOf("[");
-         if (i < 0) {
-            this.object_name = text;
-            return;
-         }
-         this.object_name = text.substring(0, i);
-         if (!text.endsWith("]"))
-            throw new Error("invalid");
-         text = text.substring(i + 1);
-         text = text.substring(0, text.length - 1); // clear trailing ']'
-         text = text.split("][");
-         for(let frag of text) {
-            frag = frag.split(":");
-            
-            let item = new array_access_info();
-            item.start = +frag[0];
-            item.count = 1;
-            this.array_accesses.push(item);
-            if (frag[1]) {
-               let end = +frag[1];
-               item.count = end - item.start;
-            }
-         }
       }
    };
    
@@ -109,24 +58,19 @@ class serialization_item {
          out += this.value;
          return out;
       }
-      from_string(text) {
-         text = text.split(" == ");
-         this.value = +text[1];
-         
-         text = text[0].split(".");
-         for(let frag of text) {
-            let item = new serialization_item.basic_segment();
-            item.from_string(frag);
-            this.segments.push(item);
-         }
-      }
    };
    
    static segment = class segment extends this.basic_segment {
       constructor() {
          super();
-         this.condition       = null;
-         this.transformations = []; // Array<String>
+         this.condition = null;
+      }
+      
+      get transformations() {
+         let out = [];
+         for(let type of this.descriptor.transformed_types)
+            out.push(type.name);
+         return out;
       }
       
       compare(other) {
@@ -158,23 +102,6 @@ class serialization_item {
          for(let tran of this.transformations)
             out += ` as ${tran}`;
          return out;
-      }
-      from_string(text) {
-         if (text.startsWith("(")) {
-            let i   = text.indexOf(") ");
-            let cnd = text.substring(1, i);
-            this.condition = new serialization_item.condition();
-            this.condition.from_string(cnd);
-            text = text.substring(i + 2);
-         }
-         let match = text.match(/^([^\[\] ]+(?:\[[\d:\[\]]+\])?)((?: as .+)*)$/);
-         if (!match)
-            throw new Error("invalid");
-         super.from_string(match[1]);
-         
-         match = match[2].substring(4).split(" as ");
-         if (match.length > 0 && !!match[0])
-            this.transformations = match;
       }
    };
    
