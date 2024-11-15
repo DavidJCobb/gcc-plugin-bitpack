@@ -27,6 +27,8 @@ Changes needed to sector splitting in C++ (do this last, but I'm listing it firs
 
 The above change will make it possible to force-expand arrays of unions while still using array-slice notation, such that we can still generate for-loops. It should of course be implemented only after we've fully fleshed out re-chunking of items and generation of node trees *and* implemented both in C++.
 
+After we've gotten the redesign implemented, and our codegen is done, we should investigate using `gengtype` to mark our singletons as roots and ensure that tree nodes don't get deleted out from under our `basic_global_state`.
+
 
 ### Need another friggin' redesign lmao
 

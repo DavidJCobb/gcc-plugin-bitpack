@@ -247,7 +247,6 @@ function rechunked_items_to_instruction_tree(items) {
             
             let chunk = item.chunks[j];
             console.assert(!!chunk);
-            
             const is_last_chunk = j == item.chunks.length - 1;
             
             if (chunk instanceof rechunked.chunks.condition) {
@@ -342,24 +341,6 @@ function rechunked_items_to_instruction_tree(items) {
             console.assert(!(parent instanceof instructions.union_switch));
             
             if (chunk instanceof rechunked.chunks.array_slice) {
-               if (is_last_chunk) {
-                  //
-                  // This is an array of non-transformed primitive values (i.e. values that 
-                  // are not arrays themselves, and have no members).
-                  //
-                  if (chunk.count == 1) {
-                     //
-                     // Don't generate a for-loop for a single-element array, nor for a 
-                     // single-element slice of an array.
-                     //
-                     let node = new instructions.single();
-                     node.value = value.clone();
-                     node.value.access_array_element(chunk.start)
-                     parent.instructions.push(node);
-                     stack.push({ chunk: chunk, node: null });
-                     continue;
-                  }
-               }
                let node = new instructions.array_slice();
                node.array.value = value.clone();
                node.array.start = chunk.start;
@@ -368,6 +349,22 @@ function rechunked_items_to_instruction_tree(items) {
                
                parent.instructions.push(node);
                stack.push({ chunk: chunk, node: node });
+               
+               if (is_last_chunk) {
+                  //
+                  // This is a non-expanded array. The `array_slice` node represents only 
+                  // the for loop itself, so generate a `single` node to represent the 
+                  // array elements.
+                  //
+                  parent = node;
+                  {
+                     let node = new instructions.single();
+                     node.value = value;
+                     parent.instructions.push(node);
+                     stack.push({ chunk: chunk, node: null });
+                  }
+               }
+               
                continue;
             }
             if (chunk instanceof rechunked.chunks.qualified_decl) {

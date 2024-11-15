@@ -136,6 +136,91 @@ gw::decl::function make_function(gw::type type) {
 The wrappers for types, values, declarations, and expressions should be treated similarly to pointers: you can use them to wrap arbitrary nodes (e.g. `decl::base::from_untyped(node)`), and they will assert that the node is either `NULL_TREE` or a node of the correct `TREE_CODE`. You can check if a wrapper is empty by calling `empty()` on it.
 
 
+## Lifetime
+
+My research here is incomplete, and the wrappers offer no facilities for dealing with this directly.
+
+GCC uses garbage collection internally ("GGC"). The allocator keeps track of every tree node and periodically, GCC will start at all top-level objects and traverse over them to check which tree nodes are reachable. Unreachable nodes are deleted. Garbage collection doesn't run spontaneously, but rather must be triggered explicitly via calls to `ggc_collect`. This means that you don't need to explicitly delete tree nodes that you create. Some operations may create and discard nodes (e.g. starting at a type node for `T` and getting a type node for `const T*` via `type.add_const().add_pointer()`); this is fine, because the intermediate nodes can be garbage-collected later.
+
+[The `_GTY()` macro](https://gcc.gnu.org/onlinedocs/gccint/Type-Information.html) is used to annotate top-level objects (the [roots](https://gcc.gnu.org/onlinedocs/gccint/GGC-Roots.html)). The macro acts as a signal to `gengtype`, a GCC code generation tool that understands a limited subset of C++.
+
+If you have singletons or globals that may hold on to GGC-controlled objects, then you'll need to mark them with `_GTY()` and [run `gengtype` in plug-in mode](https://gcc.gnu.org/onlinedocs/gccint/Files.html) to generate garbage-collection code.[^plugin-gengtype-when] Because `gengtype` only supports a very limited subset of C++ syntax, you may need to [hand-write your own code](https://gcc.gnu.org/onlinedocs/gccint/User-GC.html) to help the garbage collector traverse your objects.
+
+[^plugin-gengtype-when]: GCC seems to have had multiple plug-in APIs over the years. The mention of `gengtype` having a "plugin mode" [dates back to 2009](https://github.com/gcc-mirror/gcc/commit/bd117bb6b44870ca006eb12630a454302873674e) (circa GCC 4). The current plug-in API dates back to around 2009 as well, so safe to say that the `gengtype` integration described would apply to the current plug-in API.
+
+### Garbage-collected GCC objects
+
+If your singleton stores these objects, then it'll need to pass them to GGC functions in handwritten overloads for `gt_ggc_mx` and friends.
+
+This list is non-exhaustive.
+
+* `tree`
+  * NOTE: Given a `location_t loc`, `LOCATION_BLOCK(loc)` is a `tree`. It seems like GCC prefers to capture it in a local and pass the local to `gt_ggc_mx` and friends, rather than passing the macro expression directly.
+* `gimple_seq`
+* `rtx`
+
+
+### An overview of GCC's memory management
+
+As of this writing, GGC and `gengtype` are, uh, *not terribly well-explained*, so here's my try at actually communicating how they work.
+
+GGC is a mark-and-sweep garbage collector. It starts at "root" objects and traverses down through them to mark all seen garbage-collectible objects, using `gengtype`-generated code to navigate the structures. Any objects that aren't marked by the end of a pass are assumed to be unreachable and are disposed of.
+
+Objects are garbage-collectible if they're managed using any of these functions:
+
+* `ggc_alloc`
+* `ggc_vec_alloc`
+* `ggc_cleared_alloc`
+* `ggc_cleared_vec_alloc`
+* `ggc_alloc_atomic`
+* `ggc_alloc_no_dtor`
+* `ggc_alloc_string`
+* `ggc_strdup`
+* `ggc_realloc`
+* `ggc_delete`
+* `ggc_free`
+
+While reading about `gengtype`, you'll see references to "PCH," which stands for "pre-compiled header." The particular way PCHs are talked about in the documentation won't make sense unless you know that [GCC implements pre-compiled headers as snapshots of the entire heap](https://stackoverflow.com/a/12438040)[^pch-savestate], akin to savestates in a game console emulator or snapshots in a VM. Whenever you see "a PCH" in documentation related to GGC or `gengtype`, mentally substitute the phrase out for "a savestate."
+
+[^pch-savestate]: PCH savestates are created with `gt_pch_save` and loaded with `gt_pch_restore`.
+
+If you have a data structure that needs to act as a GC root, e.g. a singleton that refers (directly or indirectly) to garbage-collectible objects, then you'll need to annotate it for `gengtype`. If your singleton is too complex for `gengtype` to understand, then you can annotate it with the `user` option, to tell `gengtype` that you'll be supplying user-defined functions to mark the garbage-collectible objects that your singleton refers to.
+
+```c++
+extern GTY((user)) my_struct_type my_struct_instance;
+```
+
+The three functions you'll need to define are:
+
+* `void gt_ggc_mx(my_struct* instance);`
+  * This function marks the garbage-collectible objects that `instance` refers to. All you have to do is recursively call it (i.e. `gt_ggc_mx(instance->field_to_mark)`) on any fields that are pointers to collectible objects.
+* `void gt_pch_nx(my_struct* instance);`
+  * This function is basically the same thing as `gt_ggc_mx`, but for operations related to a PCH (i.e. a savestate). Recursively call `gt_pch_nx` on the pointers to collectible objects.
+* `void gt_pch_nx(my_struct* instance, gt_pointer_operator op, void* cookie);`
+  * This function is used for operations related to a PCH (i.e. a savestate). It may passively read your struct instance (e.g. to write a new savestate to disk), or it may actively modify your struct instance (e.g. to load a savestate into memory, performing pointer fix-ups as necessary).
+  * This function needs to call the given pointer operator on every garbage-collectible field. That is: given some garbage-collectible type `T`, if your object contains some `T* field`, you need to call `op(&field, nullptr, cookie)` such that the operator receives a `T**`.
+
+Moving from prose to code, the functions look like this:
+
+```c++
+void gt_ggc_mx(my_struct* instance) {
+  gt_ggc_mx(instance->field_to_mark);
+}
+
+void gt_pch_nx(my_struct* instance) {
+  gt_pch_nx(instance->field_to_mark);
+}
+
+void gt_pch_nx(my_struct* instance, gt_pointer_operator op, void* cookie) {
+  op(&(instance->field_to_mark), NULL, cookie);
+}
+```
+
+You'll note that you can only mark garbage-collectible fields, or forward an operation to run on garbage-collectible fields; there doesn't appear to be any way to store or restore your object's state here. This can be seen on GCC internals as well. For example, their `vec` template is `GTY((user))` since it's a template, and the only thing its GGC functions do is recurse on the vector elements; nothing is done to store the vector's length. It's obvious, then, how GGC marks collectible objects, and how it does pointer fix-ups; but it's not clear how it actually stores object data. Perhaps savestates can only record the contents of collectible objects, such that a singleton would be wiped clean unless it's under GGC's control? (But `vec` doesn't *seem* to be allocated through `ggc_alloc` and friends? And don't some `tree` structures store `vec`s?)
+
+There also exists a `ggc_register_root_tab` function that is noted as being "useful for some plugins." No clue when or how to use it.
+
+
 ## Defects
 
 * The wrapper classes act as views, but some have constructors which actually create a new tree node for you. The issue is that some wrappers' default constructors do so (e.g. `expr::local_block`), while most wrappers' default constructors do not (creating instead a wrapper around `NULL_TREE`). This is generally only done when it is convenient, but it's still inconsistent, and I should revise the API to be more explicit about when nodes are created.

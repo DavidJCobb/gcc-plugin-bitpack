@@ -7,6 +7,9 @@ instructions.base = class base {
    }
 };
 
+// Represents a single value that should be serialized whole. This could 
+// be an entire array, an entire struct, or a "primitive" value such as 
+// an integer, opaque buffer, or string.
 instructions.single = class single extends instructions.base {
    constructor() {
       super();
@@ -22,7 +25,15 @@ instructions.container = class container extends instructions.base {
    }
 };
 
-// Represents access into an array via a for-loop.
+// Represents access into an array via a for-loop. This doesn't represent 
+// actually serializing an array element (because we may instead serialize 
+// members of that element); it only represents the for-loop itself.
+//
+// NOTE: `array.count` may be 1. In that case, we ideally wouldn't generate 
+// a for-loop; we'd "unroll" ourselves. However, child and descendant nodes 
+// may refer to our loop-index VAR_DECLs; we'd need some sort of state that 
+// recursive codegen calls could use to say, "Oh, that VAR_DECL should be 
+// the integer constant X. I will just access X instead."
 instructions.array_slice = class array_slice extends instructions.container {
    static loop_index_type = (function() {
       let type = new c_type();
