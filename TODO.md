@@ -8,7 +8,6 @@
 C++:
 
 * The code for stringifying a re-chunked item is inlined in `debug_dump_as_serialization_item`. Move it to its own file.
-* Sector splitting does not handle conditions properly when unions end up being expanded. We mis-count bits because we assume that the (x == 1) branch comes after the (x == 0) branch, rather than them potentially using the same space. We need to fix this somehow.
 * The process of re-chunking a serialization item should make implied array extents explicit. For example, if we have `int foo[4][3][2]`, generating a re-chunked item from a serialization item for `foo` should be made to produce the same result as generating a re-chunked item from a serialization item for `foo[0:4][0:3][0:2]`. This will make node generation and code generation cleaner (if something is an array, then this change would guarantee that we always have `array_slice` nodes for it).
 * We need codegen once sector splitting is fixed.
 

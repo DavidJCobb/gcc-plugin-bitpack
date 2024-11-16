@@ -10,6 +10,7 @@
 #include "codegen/decl_descriptor.h"
 #include "codegen/serialization_item.h"
 #include "codegen/divide_items_by_sectors.h"
+#include "codegen/serialization_item_list_ops/get_offsets_and_sizes.h"
 #include "basic_global_state.h"
 
 // re-chunked
@@ -109,10 +110,6 @@ namespace pragma_handlers {
          std::cerr << '\n';
          std::cerr << "Dividing by sector size " << sector_size_in_bytes << " bytes (" << (sector_size_in_bytes * 8) << " bits):\n";
          
-         // can't figure out how to print the offsets properly when dealing with 
-         // (potentially nested) conditions on items, so fuck it
-         std::cerr << "(note: positions shown will be inaccurate when dealing with conditional items, but sector division should still be accurate)\n";
-         
          std::cerr << "\n";
          std::cerr << "   { pos + size} Object path\n";
          
@@ -126,16 +123,15 @@ namespace pragma_handlers {
             for(size_t i = 0; i < sectors.size(); ++i) {
                std::cerr << "Sector " << i << ":\n";
                
-               size_t offset = 0;
+               auto offset_info = codegen::serialization_item_list_ops::get_offsets_and_sizes(sectors[i]);
+               assert(offset_info.size() == sectors[i].size());
                for(size_t j = 0; j < sectors[i].size(); ++j) {
                   auto& item = sectors[i][j];
+                  auto& info = offset_info[j];
                   
                   std::cerr << " - ";
                   if (!item.is_omitted) {
-                     size_t size = item.size_in_bits();
-                     auto   info = lu::strings::printf_string("{%05u+%05u} ", offset, size);
-                     std::cerr << info;
-                     offset += size;
+                     std::cerr << lu::strings::printf_string("{%05u:%05u} ", info.first, info.second);
                   }
                   if (item.is_defaulted)
                      std::cerr << "<D> ";
