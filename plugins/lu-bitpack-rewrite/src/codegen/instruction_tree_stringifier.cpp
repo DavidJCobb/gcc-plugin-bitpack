@@ -155,11 +155,9 @@ namespace codegen {
                   this->_append_indent();
                   this->data += " - <missing node>\n";
                } else {
-                  ++this->depth;
                   for(const auto& child_ptr : node->instructions) {
                      this->stringify(*child_ptr);
                   }
-                  --this->depth;
                }
             }
             --this->depth;

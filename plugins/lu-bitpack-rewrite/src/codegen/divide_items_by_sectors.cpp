@@ -5,6 +5,9 @@
 #include "codegen/serialization_item.h"
 #include "debugprint.h"
 
+#include "codegen/serialization_item_list_ops/fold_sequential_array_elements.h"
+#include "codegen/serialization_item_list_ops/force_expand_unions_and_anonymous.h"
+
 namespace codegen {
    static void _debugprint_sectors(const std::vector<std::vector<serialization_item>>& sectors) {
       for (auto& sector : sectors) {
@@ -121,158 +124,14 @@ namespace codegen {
       // entire array is represented there, just `foo`.
       //
       for(auto& sector : dst) {
-         size_t size = sector.size();
-         for(size_t i = 1; i < size; ++i) {
-            auto& item = sector[i];
-            auto& prev = sector[i - 1];
-            
-            if (item.is_padding())
-               continue;
-            if (prev.is_padding())
-               continue;
-            if (item.is_omitted != prev.is_omitted)
-               continue;
-            if (item.is_defaulted != prev.is_defaulted)
-               continue;
-            
-            //
-            // Check if all but the last path segment are identical.
-            //
-            size_t length = item.segments.size();
-            if (length != prev.segments.size())
-               continue;
-            bool equal_stems = true;
-            for(size_t j = 0; j < length - 1; ++j) {
-               if (item.segments[j] != prev.segments[j]) {
-                  equal_stems = false;
-                  break;
-               }
-            }
-            if (!equal_stems)
-               continue;
-            
-            auto& seg_data_i = item.segments.back().as_basic();
-            auto& seg_data_p = prev.segments.back().as_basic();
-            
-            //
-            // Check if the last path segment refers to the same DECL.
-            //
-            if (seg_data_i.desc != seg_data_p.desc)
-               continue;
-            
-            //
-            // Check if all but the innermost array access are identical.
-            //
-            auto&  item_aa = seg_data_i.array_accesses;
-            auto&  prev_aa = seg_data_p.array_accesses;
-            size_t rank    = item_aa.size();
-            if (rank != prev_aa.size())
-               continue;
-            bool equal_outer_ranks = true;
-            for(size_t j = 0; j < rank - 1; ++j) {
-               if (item_aa[j] != prev_aa[j]) {
-                  equal_outer_ranks = false;
-                  break;
-               }
-            }
-            if (!equal_outer_ranks)
-               continue;
-            
-            //
-            // Check if the innermost array accesses are contiguous. Merge the two 
-            // serialization items if so, keeping `prev` and destroying `item`.
-            //
-            if (item_aa.back().start == prev_aa.back().start + prev_aa.back().count) {
-               prev_aa.back().count += item_aa.back().count;
-               sector.erase(sector.begin() + i);
-               --i;
-               --size;
-               //
-               // If, as a result of the merge, this array slice now represents the 
-               // entire array, then ditch the innermost array access. For example, 
-               // given `int foo[3][2]`, an access like `foo[0][0:2]` will simplify 
-               // to `foo[0]`.
-               //
-               auto& last_aa = prev_aa.back();
-               if (last_aa.start == 0) {
-                  auto extent = seg_data_p.desc->array.extents[seg_data_p.array_accesses.size() - 1];
-                  if (last_aa.count == extent) {
-                     prev_aa.resize(prev_aa.size() - 1);
-                  }
-               }
-               
-               continue;
-            }
-            // Else, not mergeable.
-         }
+         serialization_item_list_ops::fold_sequential_array_elements(sector);
       }
       
       //
       // POST-PROCESS: FORCE-EXPAND UNIONS, ANONYMOUS STRUCTS, AND ARRAYS THEREOF
       //
-      {
-         bool any_changes_made = false;
-         do {
-            for(auto& list : dst) {
-               auto size = list.size();
-               for(size_t i = 0; i < size; ++i) {
-                  auto& item = list[i];
-                  if (item.is_padding())
-                     continue;
-                  
-                  assert(!item.segments.empty());
-                  assert(item.segments.back().is_basic());
-                  
-                  auto& back = item.segments.back().as_basic();
-                  auto& desc = item.descriptor();
-                  auto  type = desc.types.serialized;
-                  if (!type.is_union()) {
-                     if (!type.is_record())
-                        continue;
-                     if (!type.name().empty())
-                        continue;
-                  }
-                  //
-                  // This is either a union, an anonymous struct, or an array of either. 
-                  // If it's an array, then expand it to the innermost slice.
-                  //
-                  while (back.array_accesses.size() < desc.array.extents.size()) {
-                     size_t rank   = back.array_accesses.size();
-                     size_t extent = desc.array.extents[rank];
-                     auto&  access = back.array_accesses.emplace_back();
-                     access.start = 0;
-                     access.count = extent;
-                  }
-                  //
-                  // Now expand the item.
-                  //
-                  auto   expanded       = item.expanded();
-                  size_t expanded_count = expanded.size();
-                  
-                  std::vector<serialization_item> spliced;
-                  spliced.resize(size - 1 + expanded_count);
-                  std::copy(
-                     list.begin(),
-                     list.begin() + i, // copy from [0, i)
-                     spliced.begin()
-                  );
-                  std::copy(
-                     expanded.begin(),
-                     expanded.end(),
-                     spliced.begin() + i // copy to [i, i + e)
-                  );
-                  if (i + 1 < list.size()) {
-                     std::copy(
-                        list.begin() + i + 1, // copy from [i + 1, *)
-                        list.end(),
-                        spliced.begin() + i + expanded_count - 1
-                     );
-                  }
-                  list = spliced;
-                  --i;
-               }
-            }
-         } while (any_changes_made);
+      for(auto& sector : dst) {
+         serialization_item_list_ops::force_expand_unions_and_anonymous(sector);
       }
       
       return dst;

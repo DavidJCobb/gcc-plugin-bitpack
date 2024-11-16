@@ -33,6 +33,8 @@ SOURCES=\
         src/bitpacking/verify_union_members.cpp \
         src/codegen/instructions/array_slice.cpp \
         src/codegen/instructions/transform.cpp \
+        src/codegen/serialization_item_list_ops/fold_sequential_array_elements.cpp \
+        src/codegen/serialization_item_list_ops/force_expand_unions_and_anonymous.cpp \
         src/codegen/serialization_items/basic_segment.cpp \
         src/codegen/serialization_items/condition.cpp \
         src/codegen/decl_descriptor.cpp \
