@@ -32,6 +32,7 @@ SOURCES=\
         src/bitpacking/verify_union_internal_tag.cpp \
         src/bitpacking/verify_union_members.cpp \
         src/codegen/instructions/array_slice.cpp \
+        src/codegen/instructions/single.cpp \
         src/codegen/instructions/transform.cpp \
         src/codegen/rechunked/item_to_string.cpp \
         src/codegen/serialization_item_list_ops/fold_sequential_array_elements.cpp \

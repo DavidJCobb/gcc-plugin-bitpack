@@ -131,8 +131,25 @@ static struct TestStruct {
    struct NestedOuter nested_trans;
    struct TransitiveStart transitive_trans;
 } sTestStruct;
-
 #pragma lu_bitpack debug_dump_as_serialization_item sTestStruct
+
+static struct TestConsecUnions {
+   int tag;
+   LU_BP_UNION_TAG(tag) union {
+      LU_BP_TAGGED_ID(0) int a;
+   } data_a;
+   LU_BP_UNION_TAG(tag) union {
+      LU_BP_TAGGED_ID(0) int a;
+   } data_b;
+   int force_split[4];
+} sTestConsecUnions;
+#pragma lu_bitpack debug_dump_as_serialization_item sTestConsecUnions
+
+static struct TestOmitDefaultFields {
+   LU_BP_OMIT LU_BP_DEFAULT(5) int defaulted[2];
+   int force_split[4];
+} sTestOmittedDefaultFields;
+#pragma lu_bitpack debug_dump_as_serialization_item sTestOmittedDefaultFields
 
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);

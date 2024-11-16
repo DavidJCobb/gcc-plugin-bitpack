@@ -71,8 +71,12 @@ namespace codegen {
          this->_append_indent();
          
          this->data += " - ";
+         if (casted->is_omitted_and_defaulted()) {
+            this->data += "omitted-and-defaulted ";
+         }
+         this->data += '`';
          this->data += _value_path_to_string(casted->value);
-         this->data += '\n';
+         this->data += "`\n";
          return;
       }
       if (const auto* casted = node.as<instructions::padding>()) {

@@ -10,5 +10,7 @@ namespace codegen::instructions {
       
       public:
          value_path value;
+         
+         bool is_omitted_and_defaulted() const;
    };
 }
