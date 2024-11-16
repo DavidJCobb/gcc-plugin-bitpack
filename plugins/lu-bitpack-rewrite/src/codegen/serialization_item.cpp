@@ -7,124 +7,52 @@
 #include "debugprint.h"
 
 namespace codegen {
-   
-   //
-   // serialization_item::segment
-   //
-
-   const bitpacking::data_options::computed& serialization_item::segment::options() const noexcept {
-      assert(this->desc != nullptr);
-      return this->desc->options;
+   void serialization_item::append_segment(const decl_descriptor& desc) {
+      auto& segm = this->segments.emplace_back();
+      auto& data = segm.data.emplace<basic_segment>();
+      data.desc = &desc;
    }
-   
-   size_t serialization_item::segment::size_in_bits() const noexcept {
-      assert(this->desc != nullptr);
-      auto  size    = this->desc->serialized_type_size_in_bits();
-      auto& extents = this->desc->array.extents;
-      for(size_t i = this->array_accesses.size(); i < extents.size(); ++i) {
-         size *= extents[i];
-      }
-      if (!this->array_accesses.empty()) {
-         size *= this->array_accesses.back().count;
-      }
-      return size;
-   }
-   
-   bool serialization_item::segment::is_array() const {
-      assert(this->desc != nullptr);
-      auto& desc = *this->desc;
-      
-      if (this->array_accesses.size() < desc.array.extents.size())
-         return true;
-      
-      return false;
-   }
-   size_t serialization_item::segment::array_extent() const {
-      assert(this->desc != nullptr);
-      auto& extents  = this->desc->array.extents;
-      auto& accesses = this->array_accesses;
-      if (accesses.size() < extents.size()) {
-         return extents[accesses.size()];
-      }
-      return 1;
-   }
-   
-   std::string serialization_item::segment::to_string() const {
-      std::string out;
-      
-      out += this->desc->decl.name();
-      for(auto& access : this->array_accesses) {
-         out += '[';
-         if (access.count == 1) {
-            out += lu::strings::printf_string("%u", (int)access.start);
-         } else {
-            out += lu::strings::printf_string("%u:%u", (int)access.start, (int)(access.start + access.count));
-         }
-         out += ']';
-      }
-      
-      return out;
-   }
-   
-   //
-   // serialization_item::condition
-   //
-   
-   std::string serialization_item::condition::to_string() const {
-      std::string out;
-      
-      bool first = true;
-      for(auto& item : this->path) {
-         if (!first)
-            out += '.';
-         first = false;
-         
-         out += item.to_string();
-      }
-      out += " == ";
-      out += lu::strings::printf_string("%" PRIdMAX, this->value);
-      
-      return out;
-   }
-   
-   //
-   // serialization_item
-   //
    
    const decl_descriptor& serialization_item::descriptor() const noexcept {
-      assert(!this->flags.padding);
       assert(!this->segments.empty());
-      return *this->segments.back().desc;
+      auto& segm = this->segments.back();
+      assert(segm.is_basic());
+      return *segm.as_basic().desc;
    }
    const bitpacking::data_options::computed& serialization_item::options() const noexcept {
-      assert(!this->flags.padding);
       assert(!this->segments.empty());
-      return this->segments.back().options();
+      auto& segm = this->segments.back();
+      assert(segm.is_basic());
+      return segm.as_basic().options();
    }
    
    size_t serialization_item::size_in_bits() const {
-      if (this->flags.padding) {
-         assert(this->segments.empty());
-         return this->padding_size;
+      if (this->segments.empty())
+         return 0;
+      auto& segm = this->segments.back();
+      if (segm.is_padding()) {
+         return segm.as_padding().bitcount;
+      } else if (segm.is_basic()) {
+         return segm.as_basic().size_in_bits();
       }
-      return segments.back().size_in_bits();
+      assert(false && "unhandled segment type");
+      return 0;
    }
    
    bool serialization_item::can_expand() const {
-      if (this->flags.padding) {
+      if (this->segments.empty())
          return false;
-      }
+      auto& back = this->segments.back();
+      if (back.is_padding())
+         return false;
+      assert(back.is_basic());
       
-      auto& segm = this->segments.back();
+      auto& segm = back.as_basic();
       auto& desc = *segm.desc;
       
       // Is array?
       if (segm.array_accesses.size() < desc.array.extents.size())
          return true;
-      if (!segm.array_accesses.empty()) {
-         if (segm.array_accesses.back().count > 1)
-            return true;
-      }
       
       if (desc.options.is_buffer()) {
          //
@@ -146,12 +74,239 @@ namespace codegen {
       return false;
    }
    
-   std::vector<serialization_item> serialization_item::expanded() const {
-      if (this->flags.padding) {
-         return {};
+   std::vector<serialization_item> serialization_item::_expand_record() const {
+      std::vector<serialization_item> out;
+      
+      auto& desc = this->descriptor();
+      for(const auto* m : desc.members_of_serialized()) {
+         auto clone = *this;
+         clone.is_defaulted = m->options.default_value_node != NULL_TREE;
+         clone.is_omitted   = m->options.omit_from_bitpacking;
+         
+         auto& segm = clone.segments.emplace_back();
+         auto& data = segm.data.emplace<basic_segment>();
+         data.desc = m;
+         
+         out.push_back(std::move(clone));
       }
       
-      auto& segm = this->segments.back();
+      return out;
+   }
+   
+   std::vector<serialization_item> serialization_item::_expand_externally_tagged_union() const {
+      const auto& desc = this->descriptor();
+      assert(desc.types.serialized.is_union());
+      assert(desc.options.is_tagged_union());
+      const auto& options = desc.options.tagged_union_options();
+      assert(!options.is_internal);
+      
+      std::vector<serialization_item> out;
+      
+      size_t max_size = size_in_bits();
+      //
+      // Find the union tag.
+      //
+      std::vector<basic_segment> path_to_tag;
+      {
+         size_t size = this->segments.size() - 1;
+         for(size_t i = 0; i < size; ++i) {
+            auto& segm = this->segments[i];
+            assert(segm.is_basic());
+            path_to_tag.push_back(segm.as_basic());
+         }
+         
+         bool found = false;
+         for(auto* m : path_to_tag.back().desc->members_of_serialized()) {
+            if (m->decl.name() == options.tag_identifier) {
+               path_to_tag.emplace_back().desc = m;
+               found = true;
+               break;
+            }
+         }
+         assert(found);
+      }
+      
+      //
+      // Expand the union.
+      //
+      for(const auto* m : desc.members_of_serialized()) {
+         const bool is_omitted   = m->options.omit_from_bitpacking;
+         const bool is_defaulted = m->options.default_value_node != NULL_TREE;
+         if (is_omitted && !is_defaulted) {
+            continue;
+         }
+         assert(m->options.union_member_id.has_value());
+         
+         condition_type cnd;
+         cnd.lhs = path_to_tag;
+         cnd.rhs = *m->options.union_member_id;
+         
+         auto clone = *this;
+         clone.is_defaulted = is_defaulted;
+         clone.is_omitted   = is_omitted;
+         {
+            auto& segm = clone.segments.emplace_back();
+            auto& data = segm.data.emplace<basic_segment>();
+            data.desc      = m;
+            segm.condition = cnd;
+         }
+         out.push_back(clone);
+         
+         const auto clone_size = clone.size_in_bits();
+         if (clone_size < max_size) {
+            //
+            // Zero-pad so that all union permutations are of the same length.
+            //
+            serialization_item padding = clone;
+            padding.segments.back().data.emplace<padding_segment>().bitcount = max_size - clone_size;
+            out.push_back(std::move(padding));
+         }
+      }
+      return out;
+   }
+   
+   std::vector<serialization_item> serialization_item::_expand_internally_tagged_union() const {
+      auto& desc = this->descriptor();
+      assert(desc.types.serialized.is_union());
+      assert(desc.options.is_tagged_union());
+      auto&  options = desc.options.tagged_union_options();
+      assert(options.is_internal);
+      
+      std::vector<serialization_item> out;
+      
+      size_t max_size = size_in_bits();
+      //
+      // Create serialization items for the union header; track how many 
+      // fields comprise the header, including the tag; and count the 
+      // total serialized size in bits of the header.
+      //
+      const auto members = desc.members_of_serialized();
+      size_t bits_prior = 0;
+      size_t prior      = 0;
+      assert(!members.empty());
+      {
+         bool found  = false;
+         auto nested = members[0]->members_of_serialized();
+         for(size_t i = 0; i < nested.size(); ++i, ++prior) {
+            const auto* m = nested[i];
+            
+            const bool is_omitted   = m->options.omit_from_bitpacking;
+            const bool is_defaulted = m->options.default_value_node != NULL_TREE;
+            if (is_omitted) {
+               continue;
+            }
+            
+            auto clone = *this;
+            clone.is_defaulted = is_defaulted;
+            clone.is_omitted   = is_omitted;
+            clone.append_segment(*members[0]);
+            clone.append_segment(*nested[i]);
+            out.push_back(clone);
+            
+            bits_prior += clone.size_in_bits();
+            
+            if (m->decl.name() == options.tag_identifier) {
+               assert(!m->options.omit_from_bitpacking);
+               found = true;
+               break;
+            }
+         }
+         assert(found);
+      }
+      //
+      // The last field we generated a serialization item for should be the 
+      // union tag.
+      //
+      std::vector<basic_segment> path_to_tag;
+      {
+         auto& src = out.back().segments;
+         for(auto& segm : src) {
+            assert(segm.is_basic());
+            path_to_tag.push_back(segm.as_basic());
+         }
+      }
+      max_size -= bits_prior;
+      //
+      // Now, expand the non-shared members-of-members.
+      //
+      for(const auto* outer : members) {
+         const bool is_omitted   = outer->options.omit_from_bitpacking;
+         const bool is_defaulted = outer->options.default_value_node != NULL_TREE;
+         
+         if (is_omitted && !is_defaulted) {
+            continue;
+         }
+         assert(outer->options.union_member_id.has_value());
+         condition_type cnd;
+         cnd.lhs = path_to_tag;
+         cnd.rhs = *outer->options.union_member_id;
+         
+         if (is_omitted && is_defaulted) {
+            auto clone = *this;
+            clone.is_defaulted = true;
+            clone.is_omitted   = true;
+            {
+               auto& segm = clone.segments.emplace_back();
+               auto& data = segm.data.emplace<basic_segment>();
+               data.desc      = outer;
+               segm.condition = cnd;
+            }
+            out.push_back(clone);
+            continue;
+         }
+         
+         const auto list        = outer->members_of_serialized();
+         size_t     branch_size = 0;
+         for(size_t i = prior + 1; i < list.size(); ++i) {
+            const auto* m = list[i];
+            
+            const bool is_omitted   = m->options.omit_from_bitpacking;
+            const bool is_defaulted = m->options.default_value_node != NULL_TREE;
+            if (is_omitted && !is_defaulted) {
+               continue;
+            }
+            
+            auto clone = *this;
+            clone.is_defaulted = is_defaulted;
+            clone.is_omitted   = is_omitted;
+            {
+               auto& segm = clone.segments.emplace_back();
+               auto& data = segm.data.emplace<basic_segment>();
+               data.desc      = outer;
+               segm.condition = cnd;
+            }
+            {
+               auto& segm = clone.segments.emplace_back();
+               auto& data = segm.data.emplace<basic_segment>();
+               data.desc = m;
+               //segm.condition = cnd;
+            }
+            out.push_back(clone);
+            
+            branch_size += clone.size_in_bits();
+         }
+         if (branch_size < max_size) {
+            //
+            // Zero-pad so that all union permutations are of the same length.
+            //
+            serialization_item padding = *this;
+            {
+               auto& segm = padding.segments.emplace_back();
+               auto& data = segm.data.emplace<padding_segment>();
+               data.bitcount  = max_size - branch_size;
+               segm.condition = cnd;
+            }
+            out.push_back(std::move(padding));
+         }
+      }
+      return out;
+   }
+   
+   std::vector<serialization_item> serialization_item::expanded() const {
+      if (!this->can_expand())
+         return {};
+      
+      auto& segm = this->segments.back().as_basic();
       auto& desc = *segm.desc;
       
       std::vector<serialization_item> out;
@@ -164,7 +319,7 @@ namespace codegen {
          } else {
             for(size_t i = 0; i < extent; ++i) {
                auto clone = *this;
-               clone.segments.back().array_accesses.push_back(array_access_info{
+               clone.segments.back().as_basic().array_accesses.push_back(array_access_info{
                   .start = i,
                   .count = 1,
                });
@@ -184,153 +339,32 @@ namespace codegen {
       
       auto type = desc.types.serialized;
       if (type.is_record()) {
-         for(const auto* m : desc.members_of_serialized()) {
-            auto clone = *this;
-            clone.flags.defaulted = m->options.default_value_node != NULL_TREE;
-            clone.flags.omitted   = m->options.omit_from_bitpacking;
-            clone.segments.emplace_back().desc = m;
-            out.push_back(std::move(clone));
-         }
-      } else if (type.is_union()) {
+         return this->_expand_record();
+      }
+      if (type.is_union()) {
          assert(desc.options.is_tagged_union());
-         auto&  options  = desc.options.tagged_union_options();
-         size_t max_size = size_in_bits();
+         const auto& options = desc.options.tagged_union_options();
          if (options.is_internal) {
-            //
-            // Internally-tagged union. Start by finding the tag -- and counting 
-            // how many members-of-members are shared.
-            //
-            const auto members = desc.members_of_serialized();
-            size_t bits_prior = 0;
-            size_t prior      = 0;
-            {
-               assert(!members.empty());
-               bool found  = false;
-               auto nested = members[0]->members_of_serialized();
-               for(size_t i = 0; i < nested.size(); ++i, ++prior) {
-                  const auto* m = nested[i];
-                  
-                  auto clone = *this;
-                  clone.flags.defaulted = m->options.default_value_node != NULL_TREE;
-                  clone.flags.omitted   = m->options.omit_from_bitpacking;
-                  clone.segments.emplace_back().desc = members[0];
-                  clone.segments.emplace_back().desc = nested[i];
-                  out.push_back(clone);
-                  
-                  bits_prior += clone.size_in_bits();
-                  
-                  if (m->decl.name() == options.tag_identifier) {
-                     assert(!m->options.omit_from_bitpacking);
-                     found = true;
-                     break;
-                  }
-               }
-               assert(found);
-            }
-            //
-            const auto tag_path = out.back().segments;
-            max_size -= bits_prior;
-            //
-            // Now, expand the non-shared members-of-members.
-            //
-            for(const auto* outer : members) {
-               if (outer->options.omit_from_bitpacking && outer->options.default_value_node == NULL_TREE) {
-                  continue;
-               }
-               assert(outer->options.union_member_id.has_value());
-               condition cnd;
-               cnd.path  = tag_path;
-               cnd.value = *outer->options.union_member_id;
-               
-               if (outer->options.omit_from_bitpacking && outer->options.default_value_node != NULL_TREE) {
-                  auto clone = *this;
-                  clone.flags.defaulted = true;
-                  clone.flags.omitted   = true;
-                  clone.segments.emplace_back().desc = outer;
-                  clone.conditions.push_back(cnd);
-                  out.push_back(clone);
-                  continue;
-               }
-               
-               auto   list        = outer->members_of_serialized();
-               size_t branch_size = 0;
-               for(size_t i = prior + 1; i < list.size(); ++i) {
-                  const auto* m = list[i];
-                  
-                  auto clone = *this;
-                  clone.flags.defaulted = m->options.default_value_node != NULL_TREE;
-                  clone.flags.omitted   = m->options.omit_from_bitpacking;
-                  clone.segments.emplace_back().desc = outer;
-                  clone.segments.emplace_back().desc = m;
-                  clone.conditions.push_back(cnd);
-                  out.push_back(clone);
-                  
-                  branch_size += clone.size_in_bits();
-               }
-               if (branch_size < max_size) {
-                  //
-                  // Zero-pad so that all union permutations are of the same length.
-                  //
-                  serialization_item pad;
-                  pad.flags.padding = true;
-                  pad.padding_size  = max_size - branch_size;
-                  pad.conditions = this->conditions;
-                  pad.conditions.push_back(cnd);
-                  out.push_back(std::move(pad));
-               }
-            }
-         } else {
-            //
-            // Externally-tagged union.
-            //
-            auto tag_path = this->segments;
-            {
-               tag_path.resize(tag_path.size() - 1);
-               {
-                  bool found = false;
-                  for(auto* m : tag_path.back().desc->members_of_serialized()) {
-                     if (m->decl.name() == options.tag_identifier) {
-                        tag_path.emplace_back().desc = m;
-                        found = true;
-                        break;
-                     }
-                  }
-                  assert(found);
-               }
-            }
-            for(const auto* m : desc.members_of_serialized()) {
-               condition cnd;
-               cnd.path  = tag_path;
-               cnd.value = *m->options.union_member_id;
-               
-               auto clone = *this;
-               clone.flags.defaulted = m->options.default_value_node != NULL_TREE;
-               clone.flags.omitted   = m->options.omit_from_bitpacking;
-               clone.segments.emplace_back().desc = m;
-               clone.conditions.push_back(cnd);
-               out.push_back(clone);
-               
-               const auto clone_size = clone.size_in_bits();
-               if (clone_size < max_size) {
-                  serialization_item pad;
-                  pad.flags.padding = true;
-                  pad.padding_size = max_size - clone_size;
-                  pad.conditions = this->conditions;
-                  pad.conditions.push_back(cnd);
-                  out.push_back(std::move(pad));
-               }
-            }
+            return this->_expand_internally_tagged_union();
          }
+         return this->_expand_externally_tagged_union();
       }
       
       return out;
    }
    
+   bool serialization_item::is_padding() const {
+      if (this->segments.empty())
+         return false;
+      return this->segments.back().is_padding();
+   }
    bool serialization_item::is_union() const {
-      if (this->flags.padding)
+      if (this->is_padding())
          return false;
       auto& segm = this->segments.back();
-      auto& desc = *segm.desc;
+      if (!segm.is_basic())
+         return false;
+      auto& desc = *segm.as_basic().desc;
       auto  type = desc.types.serialized;
       if (!type.is_union())
          return false;
@@ -339,78 +373,47 @@ namespace codegen {
    }
    
    std::string serialization_item::to_string() const {
+      if (this->segments.empty()) {
+         return "<empty>";
+      }
+      
       std::string out;
-      
-      if (!this->conditions.empty()) {
-         out += "if (";
-         
-         bool first = true;
-         for(auto& cnd : this->conditions) {
-            if (!first)
-               out += " && ";
-            first = false;
-            
-            out += cnd.to_string();
-         }
-         
-         out += ") ";
-      }
-      
-      if (this->flags.padding) {
-         out += "zero_pad_bitcount(";
-         out += lu::strings::printf_string("%u", (int)this->padding_size);
-         out += ")";
-         return out;
-      }
       
       bool first = true;
       for(auto& segm : this->segments) {
-         assert(segm.desc != nullptr);
-         auto& desc = *segm.desc;
-         
-         bool transformed = false;
-         if (!segm.is_array()) {
-            auto& list = desc.types.transformations;
-            if (!list.empty()) {
-               transformed = true;
-               
-               std::string text = "(";
-               for(auto type : list) {
-                  text += "(as ";
-                  text += type.pretty_print();
-                  text += ") ";
-               }
-               out.insert(0, text);
-            }
-         }
-         
-         if (!first) {
-            out += '.';
-         }
-         out += segm.to_string();
-         
-         if (transformed) {
-            out += ')';
-         }
          if (first) {
             first = false;
+         } else {
+            out += '|';
+         }
+         if (segm.condition.has_value()) {
+            out += '(';
+            out += (*segm.condition).to_string();
+            out += ") ";
+         }
+         
+         if (segm.is_padding()) {
+            auto bc = segm.as_padding().bitcount;
+            out += lu::strings::printf_string("zero_pad_bitcount(%u)", (int)bc);
+            continue;
+         }
+         
+         assert(segm.is_basic());
+         auto& data = segm.as_basic();
+         assert(data.desc != nullptr);
+         auto& desc = *data.desc;
+         
+         out += data.to_string();
+         
+         auto& list = desc.types.transformations;
+         if (!list.empty()) {
+            for(auto type : list) {
+               out += " as ";
+               out += type.pretty_print();
+            }
          }
       }
       
       return out;
-   }
-   
-   bool serialization_item::conditions_are_a_narrowing_of(const serialization_item& other) {
-      if (other.conditions.size() >= this->conditions.size())
-         return false;
-      
-      auto size = other.conditions.size();
-      for(size_t i = 0; i < size; ++i) {
-         const auto& a = this->conditions[i];
-         const auto& b = other.conditions[i];
-         if (a != b)
-            return false;
-      }
-      return true;
    }
 }

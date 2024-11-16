@@ -31,9 +31,17 @@ SOURCES=\
         src/bitpacking/verify_union_external_tag.cpp \
         src/bitpacking/verify_union_internal_tag.cpp \
         src/bitpacking/verify_union_members.cpp \
+        src/codegen/instructions/array_slice.cpp \
+        src/codegen/instructions/transform.cpp \
+        src/codegen/serialization_items/basic_segment.cpp \
+        src/codegen/serialization_items/condition.cpp \
         src/codegen/decl_descriptor.cpp \
         src/codegen/divide_items_by_sectors.cpp \
+        src/codegen/instruction_tree_stringifier.cpp \
+        src/codegen/rechunked.cpp \
+        src/codegen/rechunked_items_to_instruction_tree.cpp \
         src/codegen/serialization_item.cpp \
+        src/codegen/value_path.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
         src/gcc_helpers/dump_function.cpp \
         src/gcc_helpers/extract_pragma_kv_args.cpp \

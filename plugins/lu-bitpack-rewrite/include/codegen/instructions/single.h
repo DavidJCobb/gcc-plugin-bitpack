@@ -1,0 +1,14 @@
+#pragma once
+#include "codegen/instructions/base.h"
+#include "codegen/value_path.h"
+
+namespace codegen::instructions {
+   class single : public base {
+      public:
+         static constexpr const type node_type = type::single;
+         virtual type get_type() const noexcept override { return node_type; };
+      
+      public:
+         value_path value;
+   };
+}

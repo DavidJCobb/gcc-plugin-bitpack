@@ -5,27 +5,12 @@
 
 ### Short-term
 
-JavaScript prototyping:
+C++:
 
-* Implement `typedef` parsing, so that we can test transformations to an array.
-* Test transformations to an array: we should generate array-slice nodes relative to the transformed value and its extent(s).
-* Once that's done, I think the prototyping will be done, and we can start porting the system over to C++ -- beginning with the redesigned serialization items; then re-chunked items; then the process of converting re-chunked items to trees.
-
-Changes needed to sector splitting in C++ (do this last, but I'm listing it first as context for the other changes and what data they'd be consuming):
-
-* Don't force-expand unions on sight during the main loop.
-* Update post-processing to have two steps:
-  * Merge one-by-one arrays into array slices, as we presently do.
-  * Do these steps repeatedly until they produce no further changes:
-    * Force-expand any serialization items whose types: are `RECORD_TYPE`s; lack names; and lack an associated and named `TYPE_DECL`. These are anonymous structs, and while we could generate whole-struct functions for them, they are unlikely to be instantiated multiple times and so should be handled directly, instead. (TIP: `gw::type::base::name()` returns empty if both of the latter two criteria are true.)
-    * Force-expand any serialization items whose types are `UNION_TYPE`s.
-    * If we see a serialization item that is an array of unions, then:
-      * Copy the `std::vector<array_access_info>` of the array-item's last segment.
-      * Take any missing array ranks in the copy, and fill them with zero-to-end slices of the end-segment's `decl_descriptor`'s array ranks. (So given a field `union {} foo[4][3][2]`and a serialization item `foo[1]`, we'd produce `foo[1][0:3][0:2]`.)
-      * Overwrite the array-item's last segment with the updated `std::vector<array_access_info>`. (Internally, this means the item won't be considered an array anymore; it'll be considered a single value but with a variable index.)
-      * Expand this no-longer-an-array item.
-
-The above change will make it possible to force-expand arrays of unions while still using array-slice notation, such that we can still generate for-loops. It should of course be implemented only after we've fully fleshed out re-chunking of items and generation of node trees *and* implemented both in C++.
+* The code for stringifying a re-chunked item is inlined in `debug_dump_as_serialization_item`. Move it to its own file.
+* Sector splitting does not handle conditions properly when unions end up being expanded. We mis-count bits because we assume that the (x == 1) branch comes after the (x == 0) branch, rather than them potentially using the same space. We need to fix this somehow.
+* The process of re-chunking a serialization item should make implied array extents explicit. For example, if we have `int foo[4][3][2]`, generating a re-chunked item from a serialization item for `foo` should be made to produce the same result as generating a re-chunked item from a serialization item for `foo[0:4][0:3][0:2]`. This will make node generation and code generation cleaner (if something is an array, then this change would guarantee that we always have `array_slice` nodes for it).
+* We need codegen once sector splitting is fixed.
 
 After we've gotten the redesign implemented, and our codegen is done, we should investigate using `gengtype` to mark our singletons as roots and ensure that tree nodes don't get deleted out from under our `basic_global_state`.
 

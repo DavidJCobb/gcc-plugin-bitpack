@@ -147,7 +147,6 @@ namespace bitpacking::data_options {
          
          // X-Options: tagged union
          if (key == "lu_bitpack_union_external_tag") {
-warning(1, "external tag requested");
             auto& dst_var  = this->x_options;
             if (!std::holds_alternative<requested_x_options::tagged_union>(dst_var))
                dst_var.emplace<requested_x_options::tagged_union>();
@@ -158,7 +157,6 @@ warning(1, "external tag requested");
             continue;
          }
          if (key == "lu_bitpack_union_internal_tag") {
-warning(1, "internal tag requested");
             auto& dst_var  = this->x_options;
             if (!std::holds_alternative<requested_x_options::tagged_union>(dst_var))
                dst_var.emplace<requested_x_options::tagged_union>();
