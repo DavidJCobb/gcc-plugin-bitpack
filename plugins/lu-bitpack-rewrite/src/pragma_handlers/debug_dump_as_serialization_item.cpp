@@ -15,6 +15,7 @@
 
 // re-chunked
 #include "codegen/rechunked.h"
+#include "codegen/rechunked/item_to_string.h"
 
 // instructions
 #include "codegen/rechunked_items_to_instruction_tree.h"
@@ -25,8 +26,6 @@ namespace pragma_handlers {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack debug_dump_as_serialization_item";
       
       gcc_wrappers::decl::variable decl;
-      size_t levels = std::numeric_limits<size_t>::max();
-      
       {
          tree identifier = NULL_TREE;
          {
@@ -38,16 +37,6 @@ namespace pragma_handlers {
                return;
             }
             identifier = data;
-            
-            token_type = pragma_lex(&data, &loc);
-            if (token_type == CPP_NUMBER) {
-               if (TREE_CODE(data) != INTEGER_CST) {
-                  std::cerr << "note: " << this_pragma_name << ": invalid integer constant for number of levels to dump; treating as 1\n";
-                  levels = 1;
-               } else {
-                  levels = TREE_INT_CST_LOW(data);
-               }
-            }
          }
          auto node = lookup_name(identifier);
          if (node == NULL_TREE) {
@@ -150,119 +139,24 @@ namespace pragma_handlers {
             std::cerr << "\n";
             std::cerr << "Generating re-chunked items...\n";
             
-            for(size_t i = 0; i < sectors.size(); ++i) {
+            std::vector<std::vector<codegen::rechunked::item>> rechunked_sectors;
+            for(const auto& sector : sectors) {
+               auto& dst = rechunked_sectors.emplace_back();
+               for(const auto& item : sector) {
+                  auto& dst_item = dst.emplace_back();
+                  dst_item = codegen::rechunked::item(item);
+               }
+            }
+            //
+            // Debugprint.
+            //
+            for(size_t i = 0; i < rechunked_sectors.size(); ++i) {
                std::cerr << "\nSector " << i << ":\n";
-               const auto& si_items = sectors[i];
-               
-               std::vector<codegen::rechunked::item> rc_items;
-               rc_items.resize(si_items.size());
-               for(size_t j = 0; j < si_items.size(); ++j) {
-                  auto& item = rc_items[j];
-                  item = codegen::rechunked::item(si_items[j]);
-                  
-                  using namespace codegen::rechunked;
-                  
-                  //
-                  // Print the re-chunked items as we build them.
-                  //
-                  
-                  auto _print_qd_chunk = [](const chunks::qualified_decl& chunk) {
-                     std::cerr << '`';
-                     bool first = true;
-                     for(auto* desc : chunk.descriptors) {
-                        assert(desc != nullptr);
-                        if (first) {
-                           first = false;
-                        } else {
-                           std::cerr << '.';
-                        }
-                        auto decl = desc->decl;
-                        if (decl.empty()) {
-                           std::cerr << "<empty>";
-                        } else {
-                           auto name = decl.name();
-                           if (name.empty())
-                              std::cerr << "<unnamed>";
-                           else
-                              std::cerr << name;
-                        }
-                        
-                     }
-                     std::cerr << '`';
-                  };
-                  auto _print_as_chunk = [](const chunks::array_slice& chunk) {
-                     std::cerr << '[';
-                     std::cerr << chunk.data.start;
-                     if (chunk.data.count != 1) {
-                        std::cerr << ':';
-                        std::cerr << (chunk.data.start + chunk.data.count);
-                     }
-                     std::cerr << ']';
-                  };
-                  auto _print_tf_chunk = [](const chunks::transform& chunk) {
-                     std::cerr << '<';
-                     bool first = true;
-                     for(auto type : chunk.types) {
-                        if (first) {
-                           first = false;
-                        } else {
-                           std::cerr << ' ';
-                        }
-                        std::cerr << "as ";
-                        std::cerr << type.name();
-                     }
-                     std::cerr << '>';
-                  };
-                  
+               for(auto& item : rechunked_sectors[i]) {
                   std::cerr << " - ";
-                  bool first = true;
-                  for(auto& chunk_ptr : item.chunks) {
-                     using namespace codegen::rechunked;
-                     
-                     if (first) {
-                        first = false;
-                     } else {
-                        std::cerr << ' ';
-                     }
-                     if (auto* casted = chunk_ptr->as<chunks::qualified_decl>()) {
-                        _print_qd_chunk(*casted);
-                        continue;
-                     }
-                     if (auto* casted = chunk_ptr->as<chunks::array_slice>()) {
-                        _print_as_chunk(*casted);
-                        continue;
-                     }
-                     if (auto* casted = chunk_ptr->as<chunks::transform>()) {
-                        _print_tf_chunk(*casted);
-                        continue;
-                     }
-                     if (auto* casted = chunk_ptr->as<chunks::padding>()) {
-                        std::cerr << "{pad:";
-                        std::cerr << casted->bitcount;
-                        std::cerr << '}';
-                        continue;
-                     }
-                     if (auto* casted = chunk_ptr->as<chunks::condition>()) {
-                        std::cerr << '(';
-                        for(auto& chunk_ptr : casted->lhs.chunks) {
-                           if (auto* casted = chunk_ptr->as<chunks::qualified_decl>()) {
-                              _print_qd_chunk(*casted);
-                           } else if (auto* casted = chunk_ptr->as<chunks::array_slice>()) {
-                              _print_as_chunk(*casted);
-                           } else if (auto* casted = chunk_ptr->as<chunks::transform>()) {
-                              _print_tf_chunk(*casted);
-                           }
-                           std::cerr << ' ';
-                        }
-                        std::cerr << "== ";
-                        std::cerr << casted->rhs;
-                        std::cerr << ')';
-                        continue;
-                     }
-                  }
+                  std::cerr << codegen::rechunked::item_to_string(item);
                   std::cerr << '\n';
                }
-               
             }
          
             //
@@ -270,15 +164,10 @@ namespace pragma_handlers {
             //
             
             std::vector<std::unique_ptr<codegen::instructions::base>> sector_trees;
-            for(auto& sector : sectors) {
-               // redundant
-               std::vector<codegen::rechunked::item> rc_items;
-               rc_items.resize(sector.size());
-               for(size_t i = 0; i < sector.size(); ++i)
-                  rc_items[i] = codegen::rechunked::item(sector[i]);
+            for(size_t i = 0; i < rechunked_sectors.size(); ++i) {
+               const auto& items = rechunked_sectors[i];
                
-               auto  node_ptr = codegen::rechunked_items_to_instruction_tree(rc_items);
-               auto* node     = node_ptr.get();
+               auto node_ptr = codegen::rechunked_items_to_instruction_tree(items);
                sector_trees.push_back(std::move(node_ptr));
             }
             
