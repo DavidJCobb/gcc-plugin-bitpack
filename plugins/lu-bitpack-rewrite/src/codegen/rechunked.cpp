@@ -171,6 +171,23 @@ namespace codegen::rechunked {
             chunk_ptr->data = aai;
             this->chunks.push_back(std::move(chunk_ptr));
          }
+         {
+            //
+            // Fully expand arrays-of-singles: given `int foo[4][3][2]`, a 
+            // serialization item for `foo` should produce the same chunks 
+            // as a serialization item for `foo[0:4][0:3][0:2]`. This will 
+            // make node trees produced from re-chunked items a bit more 
+            // consistent.
+            //
+            const auto&  ranks = data.desc->array.extents;
+            const size_t size  = data.array_accesses.size();
+            for(size_t j = size; j < ranks.size(); ++j) {
+               auto chunk_ptr = std::make_unique<chunks::array_slice>();
+               chunk_ptr->data.start = 0;
+               chunk_ptr->data.count = ranks[j];
+               this->chunks.push_back(std::move(chunk_ptr));
+            }
+         }
          
          const auto& types = data.desc->types.transformations;
          if (!types.empty()) {

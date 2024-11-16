@@ -116,7 +116,7 @@ When these attributes are applied, they designate <dfn>transformation functions<
 When these attributes are applied to [fields that are of] an array type, the attributes are assumed to pertain to the innermost value type.
 
 <dl>
-   <dt><code>lu_bitpack_funcs("pre_pack=<var>pre</var>,post_unpack=<var>post</var>")</code></dt>
+   <dt><code>lu_bitpack_transforms("pre_pack=<var>pre</var>,post_unpack=<var>post</var>")</code></dt>
       <dd><p>Specify <dfn>pre-pack</dfn> and <dfn>post-unpack</dfn> functions by their identifiers. These functions must exist at file scope.</p>
       <p>The pre-pack function should have the signature <code>void pre(const <var>InSitu</var>*, <var>Transform</var>*)</code>. The post-unpack function should have the signature <code>void post(<var>InSitu</var>*, const <var>Transform</var>*)</code>.</p></dd>
 </dl>

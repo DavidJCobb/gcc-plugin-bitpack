@@ -7,8 +7,9 @@
 
 C++:
 
-* The process of re-chunking a serialization item should make implied array extents explicit. For example, if we have `int foo[4][3][2]`, generating a re-chunked item from a serialization item for `foo` should be made to produce the same result as generating a re-chunked item from a serialization item for `foo[0:4][0:3][0:2]`. This will make node generation and code generation cleaner (if something is an array, then this change would guarantee that we always have `array_slice` nodes for it).
-* We need codegen.
+* Instruction nodes: when we have a leaf `array_slice` node, we generate a `single` node inside of it, on the understanding that a leaf array-slice chunk in a re-chunked item represents serialization of a whole array element. Don't we need to do something similar for `transform` nodes? That is, don't we need to check whether a `transform` node will be a leaf and if so, generate a `single` node inside of it to serialize the transformed value whole?
+* We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
+* Time for codegen.
 
 After we've gotten the redesign implemented, and our codegen is done, we should investigate using `gengtype` to mark our singletons as roots and ensure that tree nodes don't get deleted out from under our `basic_global_state`.
 
