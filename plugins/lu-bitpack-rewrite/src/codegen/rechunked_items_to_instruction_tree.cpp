@@ -143,7 +143,7 @@ namespace codegen {
             instructions::base* parent = root.get();
             for(auto& entry : stack)
                if (entry.node)
-                  if (auto* casted = entry.node->as<instructions::container>())
+                  if (entry.node->as<instructions::container>())
                      parent = entry.node;
             assert(parent != nullptr);
             
@@ -341,6 +341,25 @@ namespace codegen {
                   .node  = node.get(),
                });
                parent->as<instructions::container>()->instructions.push_back(std::move(node));
+               
+               if (is_last_chunk) {
+                  //
+                  // This is a leaf "transform" chunk, which means that the transformed 
+                  // value will be serialized whole (rather than having individual fields 
+                  // serialized one by one). The `transform` node represents only the 
+                  // transformation itself, so generate a `single` node to represent the 
+                  // array elements.
+                  //
+                  parent = stack.back().node;
+                  
+                  auto node = std::make_unique<instructions::single>();
+                  node->value = value;
+                  stack.push_back(stack_entry{
+                     .chunk = chunk,
+                     .node  = node.get(),
+                  });
+                  parent->as<instructions::container>()->instructions.push_back(std::move(node));
+               }
                continue;
             }
             if (auto* casted = chunk->as<rechunked::chunks::padding>()) {

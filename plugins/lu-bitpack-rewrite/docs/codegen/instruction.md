@@ -38,13 +38,15 @@ These nodes represent a type transformation to be performed on a value. The gene
 }
 ```
 
-As such, these nodes spawn two `VAR_DECLs` &mdash; local variables for the final[^transitive-transforms] transformed type &mdash; and wrap them in a pair of `decl_descriptors`. These nodes also contain child instructions, which direct codegen to serialize the transformed object or nested fields thereof.
+As such, these nodes spawn two `VAR_DECLs` &mdash; local variables for the final[^transitive-transforms] transformed type; one for the to-be-generated "read" function, and one for the "save" function &mdash; and wrap them in a pair of `decl_descriptors`. These nodes also contain child instructions, which direct codegen to serialize the transformed object or nested fields thereof.
 
 [^transitive-transforms]:
 
     Transforms may apply transitively. For example, a `FIELD_DECL` may ask to be transformed to type `T`, and type `T` itself may ask to be transformed to type `U`, such that the type that acutally ends up in the bitstream is the serializd form of a `U` instance.
     
     The generated code will need local variables for each type we transform through, i.e. `T __transformed_intermediate` and `U __transformed_value`. However, we only pre-generate the latter &mdash; that is, the node itself only pre-creates variables for the final transformed type &mdash; because those are what member accesses by child nodes would need be relative to; those are the variables that `value_path`s in child nodes would need a way to refer to.
+
+Note that the `transform` node represents only the transformation itself, not serialization of the transformed value (or any members thereof). There should always be at least one child instruction. For example, if the transformed type is a struct, and the entire struct fits in a given sector, then there should be a child `single` node that serializes `__transformed_value`.
 
 ### `union_switch` and `union_case`
 

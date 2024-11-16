@@ -7,7 +7,6 @@
 
 C++:
 
-* Instruction nodes: when we have a leaf `array_slice` node, we generate a `single` node inside of it, on the understanding that a leaf array-slice chunk in a re-chunked item represents serialization of a whole array element. Don't we need to do something similar for `transform` nodes? That is, don't we need to check whether a `transform` node will be a leaf and if so, generate a `single` node inside of it to serialize the transformed value whole?
 * We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
 * Time for codegen.
 
