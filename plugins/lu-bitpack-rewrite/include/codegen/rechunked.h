@@ -117,5 +117,7 @@ namespace codegen::rechunked {
       
       public:
          std::vector<std::unique_ptr<chunks::base>> chunks;
+         
+         bool is_omitted_and_defaulted() const;
    };
 }

@@ -21,36 +21,53 @@ namespace codegen {
    // re-chunked items have conditions that compare the same LHS to different 
    // RHS values.
    //
+   // There's also another detail worth noting: if an `array_slice` chunk has 
+   // a count of 1, then we don't generate a node for it (but we do still add 
+   // a stack entry). This ensures that we don't generate single-iteration `for` 
+   // loops.
+   //
    struct stack_entry {
       const rechunked::chunks::base* chunk = nullptr;
       instructions::base*            node  = nullptr;
    };
    
-   // Given a `value_path`, advance that path forward based on an `array_slice` 
-   // node. If the node truly represents a slice, then use its variable as the 
-   // index (i.e. `foo[i]`). If the node represents a single index, then use 
-   // that index (i.e. `foo[3]`).
-   //
-   static void _move_value_into_array(value_path& subject, const instructions::array_slice& node) {
-      if (node.array.count == 1) {
-         subject.access_array_element(node.array.start);
-         return;
-      }
-      subject.access_array_element(node.loop_index.descriptors);
-   }
-   
    // Take the stack and build a `value_path` representing the innermost node 
    // in that stack. This is "where we are:" it is the value that the next 
    // created node will be relevant to.
    //
-   static value_path _current_value_for_stack(const std::vector<stack_entry>& stack) {
+   static value_path _current_value_for_stack(
+      const std::vector<stack_entry>& stack,
+      size_t end = std::numeric_limits<size_t>::max()
+   ) {
       value_path value;
-      for(const auto& entry : stack) {
+      
+      end = (std::min)(end, stack.size());
+      for(size_t i = 0; i < end; ++i) {
+         const auto& entry = stack[i];
+         
          if (const auto* casted = entry.chunk->as<rechunked::chunks::qualified_decl>()) {
             for(auto& desc : casted->descriptors)
                value.access_member(*desc);
             continue;
          }
+         if (const auto* casted = entry.chunk->as<rechunked::chunks::array_slice>()) {
+            if (entry.node != nullptr) {
+               //
+               // Slice. Use the loop counter.
+               //
+               auto* casted_node = entry.node->as<instructions::array_slice>();
+               assert(casted_node != nullptr);
+               value.access_array_element(casted_node->loop_index.descriptors);
+            } else {
+               //
+               // Single element with fixed index. Use the index.
+               //
+               assert(casted->data.count == 1);
+               value.access_array_element(casted->data.start);
+            }
+            continue;
+         }
+         
          assert(entry.node != nullptr);
          if (entry.node->as<instructions::union_switch>())
             continue;
@@ -61,10 +78,7 @@ namespace codegen {
             value.replace(casted->transformed.descriptors);
             continue;
          }
-         if (const auto* casted = entry.node->as<instructions::array_slice>()) {
-            _move_value_into_array(value, *casted);
-            continue;
-         }
+         assert(!entry.node->as<instructions::array_slice>());
          assert(false && "unreachable");
       }
       return value;
@@ -192,24 +206,7 @@ namespace codegen {
                      //
                      // Once we've found the common stem, access values via stack nodes.
                      //
-                     for(size_t i = 0; i < common_s; ++i) {
-                        const auto* chunk = stack[i].chunk;
-                        const auto* node  = stack[i].node;
-                        if (auto* casted = chunk->as<rechunked::chunks::qualified_decl>()) {
-                           for(auto* desc : casted->descriptors)
-                              lhs.access_member(*desc);
-                           continue;
-                        }
-                        if (const auto* casted = node->as<instructions::transform>()) {
-                           lhs.replace(casted->transformed.descriptors);
-                           continue;
-                        }
-                        if (const auto* casted = node->as<instructions::array_slice>()) {
-                           _move_value_into_array(lhs, *casted);
-                           continue;
-                        }
-                        assert(false && "unreachable");
-                     }
+                     lhs = _current_value_for_stack(stack, common_s);
                      //
                      // Finally, access values within the non-common tail of the condition.
                      //
@@ -261,27 +258,43 @@ namespace codegen {
             assert(!parent->as<instructions::union_switch>());
             
             if (auto* casted = chunk->as<rechunked::chunks::array_slice>()) {
-               auto node = std::make_unique<instructions::array_slice>();
-               node->array = {
-                  .value = value,
-                  .start = casted->data.start,
-                  .count = casted->data.count,
-               };
-               _move_value_into_array(value, *node);
-               
-               stack.push_back(stack_entry{
-                  .chunk = chunk,
-                  .node  = node.get(),
-               });
-               parent->as<instructions::container>()->instructions.push_back(std::move(node));
-               
+               if (casted->data.count == 1) {
+                  //
+                  // Don't create a node for a single array element, but do still create 
+                  // a stack entry.
+                  //
+                  stack.push_back(stack_entry{
+                     .chunk = chunk,
+                     .node  = nullptr,
+                  });
+                  value.access_array_element(casted->data.start);
+               } else {
+                  auto node = std::make_unique<instructions::array_slice>();
+                  node->array = {
+                     .value = value,
+                     .start = casted->data.start,
+                     .count = casted->data.count,
+                  };
+                  value.access_array_element(node->loop_index.descriptors);
+                  
+                  stack.push_back(stack_entry{
+                     .chunk = chunk,
+                     .node  = node.get(),
+                  });
+                  parent->as<instructions::container>()->instructions.push_back(std::move(node));
+               }
+               //
+               // Whether or not we generate a node, we have to check for the case of this 
+               // being a leaf chunk:
+               //
                if (is_last_chunk) {
                   //
                   // This is a non-expanded array. The `array_slice` node represents only 
                   // the for loop itself, so generate a `single` node to represent the 
                   // array elements.
                   //
-                  parent = stack.back().node;
+                  if (auto* n = stack.back().node)
+                     parent = n;
                   
                   auto node = std::make_unique<instructions::single>();
                   node->value = value;
@@ -291,7 +304,6 @@ namespace codegen {
                   });
                   parent->as<instructions::container>()->instructions.push_back(std::move(node));
                }
-               
                continue;
             }
             if (auto* casted = chunk->as<rechunked::chunks::qualified_decl>()) {

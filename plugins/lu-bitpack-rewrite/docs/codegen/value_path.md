@@ -12,9 +12,3 @@ As we get closer to code generation, however, it becomes easiest to work purely 
 Another example is type transformations, which need to act on the local variables that are of the transformed type. If we're serializing `a|b as new_type|c`, then we need the `codegen::instruction` node that serializes `c` to encode `__transformed_b.c`, not `a.b.c`, as `a.b.c` &mdash; a `c` field on the original, non-transformed `b` value &mdash; may not even exist.
 
 For this reason, `codegen::instruction` nodes use `value_path` objects. Each path is a set of segments; a segment may be a pair[^pairs] of `decl_descriptors` for top-level values or member access, a pair for array access using a loop counter, or an integer constant for when we're accessing a specific single array element.
-
-## A note on count-1 arrays
-
-When we're converting re-chunked items to instruction node trees, we have to build a `value_path` relative to "where we are." If we're in an `array_slice` chunk, for example, then any member access will be relative to `array[__i]`.
-
-There's one edge case that we have to handle, though: `array_slice` chunks are used for both ranges of array elements (where we'd want to generate a `for` loop) and for single array elements. The items-to-tree function specifically catches this case: if we're moving into an `array_slice` node, we check whether its count is 1, and if so, we use the start index instead of the loop counter variable. This means that when it comes time to actually generate code for an `array_slice` node, we can check if its count is 1 and if so, we can blindly "unroll" it &mdash; never generate a single-iteration `for` loop for it &mdash; confident that its loop counter variable isn't actually used.

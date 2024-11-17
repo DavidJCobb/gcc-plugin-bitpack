@@ -8,17 +8,7 @@
 C++:
 
 * We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
-* Test the codegen pre-passes (serialization items; re-chunked items; instruction nodes) on omitted-and-defaulted fields. I want to make sure that these are handled properly: we need to produce nodes for them, so we can produce the code to default them on read; but we need to produce nodes for them *with purpose and intent*, so we don't accidentally serialize them to the bitstream.
-  * Modify `debug_dump_as_serialization_item` so that it denotes omitted-and-defaulted re-chunked items. We'd want to check all `decl_descriptor`s across all qualified-decl chunks, stopping at the first one we see.
-  * `instructions::single`: Add an assertion to `is_omitted_and_defaulted`, *or* add a virtual `assert_correctness` function to `instruction::base` to be overridden on all node types. For `single`, assert that if the value is omitted, it is also defaulted. Wholly-omitted values should be excluded from serialization items, re-chunked items, and instruction nodes entirely.
-* Here's a fun question: do we even have to generate an `array_slice` node for an `array_slice` chunk whose count is 1?
-
-  As long as we're still "inside the slice," we'd be using `_current_value_for_stack` to build `value_path`s to the array elements. Currently, that function checks whether `entry.node` is an instance of `instructions::array_slice`, and if so, it steps into the array, checking whether its count is 1. Instead of doing that, though, we could modify that function so that when `entry.chunk` is an instance of `rechunked::chunks::array_slice`, we check whether `entry.node` exists; if so, we use its loop counter, and if not, we assert that the chunk has count 1 and use its start index. Then, we'd just choose never to create an `array_slice` node for a count-1 chunk: we'd push `{ chunk: chunk, node: nullptr }` onto the stack.
-  
-  Refusing to create a node for a count-1 array slice shouldn't affect creation of the rest of the node tree. Anything that *would* be a child of the slice would just be appended directly to its parent instead, since we use the last non-null node pointer in the `stack` as the `parent` to append to. Like, this idea *should* work and if so, it'd greatly simplify codegen, and it'd be a lot safer than the current approach (spawn a count-1 array; rely on one specific way of building `value_path`s choosing to never use its `VAR_DECL`s; and blindly unroll the array). In effect, it'd solve the `foo[0][0][0]` and `foo[0][0][0].bar` edge-case that I'd tried and failed to solve earlier. Let's test it and find out.
-  
-  We would, of course, still have to handle the case of a leaf `array_slice` chunk, generating a `single` chunk and appending it to whatever the current parent would be.
-    * If this does work, then update the documentation for `array_slice` nodes and for `value_path`s. Both of them note the current (before-writing-this-bullet-point) plan, which relies on a few different systems coordinating at a distance rather than on any hard guardrails.
+* `instructions::single`: Add an assertion to `is_omitted_and_defaulted`, *or* add a virtual `assert_correctness` function to `instruction::base` to be overridden on all node types. For `single`, assert that if the value is omitted, it is also defaulted. Wholly-omitted values should be excluded from serialization items, re-chunked items, and instruction nodes entirely.
 * Time for codegen.
   * See notes in the instruction documentation, particularly w.r.t. array-slice nodes.
 

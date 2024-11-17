@@ -151,6 +151,19 @@ static struct TestOmitDefaultFields {
 } sTestOmittedDefaultFields;
 #pragma lu_bitpack debug_dump_as_serialization_item sTestOmittedDefaultFields
 
+static struct TestBranchOnArray {
+   struct {
+      int tag;
+      LU_BP_UNION_TAG(tag) union {
+         LU_BP_TAGGED_ID(0) u8 a;
+         LU_BP_TAGGED_ID(1) u8 b;
+         LU_BP_TAGGED_ID(2) u8 c[2];
+      } data;
+   } foo[2];
+   int force_split[4];
+} sTestBranchOnArray;
+#pragma lu_bitpack debug_dump_as_serialization_item sTestBranchOnArray
+
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);
 

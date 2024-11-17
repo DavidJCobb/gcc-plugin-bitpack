@@ -154,6 +154,9 @@ namespace pragma_handlers {
                std::cerr << "\nSector " << i << ":\n";
                for(auto& item : rechunked_sectors[i]) {
                   std::cerr << " - ";
+                  if (item.is_omitted_and_defaulted()) {
+                     std::cerr << "omitted and defaulted: ";
+                  }
                   std::cerr << codegen::rechunked::item_to_string(item);
                   std::cerr << '\n';
                }

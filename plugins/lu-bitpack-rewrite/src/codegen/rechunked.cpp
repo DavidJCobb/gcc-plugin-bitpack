@@ -197,4 +197,21 @@ namespace codegen::rechunked {
          }
       }
    }
+   
+   bool item::is_omitted_and_defaulted() const {
+      bool omitted   = false;
+      bool defaulted = false;
+      for(auto& chunk_ptr : this->chunks) {
+         if (auto* casted = chunk_ptr->as<chunks::qualified_decl>()) {
+            for(auto* desc : casted->descriptors) {
+               assert(desc != nullptr);
+               if (desc->options.omit_from_bitpacking)
+                  omitted = true;
+               if (desc->options.default_value_node != NULL_TREE)
+                  defaulted = true;
+            }
+         }
+      }
+      return omitted && defaulted;
+   }
 }

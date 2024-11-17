@@ -23,11 +23,7 @@ These nodes represent zero-padding, used to keep all permutations of a union the
 
 These nodes represent a `for` loop that we need to generate. They spawn two `VAR_DECL`s &mdash; local variables for the loop counter, in the to-be-generated "read" and "save" functions &mdash; and wrap them in a pair of `decl_descriptor`s. These nodes also contain child nodes, which will actually be responsible for serializing... whatever goes in this loop.
 
-#### Unrolling count-1 loops
-
-Note that it's possible for an array-slice node to have a count of 1. The code generation process must watch for this and be able to "unroll" the to-be-generated loop; that is: we should never generate `for (int i = 3; i < 4; ++i)`.
-
-The code that generates instruction nodes from re-chunked items *does* special-case this: when building `value_path`s, it checks whether a loop index belongs to a loop with a count of 1, and if so, it encodes an integer-constant array index instead of using the loop counter variables. Theoretically, that means that nothing should refer to a count-1 `array_slice`'s loop counter variable, so codegen for these cases should be trivial: decline to generate a local block, and just generate code for the child instruction nodes. For added safety, however, we may want to find some way to "poison" a `decl_descriptor` and then have codegen assert that any descriptors it uses are non-poisoned. Then, we can poison the descriptors of a count-1 loop's counter variables, just in case something slips through due to some obscure edge-case.
+These nodes should never be generated with a count of 1; the algorithm for converting re-chunked items to instruction node trees checks this.
 
 ### `transform`
 
