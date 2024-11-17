@@ -6,6 +6,8 @@ namespace codegen::instructions {
       public:
          static constexpr const type node_type = type::padding;
          virtual type get_type() const noexcept override { return node_type; };
+         
+         virtual expr_pair generate(const instruction_generation_context&) const;
       
       public:
          size_t bitcount = 0;

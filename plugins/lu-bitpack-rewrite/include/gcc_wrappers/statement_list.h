@@ -60,6 +60,8 @@ namespace gcc_wrappers {
          
          void append(const expr::base&);
          void append(statement_list&&);
+         void prepend(const expr::base&);
+         void prepend(statement_list&&);
          
          void append_untyped(tree expr);
    };

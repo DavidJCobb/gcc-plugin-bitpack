@@ -39,6 +39,30 @@ namespace codegen {
       return 0;
    }
    
+   static bool has_omitted_defaulted_members(const decl_descriptor& desc) {
+      return desc.is_or_contains_defaulted();
+   }
+   
+   bool serialization_item::affects_output_in_any_way() const {
+      if (!this->is_omitted)
+         return true;
+      if (this->is_defaulted)
+         return true;
+      
+      if (this->segments.empty())
+         return false;
+      auto& back = this->segments.back();
+      if (back.is_padding())
+         return false;
+      assert(back.is_basic());
+      auto& segm = back.as_basic();
+      auto& desc = *segm.desc;
+      if (has_omitted_defaulted_members(desc))
+         return true;
+      
+      return false;
+   }
+   
    bool serialization_item::can_expand() const {
       if (this->segments.empty())
          return false;
@@ -49,6 +73,24 @@ namespace codegen {
       
       auto& segm = back.as_basic();
       auto& desc = *segm.desc;
+      
+      if (this->is_omitted && this->is_defaulted) {
+         auto dv = desc.options.default_value_node;
+         assert(dv != NULL_TREE);
+         if (TREE_CODE(dv) == STRING_CST) {
+            //
+            // If something is omitted and defaulted, and the default value 
+            // is a string, then don't expand the innermost extent.
+            //
+            size_t rank = desc.array.extents.size();
+            auto   type = desc.types.serialized;
+            if (rank > 0 && !type.is_array()) {
+               --rank;
+            }
+            if (segm.array_accesses.size() < rank)
+               return true;
+         }
+      }
       
       // Is array?
       if (segm.array_accesses.size() < desc.array.extents.size())
@@ -77,11 +119,28 @@ namespace codegen {
    std::vector<serialization_item> serialization_item::_expand_record() const {
       std::vector<serialization_item> out;
       
+      bool omitted_uplevel = this->is_omitted;
+      
       auto& desc = this->descriptor();
       for(const auto* m : desc.members_of_serialized()) {
+         bool is_defaulted = m->options.default_value_node != NULL_TREE;
+         bool is_omitted   = m->options.omit_from_bitpacking;
+         
+         if (is_omitted || omitted_uplevel) {
+            if (!is_defaulted) {
+               //
+               // If a member is omitted and not defaulted, then it should be 
+               // excluded UNLESS it is or contains a struct that has defaulted 
+               // members. (Structs cannot themselves be defaulted.)
+               //
+               if (!has_omitted_defaulted_members(*m))
+                  continue;
+            }
+         }
+         
          auto clone = *this;
-         clone.is_defaulted = m->options.default_value_node != NULL_TREE;
-         clone.is_omitted   = m->options.omit_from_bitpacking;
+         clone.is_defaulted = is_defaulted;
+         clone.is_omitted   = is_omitted || omitted_uplevel;
          
          auto& segm = clone.segments.emplace_back();
          auto& data = segm.data.emplace<basic_segment>();

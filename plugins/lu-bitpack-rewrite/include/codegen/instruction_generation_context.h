@@ -1,0 +1,22 @@
+#pragma once
+#include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/record.h"
+#include "codegen/func_pair.h"
+#include "codegen/value_pair.h"
+
+namespace codegen {
+   class whole_struct_function_dictionary;
+}
+
+namespace codegen {
+   struct instruction_generation_context {
+      public:
+         whole_struct_function_dictionary& whole_struct_functions;
+         value_pair state_ptr;
+      
+      protected:
+         func_pair _make_whole_struct_functions_for(gcc_wrappers::type::record) const;
+      public:
+         func_pair get_whole_struct_functions_for(gcc_wrappers::type::record) const;
+   };
+}

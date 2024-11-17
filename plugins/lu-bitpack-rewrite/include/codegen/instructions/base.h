@@ -2,6 +2,11 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#include "codegen/expr_pair.h"
+
+namespace codegen {
+   struct instruction_generation_context;
+}
 
 namespace codegen::instructions {
    enum class type {
@@ -15,10 +20,12 @@ namespace codegen::instructions {
    };
    
    class container;
+   class union_switch;
    class base {
       public:
          virtual ~base() {}
-         virtual type get_type() const noexcept {return (type)-1;};
+         virtual type get_type() const noexcept {return (type)-1;}
+         virtual expr_pair generate(const instruction_generation_context&) const { assert(false && "abstract"); }
          
       public:
          template<typename Subclass> requires std::is_base_of_v<base, Subclass>
@@ -49,6 +56,8 @@ namespace codegen::instructions {
       public:
          static constexpr const type node_type = type::container;
          virtual type get_type() const noexcept override { return node_type; };
+         
+         virtual expr_pair generate(const instruction_generation_context&) const;
          
       public:
          std::vector<std::unique_ptr<base>> instructions;

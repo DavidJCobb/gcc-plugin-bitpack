@@ -139,6 +139,19 @@ namespace codegen {
       return 0;
    }
    
+   bool decl_descriptor::is_or_contains_defaulted() const {
+      if (this->options.default_value_node != NULL_TREE)
+         return true;
+      auto type = this->types.serialized;
+      if (type.is_record()) {
+         auto members = this->members_of_serialized();
+         for(const auto* m : members)
+            if (m->is_or_contains_defaulted())
+               return true;
+      }
+      return false;
+   }
+   
    //
    // decl_dictionary
    //

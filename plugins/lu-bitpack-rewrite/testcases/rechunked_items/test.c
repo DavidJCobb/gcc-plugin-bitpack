@@ -164,6 +164,19 @@ static struct TestBranchOnArray {
 } sTestBranchOnArray;
 #pragma lu_bitpack debug_dump_as_serialization_item sTestBranchOnArray
 
+struct DefaultedData {
+   int a;
+   LU_BP_DEFAULT(2) int b;
+   struct {
+      LU_BP_DEFAULT(4) int d;
+   } c;
+};
+static struct TestOmittedDefaulted {
+   LU_BP_OMIT struct DefaultedData omitted_data;
+   int force_split[5];
+} sTestOmittedDefaulted;
+#pragma lu_bitpack debug_dump_as_serialization_item sTestOmittedDefaulted
+
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);
 

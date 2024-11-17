@@ -1,5 +1,6 @@
 #pragma once
 #include "codegen/instructions/base.h"
+#include "codegen/expr_pair.h"
 #include "codegen/value_path.h"
 
 namespace codegen::instructions {
@@ -7,6 +8,8 @@ namespace codegen::instructions {
       public:
          static constexpr const type node_type = type::single;
          virtual type get_type() const noexcept override { return node_type; };
+         
+         virtual expr_pair generate(const instruction_generation_context&) const;
       
       public:
          value_path value;

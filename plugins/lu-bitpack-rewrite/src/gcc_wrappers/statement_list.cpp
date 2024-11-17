@@ -75,6 +75,20 @@ namespace gcc_wrappers {
       other._tree     = NULL_TREE;
       other._iterator = {};
    }
+   void statement_list::prepend(const expr::base& expr) {
+      assert(!expr.empty());
+      auto it = tsi_start(this->_tree);
+      tsi_link_before(&it, expr.as_untyped(), TSI_CONTINUE_LINKING);
+      this->_tree = it.container;
+      assert(!empty());
+   }
+   void statement_list::prepend(statement_list&& other) {
+      auto it = tsi_start(this->_tree);
+      tsi_link_after(&it, other._tree, TSI_CONTINUE_LINKING);
+      this->_tree = it.container;
+      other._tree     = NULL_TREE;
+      other._iterator = {};
+   }
    
    void statement_list::append_untyped(tree expr) {
       tsi_link_after(&this->_iterator, expr, TSI_CONTINUE_LINKING);

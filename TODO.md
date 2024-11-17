@@ -8,9 +8,13 @@
 C++:
 
 * We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
-* `instructions::single`: Add an assertion to `is_omitted_and_defaulted`, *or* add a virtual `assert_correctness` function to `instruction::base` to be overridden on all node types. For `single`, assert that if the value is omitted, it is also defaulted. Wholly-omitted values should be excluded from serialization items, re-chunked items, and instruction nodes entirely.
 * Time for codegen.
-  * See notes in the instruction documentation, particularly w.r.t. array-slice nodes.
+  * Spawn a `whole_struct_function_dictionary`, and then, for each sector:
+    * Create the read and save `gw::decl::function`s, each with a local bitstream-state variable. Generate the "initialize" call in each.
+    * Create a `value_pair` wrapping `state_decl.as_value().address_of()` from the read and save functions. Write that value pair and a reference to your dictionary into a new `instruction_generation_context`.
+    * Create an instruction node from the sector's serialization item list.
+    * Call `root->generate(context)` to get an `expr_pair`. This *may* be a pair of `gw::expr::local_block` instances; if it isn't, then wrap it in them. (See near the end of `instruction_generation_context::_make_whole_struct_functions_for` for an example.)
+    * Set the local blocks as the root blocks of the created sector function.
 
 After we've gotten the redesign implemented, and our codegen is done, we should investigate using `gengtype` to mark our singletons as roots and ensure that tree nodes don't get deleted out from under our `basic_global_state`.
 

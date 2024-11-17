@@ -4,6 +4,11 @@
 #include <vector>
 #include "codegen/decl_descriptor.h"
 #include "codegen/decl_pair.h"
+#include "codegen/value_pair.h"
+
+namespace bitpacking::data_options {
+   class computed;
+}
 
 namespace codegen {
    class value_path_segment {
@@ -22,11 +27,24 @@ namespace codegen {
          const decl_pair descriptor() const {
             switch (this->data.index()) {
                case 0:
-                  return std::get<0>(this->data);
+                  return member_descriptor();
                case 1:
                   return std::get<1>(this->data);
             }
             return {};
+         }
+         
+         constexpr decl_pair& member_descriptor() {
+            return std::get<0>(this->data);
+         }
+         constexpr const decl_pair& member_descriptor() const {
+            return std::get<0>(this->data);
+         }
+         constexpr decl_pair& array_loop_counter_descriptor() {
+            return std::get<1>(this->data);
+         }
+         constexpr const decl_pair& array_loop_counter_descriptor() const {
+            return std::get<1>(this->data);
          }
    };
    
@@ -40,5 +58,8 @@ namespace codegen {
          void access_member(const decl_descriptor&);
          
          void replace(decl_pair);
+         
+         value_pair as_value_pair() const;
+         const bitpacking::data_options::computed& bitpacking_options() const;
    };
 }

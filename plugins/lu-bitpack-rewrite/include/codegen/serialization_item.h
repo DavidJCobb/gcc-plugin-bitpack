@@ -39,6 +39,9 @@ namespace codegen {
          
          size_t size_in_bits() const;
          
+         // non-omitted; omitted and defaulted; or omitted and contains defaulteds
+         bool affects_output_in_any_way() const;
+         
          bool can_expand() const;
          
          bool is_padding() const;

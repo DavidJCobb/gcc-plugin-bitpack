@@ -48,6 +48,8 @@ namespace codegen {
          std::vector<const decl_descriptor*> members_of_serialized() const;
          
          size_t serialized_type_size_in_bits() const;
+         
+         bool is_or_contains_defaulted() const;
    };
    
    class decl_dictionary;

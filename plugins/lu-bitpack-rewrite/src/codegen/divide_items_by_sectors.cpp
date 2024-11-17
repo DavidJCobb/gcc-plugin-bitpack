@@ -5,6 +5,7 @@
 
 #include "codegen/serialization_item_list_ops/fold_sequential_array_elements.h"
 #include "codegen/serialization_item_list_ops/force_expand_unions_and_anonymous.h"
+#include "codegen/serialization_item_list_ops/force_expand_omitted_and_defaulted.h"
 
 namespace codegen {
    using sector_type = std::vector<serialization_item>;
@@ -31,7 +32,6 @@ namespace codegen {
             overall->sectors.resize(this->current_sector + 1);
          overall->sectors[this->current_sector].push_back(item);
          
-         assert(!item.is_omitted || item.is_defaulted);
          if (!item.is_omitted)
             this->bits_remaining -= item.size_in_bits();
       }
@@ -60,12 +60,11 @@ namespace codegen {
       std::vector<serialization_item> src
    ) {
       overall_state overall;
-      //
-      branch_state root{overall};
-      std::vector<branch_state> branches;
-      
       overall.bits_per_sector = sector_size_in_bits;
       assert(sector_size_in_bits > 0);
+      
+      branch_state root{overall};
+      std::vector<branch_state> branches;
       
       size_t size = src.size();
       for(size_t i = 0; i < size; ++i) {
@@ -144,9 +143,17 @@ namespace codegen {
          const size_t remaining = current_branch.bits_remaining;
          
          if (item.is_omitted) {
-            if (item.is_defaulted) {
-               current_branch.insert(item);
-            }
+            //
+            // Just because an item is omitted doesn't mean it won't affect the 
+            // generated code. For example, an omitted-and-defaulted field needs 
+            // to be set to its default value when reading from the bitstream; 
+            // and an omitted struct can't be defaulted, but may contain members 
+            // that are defaulted and so need the same treatment. We must retain  
+            // serialization items for these omitted-and-defaulted values.
+            //
+            if (!item.affects_output_in_any_way())
+               continue;
+            current_branch.insert(item);
             continue;
          }
          
@@ -181,9 +188,8 @@ namespace codegen {
                continue;
             }
             //
-            // The item can't fit (or it's a union and we want to always expand it). 
-            // Expand it if possible; if not, push it to the next sector (after we 
-            // verify that it'll even fit there).
+            // The item can't fit. Expand it if possible; if not, push it to 
+            // the next sector (after we verify that it'll even fit there).
             //
             if (item.can_expand()) {
                auto   expanded       = item.expanded();
@@ -217,7 +223,8 @@ namespace codegen {
       //
       // Join exploded arrays into array slices wherever possible. For example, 
       // { `foo[0]`, `foo[1]`, `foo[2]` } should join to `foo[0:3]` or, if the 
-      // entire array is represented there, just `foo`.
+      // entire array is represented there, just `foo`. This will help us with 
+      // generating `for` loops to handle these items.
       //
       for(auto& sector : overall.sectors) {
          serialization_item_list_ops::fold_sequential_array_elements(sector);
@@ -228,6 +235,17 @@ namespace codegen {
       //
       for(auto& sector : overall.sectors) {
          serialization_item_list_ops::force_expand_unions_and_anonymous(sector);
+      }
+      
+      //
+      // POST-PROCESS: FORCE-EXPAND OMITTED-AND_DEFAULTED
+      //
+      // This will ensure that we properly generate instructions to set default 
+      // values. It's important primarily for omitted instances of named structs 
+      // that contain defaulted members.
+      //
+      for(auto& sector : overall.sectors) {
+         serialization_item_list_ops::force_expand_omitted_and_defaulted(sector);
       }
       
       return overall.sectors;

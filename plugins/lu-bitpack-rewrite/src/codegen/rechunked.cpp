@@ -209,6 +209,11 @@ namespace codegen::rechunked {
                   omitted = true;
                if (desc->options.default_value_node != NULL_TREE)
                   defaulted = true;
+               else if (desc->is_or_contains_defaulted())
+                  defaulted = true;
+               
+               if (omitted && defaulted)
+                  return true;
             }
          }
       }

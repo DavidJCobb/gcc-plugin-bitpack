@@ -12,6 +12,8 @@ namespace codegen::instructions {
          static constexpr const type node_type = type::transform;
          virtual type get_type() const noexcept override { return node_type; };
          
+         virtual expr_pair generate(const instruction_generation_context&) const;
+         
       public:
          value_path to_be_transformed_value;
          
