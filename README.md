@@ -41,7 +41,27 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 
 ### Attributes
 
-Attributes may be applied to non-array types or to struct field declarations in order to configure how those fields are serialized.
+Attributes may be applied to non-array types or to struct field declarations in order to configure how those fields are serialized. Some attributes can also be used on structure and union tags[^attributes-on-tags].
+
+[^attributes-on-tags]:
+
+    There are two ways of defining a named `struct` or `union` type: by using the `typedef` keyword on an otherwise anonymous type, or by defining a <dfn>tag</dfn>:
+    
+    ```c
+    struct TagName {
+       // ...
+    };
+    ```
+    
+    When using a tag, you must place attributes after the `struct` keyword and before the tag name. Attributes placed ahead of the keyword will silently fail in GCC.
+    
+    ```c
+    __attribute__((discarded_attr)) struct TagName {
+    };
+    
+    struct __attribute__((retained_attr)) struct TagName {
+    };
+    ```
 
 The following attributes may be used on non-array types or on struct field declarations:
 
