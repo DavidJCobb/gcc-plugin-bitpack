@@ -10,7 +10,6 @@ C++:
 * We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
 * Codegen test-cases
   * Top-level VAR_DECLs that are not struct types
-    * Integers
     * Arrays
     * Strings
   * Annotating top-level VAR_DECLs with bitpack option attributes

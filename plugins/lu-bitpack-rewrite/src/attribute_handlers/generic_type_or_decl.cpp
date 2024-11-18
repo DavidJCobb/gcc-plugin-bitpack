@@ -17,13 +17,14 @@ namespace attribute_handlers {
          *no_add_attrs = false;
          return NULL_TREE;
       }
-      if (TREE_CODE(*node) == TYPE_DECL) {
-         *no_add_attrs = false;
-         return NULL_TREE;
-      }
-      if (TREE_CODE(*node) == FIELD_DECL) {
-         *no_add_attrs = false;
-         return NULL_TREE;
+      switch (TREE_CODE(*node)) {
+         case TYPE_DECL:
+         case FIELD_DECL:
+         case VAR_DECL:
+            *no_add_attrs = false;
+            return NULL_TREE;
+         default:
+            break;
       }
       
       //

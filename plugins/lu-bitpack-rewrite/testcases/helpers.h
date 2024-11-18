@@ -38,14 +38,14 @@ void print_buffer(const char* buffer, int size) {
       if (i && i % 8 == 0) {
          printf("\n   ");
       }
-      printf("%02X ", buffer[i]);
+      printf("%02X ", (uint8_t) buffer[i]);
    }
    printf("\n");
 }
 
 void print_char(char c) {
    if (isprint(c)) {
-      printf("'%c'", c & 0xFF);
+      printf("'%c'", (uint8_t)(c & 0xFF));
    } else {
       printf("0x%02X", c & 0xFF);
    }

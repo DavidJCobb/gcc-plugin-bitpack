@@ -294,6 +294,10 @@ namespace pragma_handlers {
                auto decl = gw::decl::variable::from_untyped(node);
                
                const auto& desc = decl_dictionary.get_or_create_descriptor(decl);
+               if (desc.has_any_errors) {
+                  error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: aborting codegen due to invalid options applied to a to-be-serialized value");
+                  return;
+               }
                
                auto& item = items.emplace_back();
                auto& segm = item.segments.emplace_back();

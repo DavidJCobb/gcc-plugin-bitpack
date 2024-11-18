@@ -33,9 +33,10 @@ namespace attribute_handlers::helpers {
                type = gw::type::base::from_untyped(TREE_TYPE(node));
                break;
             case FIELD_DECL:
+            case VAR_DECL:
                break;
             default:
-               report_error("cannot be applied to this kind of declaration; use it on types or fields");
+               report_error("cannot be applied to this kind of declaration; use it on types, variables, or struct/union fields");
                break;
          }
       }
@@ -286,10 +287,10 @@ namespace attribute_handlers::helpers {
             type = gw::type::base::from_untyped(TREE_TYPE(node));
             break;
          case FIELD_DECL:
-            type = gw::decl::field::from_untyped(node).value_type();;
+            type = gw::decl::field::from_untyped(node).value_type();
             break;
          case VAR_DECL:
-            type = gw::decl::variable::from_untyped(node).value_type();;
+            type = gw::decl::variable::from_untyped(node).value_type();
             break;
          default:
             break;

@@ -41,6 +41,7 @@ namespace codegen {
          struct {
             std::vector<size_t> extents; // for convenience: array extents leading to `serialized`
          } array;
+         bool has_any_errors = false;
          
          // Gets the members of the `serialized` type, as decl descriptors.
          // Asserts that said type is a struct or union. Members may be 

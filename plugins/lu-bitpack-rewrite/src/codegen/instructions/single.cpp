@@ -208,7 +208,7 @@ namespace codegen::instructions {
          gw::decl::function save_func;
          {
             auto vt_canonical = type.canonical();
-            if (vt_canonical == ty.uint8) {
+            if (vt_canonical == ty.uint8 || vt_canonical == ty.basic_char) {
                read_func = global.functions.read.u8;
                save_func = global.functions.save.u8;
             } else if (vt_canonical == ty.uint16) {

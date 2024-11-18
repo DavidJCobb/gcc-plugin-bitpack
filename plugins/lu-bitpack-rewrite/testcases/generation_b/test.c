@@ -1,9 +1,13 @@
 
+//
+// Test-case: top-level VAR_DECLs that are not struct or union types.
+//
+
 #include "types.h"
 #include "bitstreams.h"
 #include "helpers.h"
 
-#define SECTOR_COUNT 15
+#define SECTOR_COUNT 2
 #define SECTOR_SIZE 16
 
 #pragma lu_bitpack enable
@@ -36,40 +40,13 @@
    func_write_buffer = lu_BitstreamWrite_buffer \
 )
 
+static int sTestInt = 0;
+LU_BP_STRING_UT static char sTestString[5];
 static struct TestStruct {
-   int a[3];
-   int b[3];
-   struct {
-      int tag;
-      LU_BP_UNION_TAG(tag) union {
-         LU_BP_TAGGED_ID(0) int a;
-         LU_BP_TAGGED_ID(1) int b;
-         LU_BP_TAGGED_ID(2) int c[2];
-      } data;
-   } foo[2];
-   int x;
-   int y;
-   struct {
-      int tag;
-      LU_BP_UNION_TAG(tag) union {
-         LU_BP_TAGGED_ID(0) int a;
-         LU_BP_TAGGED_ID(1) int b;
-         LU_BP_TAGGED_ID(2) int c[2];
-         LU_BP_TAGGED_ID(3) struct {
-            int tag;
-            LU_BP_UNION_TAG(tag) union {
-               LU_BP_TAGGED_ID(0) int a;
-               LU_BP_TAGGED_ID(1) int b;
-            } data;
-         } d;
-      } data;
-   } z;
-
-   int single_array_element[1];
-   int single_array_element_2D[1][1];
-   int single_array_element_3D[1][1][1];
+   int a[2];
 } sTestStruct;
-#pragma lu_bitpack debug_dump_as_serialization_item sTestStruct
+//#pragma lu_bitpack debug_dump_as_serialization_item sTestInt
+//#pragma lu_bitpack debug_dump_as_serialization_item sTestStruct
 
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);
@@ -77,72 +54,27 @@ extern void generated_save(u8* dst, int sector_id);
 #pragma lu_bitpack generate_functions( \
    read_name = generated_read,         \
    save_name = generated_save,         \
-   data      = sTestStruct             \
+   data      = sTestInt sTestString sTestStruct \
 )
-#pragma lu_bitpack debug_dump_function generated_read
+//#pragma lu_bitpack debug_dump_function generated_read
+#pragma lu_bitpack debug_dump_function __lu_bitpack_save_sector_0
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_save_TestStruct
 
 #include <string.h> // memset
 
-void print_test_struct() {
+void print_test_data() {
+   printf("sTestInt == %d\n", sTestInt);
+   
+   printf("sTestString == { ");
+   for(int i = 0; i < sizeof(sTestString); ++i) {
+      print_char(sTestString[i]);
+      if (i + 1 < sizeof(sTestString))
+         printf(", ");
+   }
+   printf(" }\n");
+   
    printf("sTestStruct == {\n");
-   printf("   .a == { %d, %d, %d },\n", sTestStruct.a[0], sTestStruct.a[1], sTestStruct.a[2]);
-   printf("   .b == { %d, %d, %d },\n", sTestStruct.b[0], sTestStruct.b[1], sTestStruct.b[2]);
-   printf("   .foo = {\n");
-   for(int i = 0; i < 2; ++i) {
-      printf("      {\n");
-      printf("         .tag = %d,\n", sTestStruct.foo[i].tag);
-      printf("         .data = {\n");
-      switch (sTestStruct.foo[i].tag) {
-         case 0:
-            printf("            .a = %d,\n", sTestStruct.foo[i].data.a);
-            break;
-         case 1:
-            printf("            .b = %d,\n", sTestStruct.foo[i].data.b);
-            break;
-         case 2:
-            printf("            .c = { %d, %d },\n", sTestStruct.foo[i].data.c[0], sTestStruct.foo[i].data.c[1]);
-            break;
-      }
-      printf("         },\n");
-      printf("      },\n");
-   }
-   printf("   },\n");
-   printf("   .x == %d,\n", sTestStruct.x);
-   printf("   .y == %d,\n", sTestStruct.y);
-   printf("   .z = {\n");
-   printf("      .tag = %d,\n", sTestStruct.z.tag);
-   printf("      .data = {\n");
-   switch (sTestStruct.z.tag) {
-      case 0:
-         printf("         .a = %d,\n", sTestStruct.z.data.a);
-         break;
-      case 1:
-         printf("         .b = %d,\n", sTestStruct.z.data.b);
-         break;
-      case 2:
-         printf("         .c = { %d, %d },\n", sTestStruct.z.data.c[0], sTestStruct.z.data.c[1]);
-         break;
-      case 3:
-         printf("         .d = {\n");
-         printf("            .tag = %d,\n", sTestStruct.z.data.d.tag);
-         printf("            .data = {\n");
-         switch (sTestStruct.z.data.d.tag) {
-            case 0:
-               printf("               .a = %d,\n", sTestStruct.z.data.d.data.a);
-               break;
-            case 1:
-               printf("               .b = %d,\n", sTestStruct.z.data.d.data.b);
-               break;
-         }
-         printf("            },\n");
-         printf("         },\n");
-         break;
-   }
-   printf("      },\n");
-   printf("   },\n");
-   printf("   .single_array_element == { %d },\n", sTestStruct.single_array_element[0]);
-   printf("   .single_array_element_2D == { { %d } },\n", sTestStruct.single_array_element_2D[0][0]);
-   printf("   .single_array_element_3D == { { { %d } } },\n", sTestStruct.single_array_element_3D[0][0][0]);
+   printf("   .a == { %d, %d },\n", sTestStruct.a[0], sTestStruct.a[1]);
    printf("}\n");
 }
 
@@ -152,30 +84,18 @@ int main() {
    //
    // Set up initial test data.
    //
-   for(int i = 0; i < 3; ++i) {
+   sTestInt = 12345;
+   memcpy(&sTestString, "ABCDE", 6);
+   for(int i = 0; i < 2; ++i) {
       sTestStruct.a[i] = i + 1;
-      sTestStruct.b[i] = i + 3 + 1;
    }
-   sTestStruct.foo[0].tag = 0;
-   sTestStruct.foo[0].data.a = 55;
-   sTestStruct.foo[1].tag = 2;
-   sTestStruct.foo[1].data.c[0] = 66;
-   sTestStruct.foo[1].data.c[1] = 77;
-   sTestStruct.x = 12;
-   sTestStruct.y = 34;
-   sTestStruct.z.tag = 3;
-   sTestStruct.z.data.d.tag = 0;
-   sTestStruct.z.data.d.data.a = 77;
-   sTestStruct.single_array_element[0] = 1;
-   sTestStruct.single_array_element_2D[0][0] = 2;
-   sTestStruct.single_array_element_3D[0][0][0] = 3;
    
-   const char* divider = "====================================================";
+   const char* divider = "====================================================\n";
    
    printf(divider);
-   printf("Test data:");
+   printf("Test data:\n");
    printf(divider);
-   print_test_struct();
+   print_test_data();
    printf("\n");
    
    //
@@ -185,6 +105,8 @@ int main() {
    for(int i = 0; i < SECTOR_COUNT; ++i) {
       generated_save(sector_buffers[i], i);
    }
+   memset(&sTestInt,    0xCC, sizeof(sTestInt));
+   memset(&sTestString, 0xCC, sizeof(sTestString));
    memset(&sTestStruct, 0xCC, sizeof(sTestStruct));
    
    for(int i = 0; i < SECTOR_COUNT; ++i) {
@@ -192,7 +114,7 @@ int main() {
       print_buffer(sector_buffers[i], sizeof(sector_buffers[i]));
       printf("Sector %u read:\n", i);
       generated_read(sector_buffers[i], i);
-      print_test_struct();
+      print_test_data();
    }
    
    

@@ -56,21 +56,29 @@ namespace codegen {
       assert(!decl.empty());
       this->decl = decl;
       this->types.basic_type = decl.value_type();
-      this->options.load(decl);
+      this->has_any_errors = !this->options.load(decl);
       this->_compute_types();
    }
    decl_descriptor::decl_descriptor(gcc_wrappers::decl::param decl) {
       assert(!decl.empty());
       this->decl = decl;
       this->types.basic_type = decl.value_type();
-      this->options.load(decl);
+      if (this->types.basic_type.is_pointer()) {
+         //
+         // Special-case: when we generate whole-struct functions, those 
+         // functions will take the struct to serialize as a pointer argument. 
+         // We need to strip the pointer.
+         //
+         this->types.basic_type = this->types.basic_type.remove_pointer();
+      }
+      this->has_any_errors = !this->options.load(decl);
       this->_compute_types();
    }
    decl_descriptor::decl_descriptor(gcc_wrappers::decl::variable decl) {
       assert(!decl.empty());
       this->decl = decl;
       this->types.basic_type = decl.value_type();
-      this->options.load(decl);
+      this->has_any_errors = !this->options.load(decl);
       this->_compute_types();
    }
    

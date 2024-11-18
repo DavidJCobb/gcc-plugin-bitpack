@@ -113,7 +113,7 @@ u32 lu_BitstreamRead_u32(struct lu_BitstreamState* state, u8 bitcount) {
 s8 lu_BitstreamRead_s8(struct lu_BitstreamState* state, u8 bitcount) {
    s8 result = (s8) lu_BitstreamRead_u8(state, bitcount);
    if (bitcount < 8) {
-      u8 sign_bit = result >> (bitcount - 1);
+      u8 sign_bit = (u8)result >> (bitcount - 1); // cast to avoid sign-extension
       if (sign_bit) {
          // Set all bits "above" the serialized ones, to sign-extend.
          result |= ~(((u8)1 << bitcount) - 1);
@@ -124,7 +124,7 @@ s8 lu_BitstreamRead_s8(struct lu_BitstreamState* state, u8 bitcount) {
 s16 lu_BitstreamRead_s16(struct lu_BitstreamState* state, u8 bitcount) {
    s16 result = (s16) lu_BitstreamRead_u16(state, bitcount);
    if (bitcount < 16) {
-      u8 sign_bit = result >> (bitcount - 1);
+      u8 sign_bit = (u16)result >> (bitcount - 1); // cast to avoid sign-extension
       if (sign_bit) {
          // Set all bits "above" the serialized ones, to sign-extend.
          result |= ~(((u16)1 << bitcount) - 1);
@@ -133,12 +133,12 @@ s16 lu_BitstreamRead_s16(struct lu_BitstreamState* state, u8 bitcount) {
    return result;
 }
 s32 lu_BitstreamRead_s32(struct lu_BitstreamState* state, u8 bitcount) {
-   s16 result = (s32) lu_BitstreamRead_u32(state, bitcount);
+   s32 result = (s32) lu_BitstreamRead_u32(state, bitcount);
    if (bitcount < 32) {
-      u8 sign_bit = result >> (bitcount - 1);
+      u8 sign_bit = (u32)result >> (bitcount - 1); // cast to avoid sign-extension
       if (sign_bit) {
          // Set all bits "above" the serialized ones, to sign-extend.
-         result |= ~(((u16)1 << bitcount) - 1);
+         result |= ~(((u32)1 << bitcount) - 1);
       }
    }
    return result;
