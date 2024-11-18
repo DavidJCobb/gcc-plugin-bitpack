@@ -45,6 +45,12 @@ namespace gcc_wrappers {
    bool scope::is_declaration() const {
       return !empty() && DECL_P(this->_node);
    }
+   bool scope::is_file_scope() const {
+      return !empty() && TREE_CODE(this->_node) == TRANSLATION_UNIT_DECL;
+   }
+   bool scope::is_namespace() const {
+      return !empty() && TREE_CODE(this->_node) == NAMESPACE_DECL;
+   }
    bool scope::is_type() const {
       return !empty() && TYPE_P(this->_node);
    }

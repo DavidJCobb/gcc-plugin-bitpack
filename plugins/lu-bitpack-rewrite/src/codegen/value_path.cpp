@@ -33,6 +33,27 @@ namespace codegen {
       
       bool first = true;
       for(auto& segm : this->segments) {
+         if (first) {
+            assert(!segm.is_array_access());
+            auto& pair = segm.member_descriptor();
+            assert(pair.read != nullptr);
+            assert(pair.save != nullptr);
+            auto decl_r = pair.read->decl;
+            auto decl_s = pair.save->decl;
+            assert(!decl_r.empty());
+            assert(!decl_s.empty());
+            assert(decl_r.code() == decl_s.code());
+            assert(decl_r.is<gw::decl::param>() || decl_r.is<gw::decl::variable>());
+            if (decl_r.is<gw::decl::param>()) {
+               out.read = decl_r.as<gw::decl::param>().as_value();
+               out.save = decl_s.as<gw::decl::param>().as_value();
+            } else {
+               out.read = decl_r.as<gw::decl::variable>().as_value();
+               out.save = decl_s.as<gw::decl::variable>().as_value();
+            }
+            first = false;
+            continue;
+         }
          if (!first) {
             //
             // We may have a value path that looks like `a.b.c.d`, but `a` 
@@ -47,7 +68,6 @@ namespace codegen {
                out.save = out.save.dereference();
             }
          }
-         first = false;
          
          if (segm.is_array_access()) {
             value_pair array_index;
@@ -62,7 +82,7 @@ namespace codegen {
                assert(!pair.read->decl.empty());
                assert(!pair.save->decl.empty());
                array_index.read = pair.read->decl.as<gw::decl::variable>().as_value();
-               array_index.save = pair.read->decl.as<gw::decl::variable>().as_value();
+               array_index.save = pair.save->decl.as<gw::decl::variable>().as_value();
             }
             out.read = out.read.access_array_element(array_index.read);
             out.save = out.save.access_array_element(array_index.save);

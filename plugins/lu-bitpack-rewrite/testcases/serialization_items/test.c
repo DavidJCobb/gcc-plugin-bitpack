@@ -69,12 +69,3 @@ static struct TestStruct {
 } sTestStruct;
 
 #pragma lu_bitpack debug_dump_as_serialization_item sTestStruct
-
-extern void generated_read(const u8* src, int sector_id);
-extern void generated_save(u8* dst, int sector_id);
-
-#pragma lu_bitpack generate_functions( \
-   read_name = generated_read,         \
-   save_name = generated_save,         \
-   data      = sTestStruct             \
-)

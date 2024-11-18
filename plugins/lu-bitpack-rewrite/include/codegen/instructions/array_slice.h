@@ -3,18 +3,13 @@
 #include "codegen/decl_pair.h"
 #include "codegen/value_path.h"
 #include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/flow/simple_for_loop.h"
 
 namespace codegen::instructions {
    //
    // Represents access into an array via a for-loop. This doesn't represent 
    // actually serializing an array element (because we may instead serialize 
    // members of that element); it only represents the for-loop itself.
-   //
-   // NOTE: `array.count` may be 1. In that case, we ideally wouldn't generate 
-   // a for-loop; we'd "unroll" ourselves. However, child and descendant nodes 
-   // may refer to our loop-index VAR_DECLs; we'd need some sort of state that 
-   // recursive codegen calls could use to say, "Oh, that VAR_DECL should be 
-   // the integer constant X. I will just access X instead."
    //
    class array_slice : public container {
       public:

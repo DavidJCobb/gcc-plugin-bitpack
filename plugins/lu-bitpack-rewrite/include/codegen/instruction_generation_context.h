@@ -11,6 +11,9 @@ namespace codegen {
 namespace codegen {
    struct instruction_generation_context {
       public:
+         instruction_generation_context(whole_struct_function_dictionary& w) : whole_struct_functions(w) {}
+      
+      public:
          whole_struct_function_dictionary& whole_struct_functions;
          value_pair state_ptr;
       

@@ -18,6 +18,8 @@ namespace codegen::instructions {
          "__i_save",
          ty.basic_int
       );
+      this->loop_index.variables.read.make_artificial();
+      this->loop_index.variables.save.make_artificial();
        
       auto& dict = decl_dictionary::get();
       this->loop_index.descriptors = decl_pair{
@@ -43,6 +45,11 @@ namespace codegen::instructions {
       
       gw::flow::simple_for_loop save_loop(ty.basic_int);
       save_loop.counter_bounds = read_loop.counter_bounds;
+      
+      // Overwrite the loop counter that `simple_for_loop` creates, since 
+      // we already created one and it's already referenced somewhere.
+      read_loop.counter = this->loop_index.variables.read;
+      save_loop.counter = this->loop_index.variables.save;
       
       gw::statement_list read_loop_body;
       gw::statement_list save_loop_body;

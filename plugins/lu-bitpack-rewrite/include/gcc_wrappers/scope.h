@@ -25,6 +25,8 @@ namespace gcc_wrappers {
          scope containing_scope();
          
          bool is_declaration() const;
+         bool is_file_scope() const;
+         bool is_namespace() const;
          bool is_type() const;
          
          decl::base as_declaration();

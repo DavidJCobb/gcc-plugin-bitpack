@@ -1,27 +1,110 @@
+#include "lu/strings/printf_string.h"
+#include <memory> // GCC headers fuck up string-related STL identifiers that <memory> depends on
 #include "pragma_handlers/generate_functions.h"
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <tree.h>
+#include <c-family/c-common.h> // lookup_name
+#include <stringpool.h> // get_identifier
 #include <diagnostic.h>
 
 #include "basic_global_state.h"
-//#include "codegen/sector_functions_generator.h"
+#include "codegen/decl_descriptor.h"
+#include "codegen/divide_items_by_sectors.h"
+#include "codegen/expr_pair.h"
+#include "codegen/func_pair.h"
+#include "codegen/instruction_generation_context.h"
+#include "codegen/rechunked.h"
+#include "codegen/rechunked_items_to_instruction_tree.h"
+#include "codegen/serialization_item.h"
+#include "codegen/value_pair.h"
+#include "codegen/whole_struct_function_dictionary.h"
 
 #include "gcc_helpers/c/at_file_scope.h"
+#include "gcc_wrappers/decl/base.h"
+#include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/expr/call.h"
+#include "gcc_wrappers/expr/integer_constant.h"
+#include "gcc_wrappers/expr/local_block.h"
+#include "gcc_wrappers/expr/ternary.h"
+#include "gcc_wrappers/type/helpers/make_function_type.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/builtin_types.h"
+#include "gcc_wrappers/scope.h"
+namespace gw {
+   using namespace gcc_wrappers;
+}
 
 // for generating XML output:
 //#include "xmlgen/sector_xml_generator.h"
 #include <fstream>
 
 namespace pragma_handlers {
+   // Returns true if valid; false if error.
+   static bool _check_and_report_generated_function_name(
+      const char*        key,
+      const char*        sig,
+      const std::string& name
+   ) {
+      if (name.empty()) {
+         error("%<#pragma lu_bitpack generate_functions%>: missing the %<%s%> key (the identifier of a function to generate, with signature %<%s%>)", key, sig);
+         return false;
+      }
+      
+      auto id_node = get_identifier(name.c_str());
+      auto node    = lookup_name(id_node);
+      if (node != NULL_TREE) {
+         gw::scope scope;
+         if (DECL_P(node)) {
+            scope = gw::decl::base::from_untyped(node).context();
+         } else if (TYPE_P(node)) {
+            //
+            // AFAIK in C, types can't be nested.
+            //
+         } else {
+            error("%<#pragma lu_bitpack generate_functions%>: per the %<%s%> key we should generate a function with identifier %qE, but that identifier is already in use by something else", key, id_node);
+            return false;
+         }
+         if (!scope.empty() && !scope.is_file_scope()) {
+            //
+            // We already report errors if we're not in file scope, so ignore 
+            // identifiers from nested scopes.
+            //
+            return false;
+         }
+         if (TREE_CODE(node) != FUNCTION_DECL) {
+            error("%<#pragma lu_bitpack generate_functions%>: per the %<%s%> key we should generate a function with identifier %qE, but that identifier is already in use by something else", key, id_node);
+            return false;
+         }
+      }
+      
+      return true;
+   }
+   
+   
+   static bool _check_and_report_identifier_to_serialize(const std::string& name) {
+      auto ident = get_identifier(name.c_str());
+      auto node  = lookup_name(ident);
+      if (node == NULL_TREE) {
+         error("%<#pragma lu_bitpack generate_functions%>: identifier %qE is not defined", ident);
+         return false;
+      }
+      if (TREE_CODE(node) != VAR_DECL) {
+         error("%<#pragma lu_bitpack generate_functions%>: identifier %qE does not name a variable", ident);
+         return false;
+      }
+      return true;
+   }
+   
+   
    extern void generate_functions(cpp_reader* reader) {
    
       // force-create the singleton now, so other code can safely use `get_fast` 
       // to access it.
-      gcc_wrappers::builtin_types::get();
+      gw::builtin_types::get();
       
       std::string read_name;
       std::string save_name;
@@ -140,15 +223,21 @@ namespace pragma_handlers {
          warning_at(start_loc, 1, "%<#pragma lu_bitpack generate_functions%>: you did not specify any data to serialize; is this intentional?");
       }
       
-      if (read_name.empty()) {
-         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: missing the %<read_name%> key (the identifier of a function to generate, with signature %<void f(const buffer_byte_type* src, int sector_id)%>)");
-         return;
+      bool bad_generated_function_names = false;
+      if (!_check_and_report_generated_function_name(
+         read_name.c_str(),
+         "read_name",
+         "void f(const buffer_byte_type* src, int sector_id)"
+      )) {
+         bad_generated_function_names = true;
       }
-      if (save_name.empty()) {
-         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: missing the %<save_name%> key (the identifier of a function to generate, with signature %<void f(buffer_byte_type* dst, int sector_id)%>)");
-         return;
+      if (!_check_and_report_generated_function_name(
+         save_name.c_str(),
+         "save_name",
+         "void f(buffer_byte_type* src, int sector_id)"
+      )) {
+         bad_generated_function_names = true;
       }
-      
       if (!gcc_helpers::c::at_file_scope()) {
          //
          // GCC name lookups are relative to the current scope. AFAIK there's 
@@ -163,49 +252,293 @@ namespace pragma_handlers {
          return;
       }
       
-      try {
-         auto& gs = basic_global_state::get();
-         if (gs.any_attributes_missed) {
-            error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: in order to run code generation, you must use %<#pragma lu_bitpack enable%> before the compiler sees any bitpacking attributes");
-            return;
-         }
-         if (gs.global_options.computed.invalid) {
-            error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: unable to generate code due to a previous error in %<#pragma lu_bitpack set_options%>");
-            return;
-         }
-         
-         // now done immediately after the global options are read:
-         //gs.global_options.computed.resolve(gs.global_options.requested);
-         
-         sorry("code generation is not yet implemented");
-         
-         /*//
-         codegen::sector_functions_generator generator(gs.global_options.computed);
-         generator.identifiers_to_serialize = identifier_groups;
-         generator.top_level_function_names = {
-            .read = read_name,
-            .save = save_name,
-         };
-         generator.run();
-         
-         if (!gs.xml_output_path.empty()) {
-            const auto& path = gs.xml_output_path;
-            if (path.ends_with(".xml")) {
-               xmlgen::sector_xml_generator xml_gen;
-               xml_gen.run(generator);
-               
-               std::ofstream stream(path.c_str());
-               assert(!!stream);
-               stream << xml_gen.bake();
-            }
-         }
-         //*/
-      } catch (std::runtime_error& ex) {
-         std::string message = "%<#pragma lu_bitpack generate_functions%>: ";
-         message += ex.what();
-         
-         error_at(start_loc, message.c_str());
+      auto& gs = basic_global_state::get();
+      if (gs.any_attributes_missed) {
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: in order to run code generation, you must use %<#pragma lu_bitpack enable%> before the compiler sees any bitpacking attributes");
          return;
       }
+      if (gs.global_options.computed.invalid) {
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: unable to generate code due to a previous error in %<#pragma lu_bitpack set_options%>");
+         return;
+      }
+      
+      bool identifiers_valid = false;
+      if (gcc_helpers::c::at_file_scope()) {
+         identifiers_valid = true;
+         for(auto& group : identifier_groups) {
+            for(auto& name : group) {
+               if (!_check_and_report_identifier_to_serialize(name))
+                  identifiers_valid = false;
+            }
+         }
+      }
+      
+      if (bad_generated_function_names || !identifiers_valid) {
+         error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: aborting codegen");
+         return;
+      }
+      
+      auto& decl_dictionary = codegen::decl_dictionary::get();
+      
+      std::vector<std::vector<codegen::serialization_item>> all_sectors_si;
+      {
+         size_t sector_size_in_bits = gs.global_options.computed.sectors.size_per * 8;
+         
+         for(auto& group : identifier_groups) {
+            std::vector<codegen::serialization_item> items;
+            for(auto& identifier : group) {
+               auto ident = get_identifier(identifier.c_str());
+               auto node  = lookup_name(ident);
+               assert(node != NULL_TREE && TREE_CODE(node) == VAR_DECL);
+               
+               auto decl = gw::decl::variable::from_untyped(node);
+               
+               const auto& desc = decl_dictionary.get_or_create_descriptor(decl);
+               
+               auto& item = items.emplace_back();
+               auto& segm = item.segments.emplace_back();
+               auto& data = segm.data.emplace<codegen::serialization_items::basic_segment>();
+               data.desc = &desc;
+            }
+            
+            auto sectors = codegen::divide_items_by_sectors(sector_size_in_bits, items);
+            for(auto& sector : sectors)
+               all_sectors_si.push_back(std::move(sector));
+         }
+      }
+      std::vector<std::vector<codegen::rechunked::item>> all_sectors_ri;
+      for(const auto& sector : all_sectors_si) {
+         auto& dst = all_sectors_ri.emplace_back();
+         for(const auto& item : sector) {
+            dst.emplace_back(item);
+         }
+      }
+      //
+      // Generate node trees.
+      //
+      std::vector<std::unique_ptr<codegen::instructions::base>> instructions_by_sector;
+      for(const auto& sector : all_sectors_ri) {
+         auto node_ptr = codegen::rechunked_items_to_instruction_tree(sector);
+         instructions_by_sector.push_back(std::move(node_ptr));
+      }
+      
+      //
+      // Generate functions.
+      //
+      
+      const auto& ty = gw::builtin_types::get_fast();
+      struct {
+         // void __lu_bitpack_read_sector_0(struct lu_BitstreamState*);
+         // void __lu_bitpack_save_sector_0(struct lu_BitstreamState*);
+         std::vector<codegen::func_pair> per_sector;
+         
+         // void __lu_bitpack_read(const buffer_byte_type* src, int sector_id);
+         // void __lu_bitpack_save(buffer_byte_type* src, int sector_id);
+         codegen::func_pair top_level;
+         
+         codegen::whole_struct_function_dictionary whole_struct;
+      } functions;
+      
+      {  // Per-sector
+         auto per_sector_function_type = gw::type::make_function_type(
+            ty.basic_void,
+            // args:
+            gs.global_options.computed.types.bitstream_state_ptr
+         );
+         
+         for(size_t i = 0; i < instructions_by_sector.size(); ++i) {
+            codegen::func_pair pair;
+            {
+               auto name = lu::strings::printf_string("__lu_bitpack_read_sector_%u", (int)i);
+               pair.read = gw::decl::function(name, per_sector_function_type);
+            }
+            {
+               auto name = lu::strings::printf_string("__lu_bitpack_save_sector_%u", (int)i);
+               pair.save = gw::decl::function(name, per_sector_function_type);
+            }
+            pair.read.as_modifiable().set_result_decl(gw::decl::result(ty.basic_void));
+            pair.save.as_modifiable().set_result_decl(gw::decl::result(ty.basic_void));
+            
+            pair.read.nth_parameter(0).make_used();
+            pair.save.nth_parameter(0).make_used();
+            
+            auto ctxt = codegen::instruction_generation_context(functions.whole_struct);
+            ctxt.state_ptr = codegen::value_pair{
+               .read = pair.read.nth_parameter(0).as_value(),
+               .save = pair.save.nth_parameter(0).as_value(),
+            };
+            auto expr = instructions_by_sector[i]->generate(ctxt);
+            
+            if (!expr.read.template is<gw::expr::local_block>()) {
+               gw::expr::local_block block;
+               if (!expr.read.empty())
+                  block.statements().append(expr.read);
+               expr.read = block;
+            }
+            if (!expr.save.template is<gw::expr::local_block>()) {
+               gw::expr::local_block block;
+               if (!expr.save.empty())
+                  block.statements().append(expr.save);
+               expr.save = block;
+            }
+            
+            pair.read.set_is_defined_elsewhere(false);
+            pair.save.set_is_defined_elsewhere(false);
+            {
+               auto block_read = expr.read.as<gw::expr::local_block>();
+               auto block_save = expr.save.as<gw::expr::local_block>();
+               pair.read.as_modifiable().set_root_block(block_read);
+               pair.save.as_modifiable().set_root_block(block_save);
+            }
+            
+            // expose these identifiers so we can inspect them with our debug-dump pragmas.
+            // (in release builds we'll likely want to remove this, so user code can't call 
+            // these functions or otherwise access them directly.)
+            pair.read.introduce_to_current_scope();
+            pair.save.introduce_to_current_scope();
+            functions.per_sector.push_back(pair);
+         }
+      }
+      {  // Top-level
+         auto& pair = functions.top_level;
+         //
+         // Get-or-create the functions; then create their bodies.
+         //
+         bool can_generate_bodies = true;
+         {  // void __lu_bitpack_read_by_sector(const buffer_byte_type* src, int sector_id);
+            auto c_name  = read_name.c_str();
+            auto id_node = get_identifier(c_name);
+            auto node    = lookup_name(id_node);
+            if (node != NULL_TREE) {
+               assert(TREE_CODE(node) == FUNCTION_DECL);
+               pair.read = gw::decl::function::from_untyped(node);
+               if (pair.read.has_body()) {
+                  error("cannot generate a definition for function %qE, as it already has a definition", id_node);
+                  can_generate_bodies = false;
+               }
+            } else {
+               pair.read = gw::decl::function(
+                  c_name,
+                  gw::type::make_function_type(
+                     ty.basic_void,
+                     // args:
+                     gs.global_options.computed.types.buffer_byte_ptr.remove_pointer().add_const().add_pointer(),
+                     ty.basic_int // int sectorID
+                  )
+               );
+               inform(UNKNOWN_LOCATION, "generated function %qE did not already have a declaration; implicit declaration generated", id_node);
+            }
+         }
+         {  // void __lu_bitpack_save_by_sector(buffer_byte_type* dst, int sector_id);
+            auto c_name  = save_name.c_str();
+            auto id_node = get_identifier(c_name);
+            auto node    = lookup_name(id_node);
+            if (node != NULL_TREE) {
+               assert(TREE_CODE(node) == FUNCTION_DECL);
+               pair.save = gw::decl::function::from_untyped(node);
+               if (pair.save.has_body()) {
+                  error("cannot generate a definition for function %qE, as it already has a definition", id_node);
+                  can_generate_bodies = false;
+               }
+            } else {
+               pair.save = gw::decl::function(
+                  c_name,
+                  gw::type::make_function_type(
+                     ty.basic_void,
+                     // args:
+                     gs.global_options.computed.types.buffer_byte_ptr,
+                     ty.basic_int // int sectorID
+                  )
+               );
+               inform(UNKNOWN_LOCATION, "generated function %qE did not already have a declaration; implicit declaration generated", id_node);
+            }
+         }
+         if (!can_generate_bodies)
+            return;
+         
+         size_t sector_count = functions.per_sector.size();
+         
+         auto _generate = [&gs, &ty, &functions, sector_count](gw::decl::function func, bool for_read) {
+            auto func_mod = func.as_modifiable();
+            
+            gw::expr::local_block root_block;
+            gw::statement_list    statements = root_block.statements();
+            
+            auto state_decl = gw::decl::variable("__lu_bitstream_state", gs.global_options.computed.types.bitstream_state);
+            state_decl.make_artificial();
+            state_decl.make_used();
+            //
+            statements.append(state_decl.make_declare_expr());
+            
+            {  // lu_BitstreamInitialize(&state, dst);
+               auto src_arg = func.nth_parameter(0).as_value();
+               if (for_read) {
+                  auto pointer_type = src_arg.value_type();
+                  auto value_type   = pointer_type.remove_pointer();
+                  if (value_type.is_const()) {
+                     src_arg = src_arg.conversion_sans_bytecode(value_type.remove_const().add_pointer());
+                  }
+               }
+               statements.append(
+                  gw::expr::call(
+                     gs.global_options.computed.functions.stream_state_init,
+                     // args:
+                     state_decl.as_value().address_of(), // &state
+                     src_arg // dst
+                  )
+               );
+            }
+         
+            std::vector<gw::expr::call> calls;
+            calls.resize(sector_count);
+            for(size_t i = 0; i < sector_count; ++i) {
+               calls[i] = gw::expr::call(
+                  for_read ? functions.per_sector[i].read : functions.per_sector[i].save,
+                  // args:
+                  state_decl.as_value().address_of()
+               );
+            }
+         
+            auto root_cond = gw::expr::ternary::from_untyped(NULL_TREE);
+            auto prev_cond = gw::expr::ternary::from_untyped(NULL_TREE);
+            for(size_t i = 0; i < calls.size(); ++i) {
+               auto  cond = gw::expr::ternary(
+                  ty.basic_void,
+                  
+                  // condition:
+                  func.nth_parameter(1).as_value().cmp_is_equal(
+                     gw::expr::integer_constant(ty.basic_int, i)
+                  ),
+                  
+                  // branches:
+                  calls[i],
+                  gw::expr::base::from_untyped(NULL_TREE)
+               );
+               if (!prev_cond.empty()) {
+                  prev_cond.set_false_branch(cond);
+               } else {
+                  root_cond = cond;
+               }
+               prev_cond = cond;
+            }
+            if (!root_cond.empty()) {
+               statements.append(root_cond);
+            }
+            
+            func.set_is_defined_elsewhere(false);
+            func_mod.set_result_decl(gw::decl::result(ty.basic_void));
+            func_mod.set_root_block(root_block);
+            
+            // expose these identifiers so we can inspect them with our debug-dump pragmas.
+            // (in release builds we'll likely want to remove this, so user code can't call 
+            // these functions or otherwise access them directly.)
+            func.introduce_to_current_scope();
+         };
+         
+         _generate(pair.read, true);
+         _generate(pair.save, false);
+      }
+      
+      inform(UNKNOWN_LOCATION, "generated the serialization functions");
    }
 }
