@@ -37,7 +37,69 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 * Presence bits (think "`std::optional`"): the ability to pack data using the smallest possible representation. My current use case entails packing data into a limited storage space in such a manner that the largest possible data must fit; ergo bitpacked data must always be uniform in size, so we can check statically whether we have enough room.
 
 
-## Documentation
+## Features
+
+### Transformations
+
+It is sometimes useful to be able to apply automatic transformations to a value when it's serialized to a bitstream and read from a bitstream. This plug-in allows you to define transformations between different value types.
+
+For example, imagine a video game inventory that is subdivided into different categories &mdash; not just in terms of how we present data to the user, but in terms of the underlying in-memory representation as well &mdash; in an item system where every item has a globally unique ID. For example, you may have a "weapons" category and an "armor" category, with items like these:
+
+| Global ID | Item |
+| -: | :- |
+| 0 | None |
+| 1 | Wooden Sword |
+| 2 | Stone Sword |
+| 3 | Iron Sword |
+| 4 | Gold Sword |
+| 5 | Diamond Sword |
+| 6 | Iron Armor |
+| 7 | Gold Armor |
+| 8 | Diamond Armor |
+
+The highest possible global item ID is 8, requiring four bits to encode. If you can carry up to 10 weapons and up to 5 armors, then this means we need 4 &times; 15 = 60 bits for the entire inventory. Recall, however, that the inventory is categorized under the hood as well. Why not take advantage of that for serialization?
+
+It will generally be easiest to use global item IDs in memory, while the game is running; but for the sake of serialization, we can give each item category its own "local" ID space:
+
+| Global ID | Local ID | Item |
+| -: | -: | :- |
+| 0 | 0 | None |
+| 1 | 1 | Wooden Sword |
+| 2 | 2 | Stone Sword |
+| 3 | 3 | Iron Sword |
+| 4 | 4 | Gold Sword |
+| 5 | 5 | Diamond Sword |
+| 6 | 1 | Iron Armor |
+| 7 | 2 | Gold Armor |
+| 8 | 3 | Diamond Armor |
+
+The highest local weapon ID is 5, requiring only 3 bits to encode; and the highest local armor ID is 3, requiring only 2 bits to encode; and so now, the total serialized size is (3 * 10) + (2 * 5) = 40 bits. The thing is, this requires being able to transform the in-memory data before it's bitpacked, and transform the bitpacked data after it's read but before it's stored.
+
+Taking advantage of this idea using a future version of this plug-in might look like this:
+
+```c
+#define LU_BP_MAX(n) __attribute__((lu_bitpack_range(0, n)))
+#define LU_BP_TRANSFORM(pre, post) __attribute__((lu_bitpack_funcs("pre_pack=" #pre ",post_unpack=" #post )))
+
+struct PackedInventory {
+   LU_BP_MAX(5) uint8_t weapons[10];
+   LU_BP_MAX(3) uint8_t armors[5];
+};
+
+void MapInventoryForSave(const struct Inventory* in_memory, struct PackedInventory* packed);
+void MapInventoryForRead(struct Inventory* in_memory, const struct PackedInventory* packed);
+
+LU_BP_TRANSFORM(MapInventoryForSave, MapInventoryForRead)
+struct Inventory {
+   uint8_t weapons[10];
+   uint8_t armors[5];
+};
+```
+
+(Yes, the example above could be accomplished using the `lu_bitpack_range(min, max)` attribute, but only because I made the item categories contiguous for clarity. In a real-world scenario, global item IDs may not be sorted by category: weapons and armor may be interleaved together, and in that case, you'd need a more complex mapping between global and category-local IDs.)
+
+
+## Usage
 
 ### Attributes
 
@@ -185,7 +247,7 @@ The available attributes are:
       </dd>
    <dt><code>__attribute__((lu_bitpack_union_internal_tag("<var>name</var>")))</code></dt>
       <dd>
-         <p>This attribute indicates that a union is internally tagged, and may be applied to a union type or value. The argument indicates the name of a field that acts as the union's tag: the field must exist inside of all of the union's members (which must all be of struct types), at the same offset within each, with the same type within each; and that type must be an integral type.</p>
+         <p>This attribute indicates that a union is internally tagged, and may be applied to a union type or value. The argument indicates the name of a field that acts as the union's tag. All of the union's members must be of struct types; those structs' first <var>n</var> members must be identical for some value of <var>n</var> &gt; 0; and the tag must be one of those members, and its type must be an integral type.</p>
          <p>This attribute is only valid when applied to a union tag, a union typedef, or a struct data member whose type is a union type.</p>
       </dd>
    <dt><code>__attribute__((lu_bitpack_union_member_id(<var>n</var>)))</code></dt>
