@@ -93,8 +93,8 @@ namespace codegen::rechunked::chunks {
       if (size != other.lhs.chunks.size())
          return false;
       for(size_t i = 0; i < size; ++i) {
-         auto* a = this->lhs.chunks[i].get();
-         auto* b = other.lhs.chunks[i].get();
+         const auto* a = this->lhs.chunks[i].get();
+         const auto* b = other.lhs.chunks[i].get();
          assert(a != nullptr);
          assert(b != nullptr);
          if (!a->compare(*b))

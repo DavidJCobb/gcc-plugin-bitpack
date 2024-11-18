@@ -93,6 +93,8 @@ namespace codegen::rechunked {
                   _stringify_chunk(dst, *casted);
                } else if (auto* casted = chunk_ptr->as<chunks::transform>()) {
                   _stringify_chunk(dst, *casted);
+               } else if (auto* casted = chunk_ptr->as<chunks::condition>()) {
+                  dst += "(illegally nested condition)";
                }
                dst += ' ';
             }

@@ -106,8 +106,8 @@ namespace codegen {
                auto& chunk_a_ptr = prev.chunks[diverge_c];
                auto& chunk_b_ptr = item.chunks[diverge_c];
                {
-                  auto* cnd_a = chunk_a_ptr->as<rechunked::chunks::condition>();
-                  auto* cnd_b = chunk_b_ptr->as<rechunked::chunks::condition>();
+                  const auto* cnd_a = chunk_a_ptr->as<rechunked::chunks::condition>();
+                  const auto* cnd_b = chunk_b_ptr->as<rechunked::chunks::condition>();
                   if (cnd_a && cnd_b) {
                      //
                      // We're comparing condition chunks. If the LHS and the RHS 
@@ -157,7 +157,7 @@ namespace codegen {
             instructions::base* parent = root.get();
             for(auto& entry : stack)
                if (entry.node)
-                  if (entry.node->as<instructions::container>())
+                  if (entry.node->as<instructions::container>() || entry.node->as<instructions::union_switch>())
                      parent = entry.node;
             assert(parent != nullptr);
             
@@ -298,10 +298,6 @@ namespace codegen {
                   
                   auto node = std::make_unique<instructions::single>();
                   node->value = value;
-                  stack.push_back(stack_entry{
-                     .chunk = chunk,
-                     .node  = node.get(),
-                  });
                   parent->as<instructions::container>()->instructions.push_back(std::move(node));
                }
                continue;
@@ -366,10 +362,6 @@ namespace codegen {
                   
                   auto node = std::make_unique<instructions::single>();
                   node->value = value;
-                  stack.push_back(stack_entry{
-                     .chunk = chunk,
-                     .node  = node.get(),
-                  });
                   parent->as<instructions::container>()->instructions.push_back(std::move(node));
                }
                continue;

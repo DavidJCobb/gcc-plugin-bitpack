@@ -92,7 +92,7 @@ extern void generated_save(u8* dst, int sector_id);
    save_name = generated_save,         \
    data      = sTestStruct             \
 )
-#pragma lu_bitpack debug_dump_function __lu_bitpack_save_sector_0
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_2
 
 #include <string.h> // memset
 

@@ -262,82 +262,200 @@ namespace gcc_wrappers::decl {
       DECL_SAVED_TREE(this->_node) = lb.as_untyped();
       TREE_STATIC(this->_node) = 1;
       
-      auto root_block = make_node(BLOCK);
-      BLOCK_SUPERCONTEXT(root_block) = this->_node;
-      DECL_INITIAL(this->_node) = root_block;
-      
       DECL_CONTEXT(DECL_RESULT(this->_node)) = this->_node;
       
-      auto _traverse = [this](expr::local_block& lb, tree block) -> void {
-         auto _impl = [this](expr::local_block& lb, tree block, auto& recurse) mutable -> void {
-            tree prev_decl  = NULL_TREE;
-            tree prev_child = NULL_TREE;
-            
-            bool side_effects = TREE_SIDE_EFFECTS(lb.as_untyped());
-            auto statements   = lb.statements();
-            for(auto wrap : statements) {
-               auto node = wrap.as_untyped();
-               
-               if (TREE_SIDE_EFFECTS(node)) {
-                  side_effects = true;
-               }
-               
-               // Find and link all decls to the block, forming a 
-               // linked list.
-               if (TREE_CODE(node) == DECL_EXPR) {
-                  node = DECL_EXPR_DECL(node);
-                  if (TREE_CODE(node) == VAR_DECL) {
-                     DECL_CONTEXT(node) = this->_node; // also required
-                     
-                     assert(TREE_CHAIN(node) == NULL_TREE);
-                     if (prev_decl) {
-                        TREE_CHAIN(prev_decl) = node;
-                     } else {
-                        BLOCK_VARS(block) = node;
-                        BIND_EXPR_VARS(lb.as_untyped()) = node;
-                     }
-                     prev_decl = node;
-                  }
-                  continue;
-               }
-               
-               if (TREE_CODE(node) == LABEL_EXPR) {
-                  auto label_decl = LABEL_EXPR_LABEL(node);
-                  DECL_CONTEXT(label_decl) = this->_node;
-                  continue;
-               }
-               
-               if (TREE_CODE(node) == BIND_EXPR) {
-                  auto child = make_node(BLOCK);
-                  BLOCK_SUPERCONTEXT(child) = block;
-                  
-                  auto casted = expr::local_block::from_untyped(node);
-                  recurse(casted, child, recurse);
-                  
-                  // Link child blocks as a linked list.
-                  if (prev_child) {
-                     BLOCK_CHAIN(prev_child) = child;
-                  } else {
-                     BLOCK_SUBBLOCKS(block) = child;
-                  }
-                  prev_child = child;
-                  continue;
-               }
-            }
-            
-            // Must be done after we've recursed, so it can properly propagate 
-            // the BLOCK node's vars to the BIND_EXPR node. Keeping the two 
-            // lists matched is necessary to ensure that locals appear in the 
-            // debuginfo. [1]
-            //
-            // [1] https://github.com/gcc-mirror/gcc/blob/ecf80e7daf7f27defe1ca724e265f723d10e7681/gcc/function-tests.cc#L220
-            //
-            lb.set_block_node(block);
-            TREE_SIDE_EFFECTS(lb.as_untyped()) = side_effects ? 1 : 0;
-         };
-         _impl(lb, block, _impl);
+      //
+      // We need to create the BLOCK hierarchy, and set DECL_CONTEXTs and 
+      // similar as appropriate on local declarations within this function.
+      //
+      
+      tree _root_ut = lb.as_untyped();
+      //
+      struct block_to_be {
+         tree bind_expr_node = NULL_TREE;
+         tree block_node     = NULL_TREE;
       };
-      _traverse(lb, root_block);
+      std::vector<block_to_be> seen_blocks;
+      //
+      // First, find all child and descendant BIND_EXPRs in the function, 
+      // and create BLOCKs for them.
+      //
+      walk_tree(
+         &_root_ut,
+         [](tree* current_ptr, int* walk_subtrees, void* data) -> tree {
+            auto& seen_blocks = *(std::vector<block_to_be>*)data;
+            if (TREE_CODE(*current_ptr) == BIND_EXPR) {
+               auto& entry = seen_blocks.emplace_back();
+               entry.bind_expr_node = *current_ptr;
+               entry.block_node     = make_node(BLOCK);
+               BIND_EXPR_BLOCK(entry.bind_expr_node) = entry.block_node;
+            }
+            return NULL_TREE; // if non-null, stops iteration
+         },
+         &seen_blocks,
+         nullptr
+      );
+      assert(!seen_blocks.empty());
+      assert(seen_blocks.front().bind_expr_node == lb.as_untyped());
+      //
+      // Next, walk the subtrees for each local block, but not sub-sub-trees. 
+      // That is: if local block A contains local block B, then when we walk 
+      // the subtree of A, we walk all nodes that are inside of A but not 
+      // also inside of B.
+      //
+      // Here, we will:
+      //
+      //  - Link blocks to their parents and siblings.
+      //
+      //  - Link VAR_DECLs to their containing function and containing BLOCK.
+      //
+      //  - Link LABEL_DECLs to their containing function.
+      //
+      for(auto& seen : seen_blocks) {
+         struct _inner_link_state {
+            function containing_function;
+            tree     parent_bind_expr    = NULL_TREE;
+            tree     prev_child_block    = NULL_TREE;
+            tree     prev_variable_decl  = NULL_TREE;
+         } state;
+         state.containing_function = *this;
+         state.parent_bind_expr    = seen.bind_expr_node;
+         
+         walk_tree(
+            &state.parent_bind_expr,
+            [](tree* current_ptr, int* walk_subtrees, void* data) -> tree {
+               auto& state   = *(_inner_link_state*)data;
+               tree  current = *current_ptr;
+                  
+               if (current == state.parent_bind_expr)
+                  return NULL_TREE;
+               
+               auto parent_block = BIND_EXPR_BLOCK(state.parent_bind_expr);
+               assert(parent_block != NULL_TREE);
+               assert(TREE_CODE(parent_block) == BLOCK);
+               
+               // Set up hierarchical relationships between BLOCKs.
+               if (TREE_CODE(current) == BIND_EXPR) {
+                  // Don't walk the contents of a child or descendant BIND_EXPR. 
+                  // A future iteration of the per-seen-block loop should hit 
+                  // the BIND_EXPR and deal with its own sub-tree.
+                  *walk_subtrees = 0;
+                  
+                  auto current_block = BIND_EXPR_BLOCK(current);
+                  assert(current_block != NULL_TREE);
+                  assert(TREE_CODE(current_block) == BLOCK);
+                  //
+                  BLOCK_SUPERCONTEXT(current_block) = parent_block;
+                  if (state.prev_child_block != NULL_TREE) {
+                     BLOCK_CHAIN(state.prev_child_block) = current_block;
+                  } else {
+                     BLOCK_SUBBLOCKS(parent_block) = current_block;
+                  }
+                  state.prev_child_block = current_block;
+                  return NULL_TREE;
+               }
+               
+               // Parent VAR_DECLs to their containing FUNCTION_DECL and BLOCK, 
+               // and tie them to their siblings as well.
+               if (TREE_CODE(current) == DECL_EXPR) {
+                  auto decl = DECL_EXPR_DECL(current);
+                  assert(decl != NULL_TREE && "A DECL_EXPR exists to indicate the location at which a VAR_DECL is declared; this DECL_EXPR must indicate the VAR_DECL that it exists for.");
+                  assert(DECL_P(decl) && "A DECL_EXPR must not be malformed.");
+                  if (TREE_CODE(decl) == VAR_DECL) {
+                     assert((
+                        DECL_CONTEXT(decl) == NULL_TREE ||
+                        DECL_CONTEXT(decl) == state.containing_function.as_untyped()
+                     ) && "This VAR_DECL, tied to a DECL_EXPR in this function, must not already belong to a different function.");
+                     DECL_CONTEXT(decl) = state.containing_function.as_untyped();
+                     
+                     assert(TREE_CHAIN(decl) == NULL_TREE && "This VAR_DECL must not already be linked to a BLOCK's variables. If it is, then the same VAR_DECL may have been declared in multiple functions, or multiple times in the same function, by mistake.");
+                     if (state.prev_variable_decl != NULL_TREE) {
+                        TREE_CHAIN(state.prev_variable_decl) = decl;
+                     } else {
+                        BLOCK_VARS(parent_block) = decl;
+                        BIND_EXPR_VARS(state.parent_bind_expr) = decl;
+                     }
+                     state.prev_variable_decl = decl;
+                  }
+                  return NULL_TREE;
+               }
+               
+               // Parent LABEL_DECLs to their containing FUNCTION_DECL.
+               if (TREE_CODE(current) == LABEL_EXPR) {
+                  auto decl = LABEL_EXPR_LABEL(current); // LABEL_DECL
+                  assert(decl != NULL_TREE && "A LABEL_EXPR exists to indicate the location at which a LABEL_DECL is declared; this LABEL_EXPR must indicate the LABEL_DECL that it exists for.");
+                  assert(TREE_CODE(decl) == LABEL_DECL && "A LABEL_EXPR must not be malformed.");
+                  assert((
+                     DECL_CONTEXT(decl) == NULL_TREE ||
+                     DECL_CONTEXT(decl) == state.containing_function.as_untyped()
+                  ) && "This LABEL_DECL must not already belong to a different function than the one it's currently being used in.");
+                  DECL_CONTEXT(decl) = state.containing_function.as_untyped();
+                  return NULL_TREE;
+               }
+               
+               if (TREE_CODE(current) == BLOCK) {
+                  *walk_subtrees = 0;
+               }
+               
+               return NULL_TREE;
+            },
+            &state,
+            nullptr
+         );
+      }
+      //
+      // Fix-up for TREE_SIDE_EFFECTS on each BIND_EXPR.
+      //
+      for(auto& seen : seen_blocks) {
+         auto expr = seen.bind_expr_node;
+         if (TREE_SIDE_EFFECTS(expr))
+            continue;
+         walk_tree(
+            &expr,
+            [](tree* current_ptr, int* walk_subtrees, void* data) -> tree {
+               tree walking_from = *(tree*)data;
+               tree walking_at   = *current_ptr;
+               if (walking_from == walking_at)
+                  return NULL_TREE;
+               
+               if (TREE_SIDE_EFFECTS(walking_at)) {
+                  TREE_SIDE_EFFECTS(walking_from) = 1;
+                  return walking_from; // stop iteration by returning non-null
+               }
+               
+               return NULL_TREE;
+            },
+            &expr,
+            nullptr
+         );
+      }
+      //
+      // Finally, take the root block and link it to this function.
+      //
+      DECL_INITIAL(this->_node) = seen_blocks.front().block_node;
+      BLOCK_SUPERCONTEXT(seen_blocks.front().block_node) = this->_node;
+      
+      #ifndef NDEBUG
+      {
+         tree fd  = this->as_untyped();
+         tree lbn = lb.as_untyped();
+         walk_tree(
+            &lbn,
+            [](tree* current_ptr, int* walk_subtrees, void* data) -> tree {
+               tree function   = *(tree*)data;
+               tree walking_at = *current_ptr;
+               assert(TREE_CODE(function) == FUNCTION_DECL);
+               if (TREE_CODE(walking_at) == LABEL_EXPR) {
+                  auto decl = LABEL_EXPR_LABEL(walking_at);
+                  assert(DECL_CONTEXT(decl) == function);
+               }
+               return NULL_TREE;
+            },
+            &fd,
+            nullptr
+         );
+      }
+      #endif
       
       //
       // Update contexts. In the case of us taking a forward-declared 

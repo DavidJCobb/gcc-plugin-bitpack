@@ -8,6 +8,7 @@
 C++:
 
 * We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
+* Regression: when converting a re-chunked item list to nodes, conditions aren't folded to share `union_switch` nodes. See `generation_a` testcase with unions and arrays enabled.
 * Time for codegen.
   * Spawn a `whole_struct_function_dictionary`, and then, for each sector:
     * Create the read and save `gw::decl::function`s, each with a local bitstream-state variable. Generate the "initialize" call in each.
