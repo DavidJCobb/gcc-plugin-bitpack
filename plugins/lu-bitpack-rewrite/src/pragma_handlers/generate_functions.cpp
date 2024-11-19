@@ -12,6 +12,8 @@
 #include <diagnostic.h>
 
 #include "basic_global_state.h"
+#include "codegen/debugging/print_sectored_serialization_items.h"
+#include "codegen/debugging/print_sectored_rechunked_items.h"
 #include "codegen/decl_descriptor.h"
 #include "codegen/divide_items_by_sectors.h"
 #include "codegen/expr_pair.h"
@@ -124,7 +126,6 @@ namespace pragma_handlers {
       gw::type::base     return_type,
       std::array<gw::type::base, ArgCount> args
    ) {
-      const auto& ty = gw::builtin_types::get_fast();
       if (decl.empty())
          return true;
       auto type  = decl.function_type();
@@ -200,6 +201,7 @@ namespace pragma_handlers {
       std::string read_name;
       std::string save_name;
       std::vector<std::vector<std::string>> identifier_groups;
+      bool do_debug_printing = false;
       
       location_t start_loc;
       
@@ -231,7 +233,41 @@ namespace pragma_handlers {
             }
             
             int token;
-            if (key == "read_name" || key == "save_name") {
+            //
+            // Each branch should end by grabbing the next token after the 
+            // last accepted token. Code after the branch acts on the last 
+            // grabbed token.
+            //
+            if (key == "enable_debug_output") {
+               int value = 0;
+               switch (pragma_lex(&data, &loc)) {
+                  case CPP_NAME:
+                     {
+                        std::string_view name = IDENTIFIER_POINTER(data);
+                        if (name == "true") {
+                           value = 1;
+                        } else if (name == "false") {
+                           value = 0;
+                        } else {
+                           error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected integer literal or identifiers %<true%> or %<false%> as value for key %<%s%>", key.data());
+                           return;
+                        }
+                     }
+                     break;
+                  case CPP_NUMBER:
+                     if (TREE_CODE(data) == INTEGER_CST) {
+                        value = TREE_INT_CST_LOW(data);
+                        break;
+                     }
+                     [[fallthrough]];
+                  default:
+                     error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected integer literal or identifiers %<true%> or %<false%> as value for key %<%s%>", key.data());
+                     return;
+               }
+               do_debug_printing = value != 0;
+               
+               token = pragma_lex(&data, &loc);
+            } else if (key == "read_name" || key == "save_name") {
                std::string_view name;
                switch (pragma_lex(&data, &loc)) {
                   case CPP_NAME:
@@ -289,6 +325,8 @@ namespace pragma_handlers {
                      continue;
                   } else if (token == CPP_COMMA || token == CPP_CLOSE_PAREN) {
                      break;
+                  } else {
+                     error_at(loc, "%<#pragma lu_bitpack generate_functions%>: expected identifier or %<|%> within value for key %<%s%>, or %<,%> to end the value", key.data());
                   }
                } while (true);
                
@@ -443,12 +481,18 @@ namespace pragma_handlers {
                all_sectors_si.push_back(std::move(sector));
          }
       }
+      if (do_debug_printing) {
+         codegen::debugging::print_sectored_serialization_items(all_sectors_si);
+      }
       std::vector<std::vector<codegen::rechunked::item>> all_sectors_ri;
       for(const auto& sector : all_sectors_si) {
          auto& dst = all_sectors_ri.emplace_back();
          for(const auto& item : sector) {
             dst.emplace_back(item);
          }
+      }
+      if (do_debug_printing) {
+         codegen::debugging::print_sectored_rechunked_items(all_sectors_ri);
       }
       //
       // Generate node trees.

@@ -1,4 +1,9 @@
 #include "codegen/instructions/transform.h"
+#include "codegen/instructions/array_slice.h"
+#include "codegen/instructions/single.h"
+#include "codegen/decl_pair.h"
+#include "codegen/expr_pair.h"
+#include "codegen/func_pair.h"
 #include "lu/strings/printf_string.h"
 #include "gcc_wrappers/expr/call.h"
 #include "gcc_wrappers/expr/local_block.h"
@@ -41,9 +46,13 @@ namespace codegen::instructions {
       value_pair trans = this->to_be_transformed_value.as_value_pair();
       //
       struct transform_step {
-         decl_pair transformed_value;
-         expr_pair transformed_value_decl;
+         struct {
+            expr_pair  decl_exprs;
+            decl_pair  desc_pair;
+            value_pair values;
+         } transformed_value;
          expr_pair transform_call;
+         func_pair transform_func;
       };
       std::vector<transform_step> steps;
       //
@@ -63,26 +72,40 @@ namespace codegen::instructions {
             var_read = gw::decl::variable(name_read.c_str(), type);
             var_save = gw::decl::variable(name_save.c_str(), type);
          }
-         
-         step.transformed_value = decl_pair{
-            .read = &decl_dict.get_or_create_descriptor(var_read),
-            .save = &decl_dict.get_or_create_descriptor(var_save),
-         };
-         step.transformed_value_decl = expr_pair{
-            .read = var_read.make_declare_expr(),
-            .save = var_save.make_declare_expr(),
+         step.transformed_value = {
+            .decl_exprs = {
+               .read = var_read.make_declare_expr(),
+               .save = var_save.make_declare_expr(),
+            },
+            .desc_pair = {
+               .read = &decl_dict.get_or_create_descriptor(var_read),
+               .save = &decl_dict.get_or_create_descriptor(var_save),
+            },
+            .values = {
+               var_read.as_value(),
+               var_save.as_value(),
+            },
          };
          //
-         const auto& options = step.transformed_value.read->options.transform_options();
+         const auto& options = (
+            i == 0 ?
+               this->to_be_transformed_value.segments.back().member_descriptor().read->options
+            :
+               step.transformed_value.desc_pair.read->options
+         ).transform_options();
+         step.transform_func = func_pair{
+            options.post_unpack,
+            options.pre_pack,
+         };
          step.transform_call = expr_pair{
             .read = gw::expr::call(
-               options.post_unpack,
+               step.transform_func.read,
                // args:
                trans.read.address_of(), // in situ
                var_read.as_value().address_of() // transformed
             ),
             .save = gw::expr::call(
-               options.pre_pack,
+               step.transform_func.save,
                // args:
                trans.read.address_of(), // in situ
                var_save.as_value().address_of() // transformed
@@ -115,14 +138,65 @@ namespace codegen::instructions {
       //       UnpackTransform(&original, &__transformed_1);
       //    }
       //
+      // It's a little more complicated though, if the transformation 
+      // is split across multiple sectors. If we serialize only some 
+      // fields in one sector, and then try to get the remaining fields 
+      // in the next sctor, then the transformed object in the second 
+      // sector would be missing the fields seen in the first sector -- 
+      // and the call to UnpackTransform would clobber those fields 
+      // with garbage.
+      //
+      // The solution to this is... scuffed. If we believe that we're 
+      // working with a split value, then we can generate code like 
+      // this:
+      //
+      //    {
+      //       struct Transformed __transformed;
+      //       PackTransform(&original, &__transformed);
+      //       
+      //       __serialize(&__transformed);
+      //    }
+      //    
+      //    {
+      //       struct Transformed __transformed;
+      //       PackTransform(&original, &__transformed);
+      //       
+      //       __serialize(&__transformed);
+      //       
+      //       UnpackTransform(&original, &__transformed);
+      //    }
+      //
+      // As long as the pre-pack and post-unpack functions are symmetric 
+      // and the former is safe to invoke on a potentially incomplete 
+      // object, the pack-read-unpack pattern will ensure that any fields 
+      // we've already read are packed into the object, such that those 
+      // fields are retained when we then unpack the object.
+      //
+      const bool read_needs_pre_pack = this->is_probably_split();
       
       // Append variable declarations.
       for(auto& step : steps) {
-         statements_read.append(step.transformed_value_decl.read);
-         statements_save.append(step.transformed_value_decl.save);
+         statements_read.append(step.transformed_value.decl_exprs.read);
+         statements_save.append(step.transformed_value.decl_exprs.save);
       }
       // Append pre-pack calls.
-      for(auto& step : steps) {
+      for(size_t i = 0; i < steps.size(); ++i) {
+         auto& step = steps[i];
+         if (read_needs_pre_pack && i > 0) {
+            gw::value from;
+            gw::value to = step.transformed_value.values.read;
+            if (i == 0) {
+               from = this->to_be_transformed_value.as_value_pair().read;
+            } else {
+               from = steps[i - 1].transformed_value.values.read;
+            }
+            statements_read.append(gw::expr::call(
+               step.transform_func.save,
+               // args:
+               from.address_of(), // in situ
+               to.address_of() // transformed
+            ));
+         }
          statements_save.append(step.transform_call.save);
       }
       // Append child instructions.
@@ -141,5 +215,23 @@ namespace codegen::instructions {
          .read = block_read,
          .save = block_save
       };
+   }
+   
+   bool transform::is_probably_split() const {
+      if (this->instructions.empty())
+         return false;
+      if (this->instructions.size() != 1)
+         return true;
+      
+      const auto* node = this->instructions[0].get();
+      if (auto* casted = node->as<single>()) {
+         return casted->value != this->to_be_transformed_value;
+      }
+      if (auto* casted = node->as<array_slice>()) {
+         if (casted->array.value != this->to_be_transformed_value)
+            return true;
+      }
+      
+      return false;
    }
 }

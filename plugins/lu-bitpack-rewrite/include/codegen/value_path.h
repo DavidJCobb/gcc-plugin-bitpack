@@ -46,6 +46,10 @@ namespace codegen {
          constexpr const decl_pair& array_loop_counter_descriptor() const {
             return std::get<1>(this->data);
          }
+         
+      public:
+         // needed by some files due to GCC header jank
+         bool operator==(const value_path_segment&) const noexcept = default;
    };
    
    class value_path {
@@ -61,5 +65,9 @@ namespace codegen {
          
          value_pair as_value_pair() const;
          const bitpacking::data_options::computed& bitpacking_options() const;
+         
+      public:
+         // needed by some files due to GCC header jank
+         bool operator==(const value_path&) const noexcept = default;
    };
 }

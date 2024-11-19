@@ -13,7 +13,7 @@ C++:
     * As struct members
     * As top-level VAR_DECLs
   * Transformed objects
-    * A single transform (A -> B)
+    * **Done:** A single transform (A -> B)
     * A transitive transform (A -> B -> C)
     * A nested transform (the transformed type contains a to-be-transformed type)
   * Test for an edge-case: Internally tagged unions whose first members are identical at the language level but have different bitpacking options that would cause their sizes or serialized types to differ

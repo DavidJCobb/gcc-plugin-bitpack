@@ -203,6 +203,44 @@ When these attributes are applied to [fields that are of] an array type, the att
       <p>The pre-pack function should have the signature <code>void pre(const <var>InSitu</var>*, <var>Transform</var>*)</code>. The post-unpack function should have the signature <code>void post(<var>InSitu</var>*, const <var>Transform</var>*)</code>.</p></dd>
 </dl>
 
+Additional requirements exist for pre-pack and post-unpack functions:
+
+* These functions must be symmetric.
+* It must be valid to invoke these functions on partially-constructed values.
+  * These functions must not crash or fail on incomplete or invalid data.
+  * These functions must not assume that data which appears to be valid actually is valid.
+  * These functions must not have side-effects that depend on data being valid. (Save those for after you finish reading the entire bitstream.)
+  * These functions must not assume that because one piece of data appears to be valid, any other piece of data is also valid.
+
+These requirements exist because a transformed value may be split across multiple sectors, and special measures have to be taken to prevent fields read in a later sector from clobbering fields read in an earlier sector.
+
+The naive approach to reading a transformed object would be as follows:
+
+* Construct an uninitialized transformed object.
+* Read the object's data.
+* Call the post-unpack function to convert the transformed object back to its in situ type.
+
+However, when the transformed object is split across multiple sectors, this process ends up becoming:
+
+* Construct an uninitialized transformed object.
+* Read the first few fields.
+* Call the post-unpack function to convert the (incomplete) transformed object back to its in situ type.
+* Move to the next sector.
+* Construct an uninitialized transformed object.
+* Read the last few fields.
+* Call the post-unpack function to convert the (incomplete) transformed object back to its in situ type. The fields read in the previous sector will be clobbered, because they were not present in this sector's transformed object.
+
+To prevent this, we use the following process whenever it appears as though a transformed object has been divided across sectors:
+
+* Construct an uninitialized transformed object.
+* Read the first few fields.
+* Call the post-unpack function to convert the (incomplete) transformed object, producing an (incomplete) in situ object.
+* Move to the next sector.
+* Construct an uninitialized transformed object.
+* Call the pre-pack function to convert the (incomplete) in situ object, overwriting the transformed object. Because the pre-pack and post-unpack functions are supposed to be symmetric, this means that the fields we read in the previous sector will be converted and written into the current sector's transformed object, preventing them from being lost.
+* Read the last few fields.
+* Call the post-unpack function to convert the now-complete transformed object back to its in situ type.
+
 #### Union options
 
 Unions can only be serialized if they are internally or externally tagged: you must indicate what object serves as the union's tag, and what values correspond to which union members.

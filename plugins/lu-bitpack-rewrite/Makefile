@@ -31,6 +31,8 @@ SOURCES=\
         src/bitpacking/verify_union_external_tag.cpp \
         src/bitpacking/verify_union_internal_tag.cpp \
         src/bitpacking/verify_union_members.cpp \
+        src/codegen/debugging/print_sectored_rechunked_items.cpp \
+        src/codegen/debugging/print_sectored_serialization_items.cpp \
         src/codegen/instructions/array_slice.cpp \
         src/codegen/instructions/base.cpp \
         src/codegen/instructions/padding.cpp \

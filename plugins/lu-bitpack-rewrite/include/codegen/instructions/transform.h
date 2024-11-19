@@ -28,5 +28,8 @@ namespace codegen::instructions {
             } variables;
             decl_pair descriptors;
          } transformed;
+         
+      public:
+         bool is_probably_split() const;
    };
 }

@@ -7,6 +7,8 @@
 #include "gcc_wrappers/decl/variable.h"
 #include <c-family/c-common.h> // lookup_name
 
+#include "codegen/debugging/print_sectored_serialization_items.h"
+#include "codegen/debugging/print_sectored_rechunked_items.h"
 #include "codegen/decl_descriptor.h"
 #include "codegen/serialization_item.h"
 #include "codegen/divide_items_by_sectors.h"
@@ -109,32 +111,12 @@ namespace pragma_handlers {
          
          try {
             sectors = codegen::divide_items_by_sectors(sector_size_in_bytes * 8, list);
-            for(size_t i = 0; i < sectors.size(); ++i) {
-               std::cerr << "Sector " << i << ":\n";
-               
-               auto offset_info = codegen::serialization_item_list_ops::get_offsets_and_sizes(sectors[i]);
-               assert(offset_info.size() == sectors[i].size());
-               for(size_t j = 0; j < sectors[i].size(); ++j) {
-                  auto& item = sectors[i][j];
-                  auto& info = offset_info[j];
-                  
-                  std::cerr << " - ";
-                  if (!item.is_omitted) {
-                     std::cerr << lu::strings::printf_string("{%05u:%05u} ", info.first, info.second);
-                  }
-                  if (item.is_defaulted)
-                     std::cerr << "<D> ";
-                  if (item.is_omitted)
-                     std::cerr << "<O> ";
-                  std::cerr << item.to_string();
-                  std::cerr << '\n';
-               }
-            }
          } catch (std::runtime_error& ex) {
             std::cerr << "Divide failed:\n   " << ex.what() << '\n';
             return;
          }
          
+         codegen::debugging::print_sectored_serialization_items(sectors);
          if (!sectors.empty()) {
             std::cerr << "\n";
             std::cerr << "Generating re-chunked items...\n";
@@ -147,20 +129,7 @@ namespace pragma_handlers {
                   dst_item = codegen::rechunked::item(item);
                }
             }
-            //
-            // Debugprint.
-            //
-            for(size_t i = 0; i < rechunked_sectors.size(); ++i) {
-               std::cerr << "\nSector " << i << ":\n";
-               for(auto& item : rechunked_sectors[i]) {
-                  std::cerr << " - ";
-                  if (item.is_omitted_and_defaulted()) {
-                     std::cerr << "omitted and defaulted: ";
-                  }
-                  std::cerr << codegen::rechunked::item_to_string(item);
-                  std::cerr << '\n';
-               }
-            }
+            codegen::debugging::print_sectored_rechunked_items(rechunked_sectors);
          
             //
             // Generate node trees.
