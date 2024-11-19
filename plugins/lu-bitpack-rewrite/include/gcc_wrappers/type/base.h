@@ -23,6 +23,13 @@ namespace gcc_wrappers {
 }
 
 namespace gcc_wrappers::type {
+   struct assign_check_options {
+      bool as_builtin_argument          = false;
+      bool as_function_argument         = false;
+      bool require_cpp_compat           = false;
+      bool rhs_is_null_pointer_constant = false;
+   };
+   
    class base : public _wrapped_tree_node {
       public:
          static bool node_is(tree t) {
@@ -74,6 +81,7 @@ namespace gcc_wrappers::type {
          
          bool is_arithmetic() const; // INTEGER_TYPE or REAL_TYPE
          bool is_array() const;
+         bool is_bitint() const; // BITINT_TYPE
          bool is_boolean() const;
          bool is_complex() const; // COMPLEX_TYPE
          bool is_enum() const; // ENUMERAL_TYPE
@@ -82,9 +90,15 @@ namespace gcc_wrappers::type {
          bool is_function() const; // FUNCTION_TYPE or METHOD_TYPE
          bool is_integer() const; // does not include enums or bools
          bool is_method() const; // METHOD_TYPE
+         bool is_null_pointer_type() const; // NULLPTR_TYPE i.e. decltype(nullptr)
          bool is_record() const; // class or struct
          bool is_union() const;
+         bool is_vector() const; // VECTOR_TYPE
          bool is_void() const;
+         
+         // Check whether something is a BOOLEAN_TYPE or an enum whose underlying 
+         // type is a bool.
+         bool has_c_boolean_semantics() const;
          
          //
          // Casts:
@@ -124,15 +138,38 @@ namespace gcc_wrappers::type {
          // Queries and transformations:
          //
          
+      protected:
+         base _with_qualifiers_added(int) const;
+         base _with_qualifiers_removed(int) const;
+         base _with_qualifiers_replaced(int) const;
+         
+      public:
+         base with_all_qualifiers_stripped() const;
+      
+         bool is_atomic() const;
+         base add_atomic() const;
+         base remove_atomic() const;
+      
          base add_const() const;
          base remove_const() const;
          bool is_const() const;
          
          bool is_volatile() const;
+         base add_volatile() const;
+         base remove_volatile() const;
          
          pointer add_pointer() const;
          base remove_pointer() const;
          bool is_pointer() const;
+         
+         bool is_reference() const;
+         bool is_lvalue_reference() const;
+         bool is_rvalue_reference() const;
+         
+         bool is_restrict() const;
+         bool is_restrict_allowed() const;
+         base add_restrict() const; // assert(is_restrict_allowed());
+         base remove_restrict() const;
          
          array add_array_extent(size_t) const;
          
@@ -141,6 +178,18 @@ namespace gcc_wrappers::type {
          // or not), returns self.
          base with_user_defined_alignment(size_t bytes);
          base with_user_defined_alignment_in_bits(size_t bits);
+         
+         //
+         // Tests:
+         //
+         
+         // Check if values of type `this` are assignable to variables of type `lhs` 
+         // without an explicit cast. This can also be used to check whther values 
+         // of type `this` can be passed to function arguments whose declared types 
+         // are `lhs`, provided you set the right options for running the check.
+         //
+         // NOTE: Untested.
+         bool is_assignable_to(base lhs, const assign_check_options& = {}) const;
    };
 }
 

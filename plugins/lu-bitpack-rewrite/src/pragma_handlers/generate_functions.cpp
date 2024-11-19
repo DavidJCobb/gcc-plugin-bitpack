@@ -1,4 +1,5 @@
 #include "lu/strings/printf_string.h"
+#include <array>
 #include <memory> // GCC headers fuck up string-related STL identifiers that <memory> depends on
 #include "pragma_handlers/generate_functions.h"
 #include <string>
@@ -32,6 +33,7 @@
 #include "gcc_wrappers/expr/ternary.h"
 #include "gcc_wrappers/type/helpers/make_function_type.h"
 #include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/function.h"
 #include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/scope.h"
 namespace gw {
@@ -97,6 +99,95 @@ namespace pragma_handlers {
          return false;
       }
       return true;
+   }
+   
+   
+   static bool _check_and_report_missing_builtin(
+      location_t         loc,
+      gw::decl::function decl,
+      std::string_view   name,
+      std::string_view   header
+   ) {
+      if (!decl.empty())
+         return true;
+      
+      error_at(loc, "%<#pragma lu_bitpack generate_functions%>: unable to find a definition for %<%s%> or %<__builtin_%s%>, which we may need for code generation", name.data(), name.data());
+      inform(loc, "%qs would be absent if %s has not been included yet; and %<__builtin_%s%>, used a fallback, would be absent based on command line parameters passed to GCC", name.data(), header.data(), name.data());
+      return false;
+   }
+   
+   
+   template<size_t ArgCount>
+   static bool _check_and_report_builtin_signature(
+      location_t         loc,
+      gw::decl::function decl,
+      gw::type::base     return_type,
+      std::array<gw::type::base, ArgCount> args
+   ) {
+      const auto& ty = gw::builtin_types::get_fast();
+      if (decl.empty())
+         return true;
+      auto type  = decl.function_type();
+      bool valid = true;
+      if (type.return_type() != return_type) {
+         valid = false;
+      } else if (type.is_unprototyped() || type.is_varargs() || type.fixed_argument_count() != ArgCount) {
+         valid = false;
+      } else {
+         for(size_t i = 0; i < ArgCount; ++i) {
+            auto arg_type = type.nth_argument_type(i);
+            if (arg_type != args[i]) {
+               valid = false;
+               break;
+            }
+         }
+      }
+      if (!valid) {
+         error_at(loc, "%<#pragma lu_bitpack generate_functions%>: function %<%s%>, which we may need for code generation, has an unexpected signature", decl.name().data());
+         
+         {
+            std::string str;
+            str += return_type.pretty_print();
+            str += ' ';
+            str += decl.name();
+            str += '(';
+            for(size_t i = 0; i < ArgCount; ++i) {
+               if (i > 0)
+                  str += ", ";
+               str += args[i].pretty_print();
+            }
+            str += ')';
+            inform(loc, "expected signature was %<%s%>", str.c_str());
+         }
+         {
+            std::string str;
+            str += type.return_type().pretty_print();
+            str += ' ';
+            str += decl.name();
+            str += '(';
+            if (!type.is_unprototyped()) {
+               bool any = false;
+               type.for_each_argument_type([&any, &str](gw::type::base arg_type, size_t i) {
+                  any = true;
+                  if (i > 0)
+                     str += ", ";
+                  str += arg_type.pretty_print();
+               });
+               if (type.is_varargs()) {
+                  if (any)
+                     str += ", ";
+                  str += "...";
+               }
+            }
+            str += ')';
+            inform(loc, "signature seen is %<%s%>", str.c_str());
+            
+            if (type.is_unprototyped() && ArgCount == 0) {
+              inform(loc, "prior to C23, the syntax %<void f()%> defines an unprototyped (pre-C89) function declaration that can take any amount of arguments, as opposed to %<void f(void)%>, which would define a function that takes no arguments"); 
+            }
+         }
+      }
+      return valid;
    }
    
    
@@ -255,6 +346,11 @@ namespace pragma_handlers {
       auto& gs = basic_global_state::get();
       if (gs.any_attributes_missed) {
          error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: in order to run code generation, you must use %<#pragma lu_bitpack enable%> before the compiler sees any bitpacking attributes");
+         
+         auto first = gs.error_locations.first_missed_attribute;
+         if (first != UNKNOWN_LOCATION)
+            inform(first, "the first seen bitpacking attribute was here");
+         
          return;
       }
       if (gs.global_options.computed.invalid) {
@@ -262,6 +358,7 @@ namespace pragma_handlers {
          return;
       }
       
+      bool has_builtins = true;
       bool identifiers_valid = false;
       if (gcc_helpers::c::at_file_scope()) {
          identifiers_valid = true;
@@ -271,9 +368,45 @@ namespace pragma_handlers {
                   identifiers_valid = false;
             }
          }
+         
+         gs.pull_builtin_functions();
+         if (!_check_and_report_missing_builtin(start_loc, gs.builtin_functions.memcpy, "memcpy", "<string.h>")) {
+            has_builtins = false;
+         } else {
+            const auto& ty = gw::builtin_types::get_fast();
+            if (!_check_and_report_builtin_signature(
+               start_loc,
+               gs.builtin_functions.memcpy,
+               ty.void_ptr,
+               std::array<gw::type::base, 3>{
+                  ty.void_ptr,
+                  ty.const_void_ptr,
+                  ty.size
+               }
+            )) {
+               has_builtins = false;
+            }
+         }
+         if (!_check_and_report_missing_builtin(start_loc, gs.builtin_functions.memset, "memset", "<string.h>")) {
+            has_builtins = false;
+         } else {
+            const auto& ty = gw::builtin_types::get_fast();
+            if (!_check_and_report_builtin_signature(
+               start_loc,
+               gs.builtin_functions.memset,
+               ty.void_ptr,
+               std::array<gw::type::base, 3>{
+                  ty.void_ptr,
+                  ty.basic_int,
+                  ty.size
+               }
+            )) {
+               has_builtins = false;
+            }
+         }
       }
       
-      if (bad_generated_function_names || !identifiers_valid) {
+      if (bad_generated_function_names || !identifiers_valid || !has_builtins) {
          error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: aborting codegen");
          return;
       }

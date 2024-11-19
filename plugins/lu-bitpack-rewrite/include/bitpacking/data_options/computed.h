@@ -20,6 +20,7 @@ namespace bitpacking::data_options {
          
          // INTEGER_CST, REAL_CST, or STRING_CST
          tree default_value_node = NULL_TREE;
+         bool has_attr_nonstring = false;
          
          std::optional<intmax_t> union_member_id;
          

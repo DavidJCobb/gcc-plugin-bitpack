@@ -21,7 +21,6 @@ namespace codegen::serialization_item_list_ops {
             assert(!item.segments.empty());
             assert(item.segments.back().is_basic());
             
-            auto& back = item.segments.back().as_basic();
             auto& desc = item.descriptor();
             if (!desc.is_or_contains_defaulted())
                continue;

@@ -72,6 +72,7 @@ SOURCES=\
         src/xmlgen/write_string_as_attribute_value.cpp \
         src/xmlgen/write_string_as_text_content.cpp \
         src/xmlgen/xml_element.cpp \
+        src/basic_global_state.cpp \
         src/debugprint.cpp \
         src/lu-bitpack.cpp \
 		$(END)

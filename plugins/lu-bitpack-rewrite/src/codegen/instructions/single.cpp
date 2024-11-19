@@ -1,5 +1,6 @@
 #include "codegen/instructions/single.h"
 #include <cassert>
+#include "attribute_handlers/helpers/type_transitively_has_attribute.h"
 #include "codegen/instruction_generation_context.h"
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/expr/assign.h"
@@ -14,10 +15,6 @@
 #include "gcc_wrappers/value.h"
 #include "bitpacking/global_options.h"
 #include "basic_global_state.h"
-
-// For looking up memcpy and memset:
-#include <c-family/c-common.h> // lookup_name
-#include <stringpool.h> // get_identifier
 
 namespace gw {
    using namespace gcc_wrappers;
@@ -47,6 +44,10 @@ namespace codegen::instructions {
       const value_path& value_path,
       value_pair        value
    ) {
+      auto& bgs = basic_global_state::get();
+      assert(!bgs.builtin_functions.memcpy.empty());
+      assert(!bgs.builtin_functions.memset.empty());
+      
       const auto& ty      = gw::builtin_types::get();
       const auto& options = value_path.bitpacking_options();
       
@@ -67,24 +68,12 @@ namespace codegen::instructions {
       size_t string_size = str.size_of();
       size_t array_size  = *array_type.extent();
       
-      bool nonstring = false;
-      for(auto it = value_path.segments.rbegin(); it != value_path.segments.rend(); ++it) {
-         const auto& segm = *it;
-         if (segm.is_array_access())
-            continue;
-         auto decl = segm.member_descriptor().read->decl;
-         if (!decl.empty())
-            nonstring = decl.attributes().has_attribute("nonstring");
-         break;
-      }
-      if (nonstring) {
+      if (options.has_attr_nonstring) {
          string_size -= 1; // exclude null terminator
       }
       
       auto call_memcpy = gw::expr::call(
-         gw::decl::function::from_untyped(
-            lookup_name(get_identifier("memcpy"))
-         ),
+         bgs.builtin_functions.memcpy,
          // args:
          value.read.convert_array_to_pointer(),
          literal,
@@ -94,9 +83,7 @@ namespace codegen::instructions {
          return call_memcpy;
       }
       auto call_memset = gw::expr::call(
-         gw::decl::function::from_untyped(
-            lookup_name(get_identifier("memset"))
-         ),
+         bgs.builtin_functions.memset,
          // args:
          value.read.access_array_element(
             gw::expr::integer_constant(ty.basic_int, string_size)

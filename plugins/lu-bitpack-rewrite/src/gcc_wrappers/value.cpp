@@ -359,8 +359,8 @@ namespace gcc_wrappers {
       //
       auto vt_t = this->value_type();
       auto vt_b = other.value_type();
-      assert(vt_t.is_arithmetic());
-      assert(vt_b.is_arithmetic());
+      assert(vt_t.is_integer() || vt_t.is_floating_point());
+      assert(vt_b.is_integer() || vt_b.is_floating_point());
       
       auto result_type = boolean_type_node;
       if (vt_t == vt_b && vt_t == type::base::from_untyped(integer_type_node)) {
@@ -399,7 +399,8 @@ namespace gcc_wrappers {
    //#pragma endregion
    
    value value::_make_arith1(tree_code expr_type) {
-      assert(this->value_type().is_arithmetic());
+      auto vt = this->value_type();
+      assert(vt.is_integer() || vt.is_floating_point());
       value out;
       out.set_from_untyped(build1(
          expr_type,
@@ -415,8 +416,8 @@ namespace gcc_wrappers {
    value value::_make_arith2(tree_code expr_type, value other) {
       auto vt_t = this->value_type();
       auto vt_b = other.value_type();
-      assert(vt_t.is_arithmetic());
-      assert(vt_b.is_arithmetic());
+      assert(vt_t.is_integer() || vt_t.is_floating_point());
+      assert(vt_b.is_integer() || vt_b.is_floating_point());
       
       value arg = other;
       if (vt_t.is_integer()) {

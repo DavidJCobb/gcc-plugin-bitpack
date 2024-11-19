@@ -9,6 +9,8 @@
 // is unavailable when compiling C.
 extern int comptypes(tree, tree);
 
+#include "gcc_headers/plugin-version.h"
+
 // For casts:
 #include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/container.h"
@@ -100,6 +102,11 @@ namespace gcc_wrappers::type {
                   }
                   out += t.pretty_print();
                });
+               if (varargs) {
+                  if (!first)
+                     out += ", ";
+                  out += "...";
+               }
             }
             out += ')';
             return out;
@@ -112,6 +119,9 @@ namespace gcc_wrappers::type {
       if (is_array()) {
          auto at = this->as_array();
          out = at.value_type().pretty_print();
+         if (is_restrict()) { // array types can be `restrict` in C23
+            out += " restrict";
+         }
          out += '[';
          if (auto extent = at.extent(); extent.has_value()) {
             char buffer[64] = { 0 };
@@ -140,6 +150,8 @@ namespace gcc_wrappers::type {
          out += '*';
          if (is_const())
             out += " const";
+         if (is_restrict())
+            out += " restrict";
          return out;
       }
       
@@ -245,11 +257,35 @@ namespace gcc_wrappers::type {
    }
    
    bool base::is_arithmetic() const {
+      if (empty())
+         return false;
+      switch (this->code()) {
+         case BOOLEAN_TYPE:
+         case COMPLEX_TYPE:
+         case ENUMERAL_TYPE:
+         case FIXED_POINT_TYPE:
+         case INTEGER_TYPE:
+         case REAL_TYPE:
+            return true;
+         default:
+            break;
+      }
+      if (this->is_bitint())
+         return true;
+      return false;
+      
       auto code = TREE_CODE(this->_node);
       return code == INTEGER_TYPE || code == REAL_TYPE;
    }
    bool base::is_array() const {
       return TREE_CODE(this->_node) == ARRAY_TYPE;
+   }
+   bool base::is_bitint() const {
+      #if GCCPLUGIN_VERSION_MAJOR >= 14
+         return TREE_CODE(this->_node) == BITINT_TYPE;
+      #else
+         return false;
+      #endif
    }
    bool base::is_boolean() const {
       return TREE_CODE(this->_node) == BOOLEAN_TYPE;
@@ -276,14 +312,36 @@ namespace gcc_wrappers::type {
    bool base::is_method() const {
       return TREE_CODE(this->_node) == METHOD_TYPE;
    }
+   bool base::is_null_pointer_type() const {
+      return TREE_CODE(this->_node) == NULLPTR_TYPE;
+   }
    bool base::is_record() const {
       return TREE_CODE(this->_node) == RECORD_TYPE;
    }
    bool base::is_union() const {
       return TREE_CODE(this->_node) == UNION_TYPE;
    }
+   bool base::is_vector() const {
+      return TREE_CODE(this->_node) == VECTOR_TYPE;
+   }
    bool base::is_void() const {
       return TREE_CODE(this->_node) == VOID_TYPE;
+   }
+   
+   bool base::has_c_boolean_semantics() const {
+      if (this->is_boolean())
+         return true;
+      #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 2
+         if (!this->is_enum())
+            return false;
+         
+         auto underlying = ENUM_UNDERLYING_TYPE(this->_node);
+         if (underlying == NULL_TREE)
+            return false;
+         return TREE_CODE(underlying) == BOOLEAN_TYPE;
+      #else
+         return false;
+      #endif
    }
    
    //
@@ -384,14 +442,47 @@ namespace gcc_wrappers::type {
    // Queries and transformations:
    //
    
+   base base::_with_qualifiers_added(int change) const {
+      assert(!empty());
+      auto qual = TYPE_QUALS(this->_node);
+      if ((qual & change) == change)
+         return *this;
+      qual |= change;
+      return base::from_untyped(c_build_qualified_type(this->_node, qual));
+   }
+   base base::_with_qualifiers_removed(int change) const {
+      assert(!empty());
+      auto qual = TYPE_QUALS(this->_node);
+      if (!(qual & change))
+         return *this;
+      qual &= ~change;
+      return base::from_untyped(c_build_qualified_type(this->_node, qual));
+   }
+   base base::_with_qualifiers_replaced(int qual) const {
+      assert(!empty());
+      return base::from_untyped(c_build_qualified_type(this->_node, qual));
+   }
+   
+   base base::with_all_qualifiers_stripped() const {
+      assert(!empty());
+      return base::from_untyped(c_build_qualified_type(this->_node, 0));
+   }
+   
+   bool base::is_atomic() const {
+      return !empty() && TYPE_ATOMIC(this->_node);
+   }
+   base base::add_atomic() const {
+      return _with_qualifiers_added(TYPE_QUAL_ATOMIC);
+   }
+   base base::remove_atomic() const {
+      return _with_qualifiers_removed(TYPE_QUAL_ATOMIC);
+   }
+   
    base base::add_const() const {
-      gcc_assert(!empty());
-      return base::from_untyped(c_build_qualified_type(this->_node, TYPE_QUAL_CONST));
+      return _with_qualifiers_added(TYPE_QUAL_CONST);
    }
    base base::remove_const() const {
-      if (!is_const())
-         return *this;
-      return base::from_untyped(c_build_qualified_type(this->_node, 0));
+      return _with_qualifiers_removed(TYPE_QUAL_CONST);
    }
    bool base::is_const() const {
       return !empty() && TREE_READONLY(this->_node);
@@ -399,6 +490,12 @@ namespace gcc_wrappers::type {
    
    bool base::is_volatile() const {
       return !empty() && TYPE_VOLATILE(this->_node);
+   }
+   base base::add_volatile() const {
+      return _with_qualifiers_added(TYPE_QUAL_VOLATILE);
+   }
+   base base::remove_volatile() const {
+      return _with_qualifiers_removed(TYPE_QUAL_VOLATILE);
    }
    
    pointer base::add_pointer() const {
@@ -414,11 +511,267 @@ namespace gcc_wrappers::type {
       return !empty() && TREE_CODE(this->_node) == POINTER_TYPE;
    }
    
+   bool base::is_reference() const {
+      return !empty() && TREE_CODE(this->_node) == REFERENCE_TYPE;
+   }
+   bool base::is_lvalue_reference() const {
+      return this->is_reference() && !TYPE_REF_IS_RVALUE(this->_node);
+   }
+   bool base::is_rvalue_reference() const {
+      return this->is_reference() && TYPE_REF_IS_RVALUE(this->_node);
+   }
+   
+   bool base::is_restrict() const {
+      return TYPE_RESTRICT(this->_node);
+   }
+   bool base::is_restrict_allowed() const {
+      if (empty())
+         return false;
+      // See source for `c_build_qualified_type`
+      if (!POINTER_TYPE_P(this->_node))
+         return false;
+      if (!C_TYPE_OBJECT_OR_INCOMPLETE_P(this->_node))
+         return false;
+      return true;
+   }
+   base base::add_restrict() const {
+      gcc_assert(!empty());
+      gcc_assert(is_restrict_allowed());
+      return _with_qualifiers_added(TYPE_QUAL_RESTRICT);
+   }
+   base base::remove_restrict() const {
+      gcc_assert(!empty());
+      return _with_qualifiers_removed(TYPE_QUAL_RESTRICT);
+   }
+   
    base base::with_user_defined_alignment(size_t bytes) {
       return with_user_defined_alignment_in_bits(bytes * 8);
    }
    base base::with_user_defined_alignment_in_bits(size_t bits) {
       assert(!is_packed());
       return base::from_untyped(build_aligned_type(this->_node, bits));
+   }
+   
+   //
+   // Tests:
+   //
+   
+   bool base::is_assignable_to(base lhs, const assign_check_options& options) const {
+      const auto rhs     = *this;
+      const_tree lhs_raw = lhs.as_untyped();
+      const_tree rhs_raw = rhs.as_untyped();
+      
+      //
+      // Logic here is based on GCC's `convert_for_assignment` in 
+      // `c/c-typeck.cc`.
+      //
+      
+      // Identity and equality comparisons.
+      const bool same_main  = lhs.main_variant().as_untyped() == rhs.main_variant().as_untyped();
+      const bool equal_main = lhs.main_variant() == rhs.main_variant();
+      
+      if (same_main)
+         return true;
+      
+      //
+      // Check for implicit conversions below. (There are cases where 
+      // it'd be enough for `equal_main`, but if those aren't checked 
+      // for below, it's because they're a subset of allowed implicit 
+      // conversions.)
+      //
+      
+      if (options.require_cpp_compat) {
+         //
+         // In C, enums are implicitly interconvertible, and enums and 
+         // integrals are also interconvertible. This is not the case 
+         // in C++.
+         //
+         if (lhs.is_enum()) {
+            return false;
+         }
+      }
+      
+      if (rhs.is_void())
+         return false;
+      if (!rhs.is_complete())
+         return false;
+      
+      /*//
+      if (lhs.is_reference() && !rhs.is_reference()) {
+         // Non-references can be assigned to references. Wrap RHS in a 
+         // reference and then test that against LHS.
+         //
+         // Not implemented here because references are C++ only and we're 
+         // currently making a C plug-in; don't have the opportunity to test 
+         // the relevant functionality.
+      }
+      //*/
+      
+      if (lhs.is_vector() && rhs.is_vector()) {
+         return vector_types_convertible_p(lhs_raw, rhs_raw, false);
+      }
+      if (lhs.is_arithmetic() && rhs.is_arithmetic()) {
+         // Arithmetic types can all interconvert, with enum being treated like 
+         // int.
+         return true;
+      }
+      
+      if (lhs.is_record() || lhs.is_union()) {
+         if (lhs.code() == rhs.code()) {
+            // Aggregate types defined in different translation units.
+            if (equal_main)
+               return true;
+         }
+         
+         if (options.as_function_argument) {
+            //
+            // Allow conversion to a transparent struct or union from its member 
+            // type. That is: the following function accepts an argument of type 
+            // `float`:
+            //
+            //    struct transparent {
+            //       float foo;
+            //    };
+            //
+            //    void func(transparent);
+            //
+            if (TYPE_TRANSPARENT_AGGR(lhs_raw)) {
+               bool any_legal  = false;
+               bool is_optimal = false;
+               lhs.as_container().for_each_field([lhs, rhs, &any_legal, &is_optimal](decl::field decl) -> bool {
+                  auto decl_type = decl.value_type();
+                  if (decl_type.main_variant() == rhs.main_variant()) {
+                     any_legal = is_optimal = true;
+                     return false;
+                  }
+                  if (rhs.is_pointer() && decl_type.is_pointer()) {
+                     auto deref_lhs = decl_type.remove_pointer();
+                     auto deref_rhs = rhs.remove_pointer();
+                     if (
+                        (deref_lhs.is_void() && !deref_lhs.is_atomic()) ||
+                        (deref_rhs.is_void() && !deref_rhs.is_atomic()) ||
+                        decl_type.as_pointer().same_target_and_address_space_as(rhs.as_pointer())
+                     ) {
+                        any_legal = true;
+                        
+                        auto quals_lhs = TYPE_QUALS(deref_lhs.as_untyped());
+                        auto quals_rhs = TYPE_QUALS(deref_rhs.as_untyped());
+                        quals_lhs &= ~TYPE_QUAL_ATOMIC;
+                        quals_rhs &= ~TYPE_QUAL_ATOMIC;
+                        if (quals_lhs == quals_rhs) {
+                           is_optimal = true;
+                           return false;
+                        }
+                        if (deref_lhs.is_function() && deref_rhs.is_function()) {
+                           if ((quals_lhs | quals_rhs) == quals_rhs) {
+                              is_optimal = true;
+                              return false;
+                           }
+                        } else {
+                           if ((quals_lhs | quals_rhs) == quals_lhs) {
+                              is_optimal = true;
+                              return false;
+                           }
+                        }
+                        return true;
+                     }
+                  }
+                  return true;
+               });
+               return any_legal;
+            }
+         }
+      }
+      
+      // Handle implicit conversions between pointer types.
+      if (lhs.is_pointer() && rhs.is_pointer()) {
+         // NOTE: Skipping handling of pointers to built-in functions.
+         auto lhs_p = lhs.as_pointer();
+         auto rhs_p = rhs.as_pointer();
+         if (!options.rhs_is_null_pointer_constant && !lhs_p.compatible_address_space_with(rhs_p))
+            return false;
+         
+         auto deref_lhs = lhs.remove_pointer();
+         auto deref_rhs = rhs.remove_pointer();
+         auto main_lhs  = deref_lhs.main_variant();
+         auto main_rhs  = deref_rhs.main_variant();
+         if (deref_lhs.is_atomic())
+            main_lhs = main_lhs._with_qualifiers_replaced(TYPE_QUAL_ATOMIC);
+         if (deref_rhs.is_atomic())
+            main_rhs = main_rhs._with_qualifiers_replaced(TYPE_QUAL_ATOMIC);
+         
+         bool is_opaque_pointer = vector_targets_convertible_p(deref_lhs.as_untyped(), deref_rhs.as_untyped());
+         
+         /*//
+         if (
+            flag_plan9_extensions &&
+            (main_lhs.is_record() || main_lhs.is_union()) &&
+            (main_rhs.is_record() || main_rhs.is_union()) &&
+            main_lhs != main_rhs
+         ) {
+            // The Plan 9 compiler allows a pointer-to-struct to be implicitly 
+            // converted to a pointer to an anonymous field within the struct.
+         }
+         //*/
+         
+         if (options.require_cpp_compat) {
+            // Forbid implicit conversions from void pointers to non-void pointers.
+            if (deref_rhs.is_void() && !deref_lhs.is_void())
+               return false;
+         }
+         
+         // Pointers to non-functions can convert to a possibly-cv-qualified 
+         // void pointer, and vice versa, but the pointed-to LHS type must have 
+         // all of the qualifiers of the pointed-to RHS type.
+         if (
+            (deref_lhs.is_void() && !deref_lhs.is_atomic()) ||
+            (deref_rhs.is_void() && !deref_rhs.is_atomic()) ||
+            lhs_p.same_target_and_address_space_as(rhs_p)   ||
+            is_opaque_pointer ||
+            (
+               c_common_unsigned_type(main_lhs.as_untyped()) ==
+               c_common_unsigned_type(main_rhs.as_untyped())
+               &&
+               c_common_signed_type(main_lhs.as_untyped()) ==
+               c_common_signed_type(main_rhs.as_untyped())
+               &&
+               main_lhs.is_atomic() == main_rhs.is_atomic()
+            )
+         ) {
+            if (
+               (deref_lhs.is_void() && deref_rhs.is_function()) ||
+               (deref_lhs.is_function() && deref_rhs.is_void() && !options.rhs_is_null_pointer_constant)
+            ) {
+               //
+               // You can't assign a function pointer to void*, nor a non-null 
+               // void pointer to a function pointer.
+               //
+               return false;
+            }
+            return true;
+         }
+         return false;
+      }
+      //
+      // Handle all other assignments to pointers.
+      //
+      if (lhs.is_null_pointer_type() && options.rhs_is_null_pointer_constant) {
+         return true;
+      }
+      if (lhs.is_pointer()) {
+         if (options.rhs_is_null_pointer_constant) {
+            if (rhs.is_integer() || rhs.is_null_pointer_type() || rhs.is_bitint()) {
+               return true;
+            }
+         }
+         return false;
+      }
+      
+      // Allow pointer-to-boolean conversions.
+      if (lhs.has_c_boolean_semantics() && (rhs.is_pointer() || rhs.is_null_pointer_type())) {
+         return true;
+      }
+      
+      return false;
    }
 }

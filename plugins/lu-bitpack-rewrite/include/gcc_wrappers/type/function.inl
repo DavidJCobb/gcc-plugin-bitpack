@@ -5,7 +5,18 @@
 namespace gcc_wrappers::type {
    template<typename Functor>
    void function::for_each_argument_type(Functor&& functor) const {
-      auto args = list_node(TYPE_ARG_TYPES(this->_node));
-      args.for_each_value(functor);
+      function_args_iterator it;
+      tree   raw;
+      size_t i = 0;
+      FOREACH_FUNCTION_ARGS(this->_node, raw, it) {
+         if (raw == void_type_node || raw == error_mark_node)
+            break;
+         auto wrap = base::from_untyped(raw);
+         if constexpr (std::is_invocable_v<Functor, base, size_t>) {
+            functor(wrap, i++);
+         } else {
+            functor(wrap);
+         }
+      }
    }
 }

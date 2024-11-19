@@ -42,6 +42,7 @@
 
 static int sTestInt = 0;
 LU_BP_STRING_UT static char sTestString[5];
+LU_BP_OMIT LU_BP_STRING_UT LU_BP_DEFAULT("VWXYZ") static char sTestOmittedString[5];
 static struct TestStruct {
    int a[2];
 } sTestStruct;
@@ -54,10 +55,10 @@ extern void generated_save(u8* dst, int sector_id);
 #pragma lu_bitpack generate_functions( \
    read_name = generated_read,         \
    save_name = generated_save,         \
-   data      = sTestInt sTestString sTestStruct \
+   data      = sTestInt sTestString sTestOmittedString sTestStruct \
 )
 //#pragma lu_bitpack debug_dump_function generated_read
-#pragma lu_bitpack debug_dump_function __lu_bitpack_save_sector_0
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_0
 //#pragma lu_bitpack debug_dump_function __lu_bitpack_save_TestStruct
 
 #include <string.h> // memset
@@ -69,6 +70,14 @@ void print_test_data() {
    for(int i = 0; i < sizeof(sTestString); ++i) {
       print_char(sTestString[i]);
       if (i + 1 < sizeof(sTestString))
+         printf(", ");
+   }
+   printf(" }\n");
+   
+   printf("sTestOmittedString == { ");
+   for(int i = 0; i < sizeof(sTestOmittedString); ++i) {
+      print_char(sTestOmittedString[i]);
+      if (i + 1 < sizeof(sTestOmittedString))
          printf(", ");
    }
    printf(" }\n");
@@ -86,6 +95,7 @@ int main() {
    //
    sTestInt = 12345;
    memcpy(&sTestString, "ABCDE", 6);
+   memcpy(&sTestOmittedString, "XXXXX", 6);
    for(int i = 0; i < 2; ++i) {
       sTestStruct.a[i] = i + 1;
    }
@@ -107,6 +117,7 @@ int main() {
    }
    memset(&sTestInt,    0xCC, sizeof(sTestInt));
    memset(&sTestString, 0xCC, sizeof(sTestString));
+   memset(&sTestOmittedString, 0xCC, sizeof(sTestOmittedString));
    memset(&sTestStruct, 0xCC, sizeof(sTestStruct));
    
    for(int i = 0; i < SECTOR_COUNT; ++i) {

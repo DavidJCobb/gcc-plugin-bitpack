@@ -11,6 +11,8 @@ namespace gcc_wrappers::type {
          WRAPPED_TREE_NODE_BOILERPLATE(pointer)
          
       public:
+         bool compatible_address_space_with(pointer) const;
+         bool same_target_and_address_space_as(pointer) const;
    };
 }
 

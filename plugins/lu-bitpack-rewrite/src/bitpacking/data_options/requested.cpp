@@ -61,6 +61,21 @@ namespace {
 
 namespace bitpacking::data_options {
    void requested::_load_impl(tree subject, gw::attribute_list attributes) {
+      if (!this->has_attr_nonstring) {
+         gw::type::base type;
+         if (DECL_P(subject)) {
+            type.set_from_untyped(TREE_TYPE(subject));
+            if (attributes.has_attribute("lu_nonstring") || attributes.has_attribute("nonstring"))
+               this->has_attr_nonstring = true;
+         } else if (TYPE_P(subject)) {
+            type.set_from_untyped(subject);
+         }
+         if (!this->has_attr_nonstring && !type.empty()) {
+            if (attribute_handlers::helpers::type_transitively_has_attribute(type, "lu_nonstring"))
+               this->has_attr_nonstring = true;
+         }
+      }
+      
       for(auto attr : attributes) {
          auto key = attr.name();
          
@@ -124,22 +139,7 @@ namespace bitpacking::data_options {
                dst_var.emplace<requested_x_options::string>();
             auto& dst_data = std::get<requested_x_options::string>(dst_var);
             
-            bool nonstring = false;
-            {
-               gw::type::base type;
-               if (DECL_P(subject)) {
-                  type.set_from_untyped(TREE_TYPE(subject));
-                  if (attributes.has_attribute("lu_nonstring") || attributes.has_attribute("nonstring"))
-                     nonstring = true;
-               } else if (TYPE_P(subject)) {
-                  type.set_from_untyped(subject);
-               }
-               if (!nonstring && !type.empty()) {
-                  if (attribute_handlers::helpers::type_transitively_has_attribute(type, "lu_nonstring"))
-                     nonstring = true;
-               }
-            }
-            if (nonstring)
+            if (this->has_attr_nonstring)
                dst_data.nonstring = true;
             
             continue;

@@ -50,11 +50,8 @@ namespace attribute_handlers {
       }
       bool nonstring = false;
       {
-         auto decl = context.target_field();
-         if (!decl.empty()) {
-            auto list = decl.attributes();
-            nonstring = list.has_attribute("nonstring") || list.has_attribute("lu_nonstring");
-         }
+         auto list = context.get_existing_attributes();
+         nonstring = list.has_attribute("nonstring") || list.has_attribute("lu_nonstring");
       }
       if (!nonstring)
          nonstring = helpers::type_transitively_has_attribute(type, "lu_nonstring");
@@ -95,7 +92,7 @@ namespace attribute_handlers {
          );
          if (!nonstring && str_size == extent + 1) {
             if (context.target_type().empty()) {
-               context.report_note("if these strings do not require null terminators while in memory, then applying %<__attribute__((nonstring))%> before this attribute would allow this value to fit, while also allowing GCC to error-check certain string functions for you. that attribute is only supported on declarations; for types, use %<__attribute__((lu_nonstring))%>");
+               context.report_note("if these strings do not require null terminators while in memory, then applying %<__attribute__((nonstring))%> before this attribute would allow this value to fit, while also allowing GCC to error-check certain string functions for you. that attribute is only supported on declarations; you may use %<__attribute__((lu_nonstring))%> for declarations or types");
             } else {
                context.report_note("if these strings do not require null terminators while in memory, then applying %<__attribute__((lu_nonstring))%> before this attribute would allow this value to fit");
             }

@@ -17,6 +17,7 @@ namespace bitpacking::data_options {
          bool track = false;
          
          tree default_value_node = NULL_TREE;
+         bool has_attr_nonstring = false;
          
          std::optional<intmax_t> union_member_id;
          

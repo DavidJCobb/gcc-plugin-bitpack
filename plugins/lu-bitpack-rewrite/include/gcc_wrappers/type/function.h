@@ -18,6 +18,8 @@ namespace gcc_wrappers::type {
          // If this is not a varargs function, then the last element is the void type.
          list_node arguments() const;
          
+         // We index arguments from zero. GCC likes to index them from one, at 
+         // least in some places.
          base nth_argument_type(size_t n) const;
          
          bool is_varargs() const;
@@ -29,6 +31,10 @@ namespace gcc_wrappers::type {
          // (but isn't varargs??)
          bool is_unprototyped() const;
          
+         // Supported functor signatures:
+         //  - void functor(gcc_wrappers::type::base);
+         //  - void functor(gcc_wrappers::type::base, size_t index);
+         // You can have a return type if you like, but we'll ignore it.
          template<typename Functor>
          void for_each_argument_type(Functor&& functor) const;
    };

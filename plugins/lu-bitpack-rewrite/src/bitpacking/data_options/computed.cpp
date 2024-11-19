@@ -19,6 +19,9 @@ namespace bitpacking::data_options {
       if (src.default_value_node != NULL_TREE)
          this->default_value_node = src.default_value_node;
       
+      if (src.has_attr_nonstring)
+         this->has_attr_nonstring = true;
+      
       if (src.union_member_id.has_value())
          this->union_member_id = *src.union_member_id;
       
