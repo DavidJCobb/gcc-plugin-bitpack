@@ -223,14 +223,78 @@ There also exists a `ggc_register_root_tab` function that is noted as being "use
 
 ## Defects
 
-* The wrapper classes act as views, but some have constructors which actually create a new tree node for you. The issue is that some wrappers' default constructors do so (e.g. `expr::local_block`), while most wrappers' default constructors do not (creating instead a wrapper around `NULL_TREE`). This is generally only done when it is convenient, but it's still inconsistent, and I should revise the API to be more explicit about when nodes are created.
 * `gw::value` should use the GCC function `build_binary_op` to generate all binary operators that `build_binary_op` supports. That function handles integer promotions, type validation, C pointer arithmetic, and so on. We currently avoid it in most places because it can emit user-visible warnings and errors (I would prefer assertions since the use case here is code generation under the hood).
 * Similarly, `gw::value` should use `build_unary_op` for more unary operations. I currently only use it where I know it to be needed for correctness deep inside the compiler (e.g. `ADDR_EXPR`, to properly update things like `TREE_ADDRESSABLE` on the operands).
-  * Not all unary operations are safe to use with `build_unary_op`; for example, `INDIRECT_REF`, the pointer-dereferencing operator, isn't compatible and will cause assertion failures or crashes if built via `build_unary_op`.
+  * Not all unary operations are safe to use with `build_unary_op`; for example, `INDIRECT_REF`, the pointer-dereferencing operator, isn't compatible and will cause assertion failures or crashes if spawned via `build_unary_op`.
 * It would probably be more appropriate to have `gw::constant::base` as the base class for `gw::expr::integer_constant` and `gw::expr::string_constant`, with the base class for constants subclassing `gw::value` as `gw::expr::base` currently does.
 * The codebase isn't consistently const-correct.
 * Const-correctness doesn't work super well since these are structs rather than pointers or references: even if you have a `const gw::type::base`, it's trivial to un-const it by just assigning it to a non-const `gw::type::base`. The same thing applies to when a const wrapper tries to return another const wrapper.
 
+### Failure to distinguish between "pointerness" and "referenceness"
+
+In C++, you have three basic kinds of types (related to this defect, anyway):
+
+* Values
+* References
+* Pointers
+
+In this context, a <dfn>value</dfn> is an object that you have *right here, right now*, in your space and under your ownership. A <dfn>reference</dfn> is the means by which you access a value that definitely exists, but somewhere else, potentially outside of your control. A <dfn>pointer</dfn> is the means by which you access a value that *may or may not* exist somewhere else.
+
+The problem with these wrappers is that they elide the distinctions between these three things. In the first place, we lose the ability to express "pointerness" versus "referenceness:" all wrappers *may* wrap a node of a constrained set of tree codes, or they may wrap `NULL_TREE`. In the second place, some wrappers auto-create nodes when instantiated (e.g. `expr::local_block`), while most don't (instead spawning an empty wrapper).
+
+#### Potential solution: wrappers for "references;" separate "pointer" classes
+
+One potential way to solve this would be bifurcated types. We could have all of the individual wrapper types that we currently do, each of which would hold a `tree` internally, but not allow them to be `empty()`; and then we could define `template<typename Wrapper> class _optional_wrapper` which can be empty. Invoking `_optional_wrapper<T>::operator*` or `_optional_wrapper<T>::operator->` would basically just cast it to the wrapped type.
+
+So:
+
+```c++
+namespace gcc_wrappers {
+   template<typename Wrapper>
+   class _optional_wrapper {
+      protected:
+         tree _node = NULL_TREE;
+   
+      public:
+         Wrapper operator* noexcept {
+            assert(this->_node != NULL_TREE);
+            return Wrapper::wrap(this->_node); // `from_untyped` in current codebase
+         }
+   };
+   
+   namespace expr {
+      class base /* ... */ {
+         public:
+            /* ... */
+      };
+      
+      using base_ptr = _optional_wrapper<base>;
+   }
+}
+
+void example() {
+   base_ptr foo;
+   
+   static_assert(std::is_same_v<
+      decltype(*foo),
+      base
+   >);
+}
+```
+
+We'd additionally require that `T::wrap`, the replacement for `T::from_untyped`, assert that the passed-in tree node is non-null; and we'd make it so that non-pointer wrappers create tree nodes when constructed through any means but `T::wrap` (and if we haven't implemented creating a given tree node type, then we'll simply expose no public constructors, such that the only way to get a `T` wrapper is by dereferencing `T_ptr`).
+
+This still isn't perfect, though, because the behavior of copy- and move-assignment is undefined. A `T` acts like a value when constructed, but should it act like a value when copy- or move-assigned? If so, then we lose the ability to express "referenceness," choosing only to represent values and pointers. If not, then either: we have something that behaves like a value when constructed through anything other than copy-construction or move-construction, yet behaves like a reference otherwise; or we disable conventional construction for consistency's sake, only allowing construction via static member functions or non-member functions, which feels less ergonomic.
+
+A third option is to *tri*furcate the types: `T`, `T_ptr`, and `T_ref`. Each of these classes would wrap a `tree` and just implement different semantics with respect to construction, assignment, and so on. We could have `T_ref` derive from `T` and override construction and assignment in order to allow the same (wrapper-specific) member functions to be invoked on both, while having `T_ptr` produce a `T_ref` when dereferenced.
+
+In deciding between these approaches (bifurcate with inconsistency; bifurcate with verbosity; trifurcate) it is worth considering that there aren't *terribly* many nodes that are safe to directly modify. For example, I wouldn't recommend altering `TREE_READONLY` on `int_type_node`. I've endeavored to make it so that `gcc_wrappers::type::base` is incapable of directly modifying a type, instead returning modified copies, and in that case there's little practical difference between `T` and `T_ref` beyond the former creating a new type (which is then impossible to configure) when instantiated.
+
+Something else worth considering is that if we imitate references as closely as possible, then `T_ref` wouldn't be directly constructible; you'd only be able to construct it via `T_ref::wrap` or by dereferencing a `T_ptr`. (If you could default-construct it, then it could be empty.) This means that non-default constructors-with-args wouldn't be ambiguous: it's not meaningful to "construct" a reference, least of all from anything other than a referent, so clearly what you're constructing in that case is a value (i.e. a new tree node). But then the meaning of copy-construction becomes ambiguous (are we creating a new reference to the same referent, or are we creating a new referent?).
+
+Hm. I dislike boilerplate, but perhaps the best option would nonetheless be to have `T` mimicking reference semantics, `T_ptr` or `T_opt` mimicking pointer semantics, and `static T T::make()` or `T node = new_node{}`[^new-node] as the means to actually spawn a new node (preferring the static member function over anything that looks like "magic").
+
+[^new-node]: The `new_node` type would be an empty tag/sentinel type, wherein if we actually know how to spawn a given tree node, then we give its wrapper an implicit-conversion constructor from `new_node` so that this assignment works. We can't prevent `auto foo = new_node{}` from working, but that'd lead to type errors when you actually try to do anything with `foo` anyway.
 
 ## Potential future plans
 

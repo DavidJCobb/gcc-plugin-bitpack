@@ -91,7 +91,7 @@ namespace codegen::instructions {
             i == 0 ?
                this->to_be_transformed_value.segments.back().member_descriptor().read->options
             :
-               step.transformed_value.desc_pair.read->options
+               steps[i - 1].transformed_value.desc_pair.read->options
          ).transform_options();
          step.transform_func = func_pair{
             options.post_unpack,
@@ -107,7 +107,7 @@ namespace codegen::instructions {
             .save = gw::expr::call(
                step.transform_func.save,
                // args:
-               trans.read.address_of(), // in situ
+               trans.save.address_of(), // in situ
                var_save.as_value().address_of() // transformed
             ),
          };
