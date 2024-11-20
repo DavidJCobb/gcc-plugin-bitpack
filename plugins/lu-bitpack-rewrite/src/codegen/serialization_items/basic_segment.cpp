@@ -9,14 +9,18 @@ namespace codegen::serialization_items {
    }
    
    size_t basic_segment::size_in_bits() const noexcept {
+      auto size = this->single_size_in_bits();
+      if (!this->array_accesses.empty()) {
+         size *= this->array_accesses.back().count;
+      }
+      return size;
+   }
+   size_t basic_segment::single_size_in_bits() const noexcept {
       assert(this->desc != nullptr);
       auto  size    = this->desc->serialized_type_size_in_bits();
       auto& extents = this->desc->array.extents;
       for(size_t i = this->array_accesses.size(); i < extents.size(); ++i) {
          size *= extents[i];
-      }
-      if (!this->array_accesses.empty()) {
-         size *= this->array_accesses.back().count;
       }
       return size;
    }

@@ -23,6 +23,7 @@ namespace codegen::serialization_items {
          const bitpacking::data_options::computed& options() const noexcept;
          
          size_t size_in_bits() const noexcept;
+         size_t single_size_in_bits() const noexcept; // ignore array slice access, but not the value type being an array
          
          bool is_array() const;
          size_t array_extent() const;

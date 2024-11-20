@@ -117,6 +117,8 @@ namespace codegen {
       if (type.is_record()) {
          size_t total = 0;
          for(auto* desc : this->members_of_serialized()) {
+            if (desc->options.omit_from_bitpacking)
+               continue;
             size_t item = desc->serialized_type_size_in_bits();
             for(auto e : desc->array.extents) {
                if (e == vla_extent)
@@ -129,8 +131,10 @@ namespace codegen {
          return total;
       }
       if (type.is_union()) {
-         size_t total = 0;
+         size_t largest = 0;
          for(auto* desc : this->members_of_serialized()) {
+            if (desc->options.omit_from_bitpacking)
+               continue;
             size_t item = desc->serialized_type_size_in_bits();
             for(auto e : desc->array.extents) {
                if (e == vla_extent)
@@ -138,10 +142,10 @@ namespace codegen {
                else
                   item *= e;
             }
-            if (total < item)
-               total = item;
+            if (largest < item)
+               largest = item;
          }
-         return total;
+         return largest;
       }
       
       return 0;

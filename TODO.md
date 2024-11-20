@@ -9,9 +9,6 @@ C++:
 
 * We should require and enforce that a union's tag be of an integral type (*exactly* an integral type; arrays of integrals should not be allowed).
 * Codegen test-cases
-  * Internally tagged unions
-    * As struct members
-    * As top-level VAR_DECLs
   * Test for an edge-case: Internally tagged unions whose first members are identical at the language level but have different bitpacking options that would cause their sizes or serialized types to differ
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions. I don't know what to call them yet; the names here are purely temporary.
   * <dfn>Blind functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.

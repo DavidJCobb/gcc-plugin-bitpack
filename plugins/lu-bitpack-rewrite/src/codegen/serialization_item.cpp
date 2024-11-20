@@ -38,6 +38,18 @@ namespace codegen {
       assert(false && "unhandled segment type");
       return 0;
    }
+   size_t serialization_item::single_size_in_bits() const {
+      if (this->segments.empty())
+         return 0;
+      auto& segm = this->segments.back();
+      if (segm.is_padding()) {
+         return segm.as_padding().bitcount;
+      } else if (segm.is_basic()) {
+         return segm.as_basic().single_size_in_bits();
+      }
+      assert(false && "unhandled segment type");
+      return 0;
+   }
    
    static bool has_omitted_defaulted_members(const decl_descriptor& desc) {
       return desc.is_or_contains_defaulted();
@@ -161,7 +173,7 @@ namespace codegen {
       
       std::vector<serialization_item> out;
       
-      size_t max_size = size_in_bits();
+      size_t max_size = single_size_in_bits();
       //
       // Find the union tag.
       //
@@ -228,12 +240,12 @@ namespace codegen {
       auto& desc = this->descriptor();
       assert(desc.types.serialized.is_union());
       assert(desc.options.is_tagged_union());
-      auto&  options = desc.options.tagged_union_options();
+      auto& options = desc.options.tagged_union_options();
       assert(options.is_internal);
       
       std::vector<serialization_item> out;
       
-      size_t max_size = size_in_bits();
+      size_t max_size = single_size_in_bits();
       //
       // Create serialization items for the union header; track how many 
       // fields comprise the header, including the tag; and count the 

@@ -38,6 +38,7 @@ namespace codegen {
          const bitpacking::data_options::computed& options() const noexcept;
          
          size_t size_in_bits() const;
+         size_t single_size_in_bits() const; // ignore array slice access, but not the value type being an array
          
          // non-omitted; omitted and defaulted; or omitted and contains defaulteds
          bool affects_output_in_any_way() const;
