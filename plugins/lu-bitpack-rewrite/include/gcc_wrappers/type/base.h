@@ -89,6 +89,9 @@ namespace gcc_wrappers::type {
          bool is_floating_point() const; // REAL_TYPE
          bool is_function() const; // FUNCTION_TYPE or METHOD_TYPE
          bool is_integer() const; // does not include enums or bools
+         bool is_integral() const {
+            return is_boolean() || is_enum() || is_integer();
+         }
          bool is_method() const; // METHOD_TYPE
          bool is_null_pointer_type() const; // NULLPTR_TYPE i.e. decltype(nullptr)
          bool is_record() const; // class or struct

@@ -7,7 +7,41 @@ namespace gw {
    using namespace gcc_wrappers;
 }
 
+// For comparing bitpacking options across members
+#include "bitpacking/data_options/computed.h"
+
 namespace bitpacking {
+   static bool _compare_fields(
+      gw::decl::field decl_a,
+      gw::decl::field decl_b
+   ) {
+      if (decl_a.name() != decl_b.name())
+         return false;
+      if (decl_a.value_type() != decl_b.value_type())
+         return false;
+      
+      //
+      // TODO: Compare bitpacking options (accounting for any inherited 
+      //       from the fields' types).
+      //
+      data_options::computed options_a;
+      data_options::computed options_b;
+      if (options_a.load(decl_a)) { // don't compare error'd options
+         if (options_b.load(decl_b)) { // don't compare error'd options
+            //
+            // We intentionally do not check options that do not change 
+            // the serialized format, e.g. default values.
+            //
+            if (options_a.kind != options_b.kind)
+               return false;
+            if (options_a.data != options_b.data)
+               return false;
+         }
+      }
+      
+      return true;
+   }
+   
    // Return `false` if invalid.
    extern bool verify_union_internal_tag(
       gw::type::untagged_union type,
@@ -74,14 +108,7 @@ namespace bitpacking {
                   }
                   auto a  = field;
                   auto b  = matched_members[i];
-                  bool eq = [&a, &b]() -> bool {
-                     if (a.name() != b.name())
-                        return false;
-                     if (a.value_type() != b.value_type())
-                        return false;
-                     return true;
-                  }();
-                  if (!eq) {
+                  if (!_compare_fields(a, b)) {
                      matched_members.resize(i);
                      return false;
                   }
@@ -108,6 +135,13 @@ namespace bitpacking {
       for(auto decl : matched_members) {
          if (decl.name() == tag_identifier) {
             found = true;
+            
+            auto decl_type = decl.value_type();
+            if (!decl_type.is_integral()) {
+               error_at(type.source_location(), "%<lu_bitpack_union_internal_tag%>: union type %<%s%> cannot use member-of-member %<%s%> as its tag, because that member is not of an integral type", type.name().data(), tag_identifier.c_str());
+               valid = false;
+            }
+            
             break;
          }
       }

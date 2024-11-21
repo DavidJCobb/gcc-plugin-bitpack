@@ -63,13 +63,23 @@ namespace bitpacking {
          }
          return false;
       }
+      bool valid = true;
+      {
+         auto decl_type = tag.value_type();
+         if (!decl_type.is_integral()) {
+            if (!silent) {
+               error_at(type.source_location(), "%<lu_bitpack_union_external_tag%>: union type  cannot use member %<%s%> as its tag, because that member is not of an integral type", tag_identifier.c_str());
+            }
+            valid = false;
+         }
+      }
       if (tag_after) {
          if (!silent) {
             error_at(union_decl.source_location(), "%<lu_bitpack_union_external_tag%>: union-type data member %<%s%> appears before its sibling tag member %<%s%>", union_decl.name().data(), tag_identifier.c_str());
             inform(tag.source_location(), "the tag is defined here");
          }
-         return false;
+         valid = false;
       }
-      return true;
+      return valid;
    }
 }

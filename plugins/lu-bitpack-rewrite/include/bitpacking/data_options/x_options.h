@@ -23,24 +23,42 @@ namespace bitpacking::data_options {
    namespace computed_x_options {
       struct buffer {
          size_t bytecount = 0;
+         
+         constexpr bool operator==(const buffer&) const noexcept = default;
       };
       struct integral { // also boolean, pointer
          size_t    bitcount = 0;
          intmax_t  min = 0;
          uintmax_t max = 0;
+         
+         constexpr bool operator==(const integral&) const noexcept = default;
       };
       struct string {
          size_t length    = 0;
          bool   nonstring = false;
+         
+         constexpr bool operator==(const string&) const noexcept = default;
       };
       struct tagged_union {
          std::string tag_identifier;
          bool        is_internal = false;
+         
+         bool operator==(const tagged_union&) const noexcept = default;
       };
       struct transforms {
          gcc_wrappers::type::base     transformed_type;
          gcc_wrappers::decl::function pre_pack;
          gcc_wrappers::decl::function post_unpack;
+         
+         bool operator==(const transforms& other) const noexcept {
+            if (this->transformed_type.as_untyped() != other.transformed_type.as_untyped())
+               return false;
+            if (this->pre_pack.as_untyped() != other.pre_pack.as_untyped())
+               return false;
+            if (this->post_unpack.as_untyped() != other.post_unpack.as_untyped())
+               return false;
+            return true;
+         }
       };
    }
    

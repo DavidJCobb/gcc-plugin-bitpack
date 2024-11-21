@@ -120,6 +120,12 @@ namespace codegen {
       auto type = desc.types.serialized;
       if (type.is_record() || type.is_union())
          return true;
+      if (type.is_union()) {
+         bool is_invalid      = desc.has_any_errors;
+         bool is_tagged_union = desc.options.is_tagged_union();
+         assert(is_tagged_union || is_invalid);
+         return is_tagged_union;
+      }
       
       //
       // TODO: If we allow splitting strings, we'll need more logic here.
