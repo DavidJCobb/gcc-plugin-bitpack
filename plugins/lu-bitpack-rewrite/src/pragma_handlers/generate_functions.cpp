@@ -44,7 +44,7 @@ namespace gw {
 }
 
 // for generating XML output:
-//#include "xmlgen/sector_xml_generator.h"
+#include "xmlgen/report_generator.h"
 #include <fstream>
 
 namespace pragma_handlers {
@@ -722,5 +722,22 @@ namespace pragma_handlers {
       }
       
       inform(UNKNOWN_LOCATION, "generated the serialization functions");
+      if (!gs.xml_output_path.empty()) {
+         const auto& path = gs.xml_output_path;
+         if (path.ends_with(".xml")) {
+            xmlgen::report_generator xml_gen;
+            /*//
+            for(const auto& sector : all_sectors_si) {
+               xml_gen.process(sector);
+            }
+            //*/
+            for(const auto& node_ptr : instructions_by_sector)
+               xml_gen.process(*node_ptr);
+            
+            std::ofstream stream(path.c_str());
+            assert(!!stream);
+            stream << xml_gen.bake();
+         }
+      }
    }
 }

@@ -1,0 +1,101 @@
+<data>
+   <sectors>
+      <sector>
+         <loop counter-var="__a" count="3" start="0" array="sTestStruct.a">
+            <integer min="0" bitcount="32" type="u32" value="sTestStruct.a[__a]" />
+         </loop>
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.b[0]" />
+      </sector>
+      <sector>
+         <loop counter-var="__b" count="2" start="1" array="sTestStruct.b">
+            <integer min="0" bitcount="32" type="u32" value="sTestStruct.b[__b]" />
+         </loop>
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[0].tag" />
+         <switch operand="sTestStruct.foo[0].tag">
+            <case value="2">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[0].data.c[0]" />
+            </case>
+            <case value="1">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[0].data.b" />
+            </case>
+            <case value="0">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[0].data.a" />
+            </case>
+         </switch>
+      </sector>
+      <sector>
+         <switch operand="sTestStruct.foo[0].tag">
+            <case value="2">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[0].data.c[1]" />
+            </case>
+            <case value="1">
+               <padding bitcount="32" />
+            </case>
+            <case value="0">
+               <padding bitcount="32" />
+            </case>
+         </switch>
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].tag" />
+         <switch operand="sTestStruct.foo[1].tag">
+            <case value="2">
+               <loop counter-var="__c" count="2" start="0" array="sTestStruct.foo[1].data.c">
+                  <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].data.c[__c]" />
+               </loop>
+            </case>
+            <case value="1">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].data.b" />
+               <padding bitcount="32" />
+            </case>
+            <case value="0">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].data.a" />
+               <padding bitcount="32" />
+            </case>
+         </switch>
+      </sector>
+      <sector>
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.x" />
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.y" />
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.tag" />
+         <switch operand="sTestStruct.z.tag">
+            <case value="3">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.d.tag" />
+            </case>
+            <case value="2">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.c[0]" />
+            </case>
+            <case value="1">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.b" />
+            </case>
+            <case value="0">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.a" />
+            </case>
+         </switch>
+      </sector>
+      <sector>
+         <switch operand="sTestStruct.z.tag">
+            <case value="3">
+               <switch operand="sTestStruct.z.data.d.tag">
+                  <case value="1">
+                     <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.d.data.b" />
+                  </case>
+                  <case value="0">
+                     <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.d.data.a" />
+                  </case>
+               </switch>
+            </case>
+            <case value="2">
+               <integer min="0" bitcount="32" type="u32" value="sTestStruct.z.data.c[1]" />
+            </case>
+            <case value="1">
+               <padding bitcount="32" />
+            </case>
+            <case value="0">
+               <padding bitcount="32" />
+            </case>
+         </switch>
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.single_array_element[0]" />
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.single_array_element_2D[0][0]" />
+         <integer min="0" bitcount="32" type="u32" value="sTestStruct.single_array_element_3D[0][0][0]" />
+      </sector>
+   </sectors>
+</data>
