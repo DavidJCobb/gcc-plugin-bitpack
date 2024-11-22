@@ -125,7 +125,7 @@ static void _disallow_union_member_attributes_on_non_union_member(gw::decl::fiel
    }
 }
 
-namespace bitpacking { 
+namespace bitpacking {
    extern void verify_bitpack_attributes(tree node) {
       if (TREE_CODE(node) == RECORD_TYPE || TREE_CODE(node) == UNION_TYPE) {
          auto type     = gw::type::container::from_untyped(node);

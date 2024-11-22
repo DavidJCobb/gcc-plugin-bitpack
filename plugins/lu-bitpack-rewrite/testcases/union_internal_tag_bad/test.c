@@ -89,12 +89,14 @@ static struct TestStruct {
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);
 
+
 #pragma lu_bitpack generate_functions( \
    read_name = generated_read,         \
    save_name = generated_save,         \
    data      = sTestStruct, \
    enable_debug_output = true \
 )
+//*/
 //#pragma lu_bitpack debug_dump_function generated_read
 //#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_0
 //#pragma lu_bitpack debug_dump_function __lu_bitpack_save_TestStruct

@@ -28,7 +28,7 @@ namespace bitpacking {
          if (!silent) {
             error_at(union_decl.source_location(), "%<lu_bitpack_union_external_tag%>: an externally tagged union must be a member of a struct");
             auto pp = type.pretty_print();
-            inform(type.source_location(), "union %<%s%> is a member of non-struct type %<%s%>", union_decl.name().data(), pp.c_str());
+            inform(type.source_location(), "union-type data member %<%s%> is a member of non-struct type %<%s%>", union_decl.name().data(), pp.c_str());
          }
          return false;
       }
@@ -68,7 +68,7 @@ namespace bitpacking {
          auto decl_type = tag.value_type();
          if (!decl_type.is_integral()) {
             if (!silent) {
-               error_at(type.source_location(), "%<lu_bitpack_union_external_tag%>: union type  cannot use member %<%s%> as its tag, because that member is not of an integral type", tag_identifier.c_str());
+               error_at(union_decl.source_location(), "%<lu_bitpack_union_external_tag%>: union-type data member %<%s%> cannot use member %<%s%> as its tag, because that member is not of an integral type", union_decl.name().data(), tag_identifier.c_str());
             }
             valid = false;
          }

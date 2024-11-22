@@ -262,20 +262,9 @@ static void register_pragmas(void* event_data, void* user_data) {
 
 #include "bitpacking/verify_bitpack_attributes.h"
 
+#include "gcc_wrappers/callback_managers/on_type_finished.h"
+
 static void on_decl_finished(void* event_data, void* user_data) {
-   auto node = (tree) event_data;
-   if (node == NULL_TREE)
-      return;
-   
-   if (!basic_global_state::get().enabled)
-      return;
-   
-   // Some bitpacking attributes can only be verified when a DECL is finished. 
-   // For example, a C bitfield may have transform options set on its type(s), 
-   // and if so, we need to error.
-   bitpacking::verify_bitpack_attributes(node);
-}
-static void on_type_finished(void* event_data, void* user_data) {
    auto node = (tree) event_data;
    if (node == NULL_TREE)
       return;
@@ -341,12 +330,19 @@ int plugin_init (
       on_decl_finished,
       NULL
    );
-   register_callback(
-      plugin_info->base_name,
-      PLUGIN_FINISH_TYPE,
-      on_type_finished,
-      NULL
-   );
+   {
+      auto& mgr = gcc_wrappers::callback_managers::on_type_finished::get();
+      mgr.initialize(plugin_info->base_name);
+      mgr.add(
+         "Valid8Ty",
+         [](gcc_wrappers::type::base type) {
+            if (!basic_global_state::get().enabled)
+               return;
+            // Some bitpacking attributes can only be verified when a TYPE is finished. 
+            bitpacking::verify_bitpack_attributes(type.as_untyped());
+         }
+      );
+   }
    
    return 0;
 }

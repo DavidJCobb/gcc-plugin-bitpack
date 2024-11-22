@@ -194,23 +194,42 @@ namespace bitpacking::data_options {
       }
    }
    void requested::_validate_union(gcc_wrappers::type::base type) {
+      gw::type::untagged_union union_type;
+      {
+         auto here = type;
+         while (here.is_array())
+            here = here.as_array().value_type();
+         if (here.is_union())
+            union_type = here.as_union();
+      }
+      
       auto* casted = std::get_if<requested_x_options::tagged_union>(&this->x_options);
-      if (!casted)
+      if (!casted) {
+         if (!union_type.empty() && !std::holds_alternative<requested_x_options::buffer>(this->x_options)) {
+            //
+            // Can't bitpack a union if we don't understand how it's tagged 
+            // (and if it's not an opaque buffer).
+            //
+            this->failed = true;
+         }
          return;
+      }
       
       if (casted->is_external && casted->is_internal) {
+         //
+         // Contradictory tag (both internally and externally tagged).
+         //
          this->failed = true;
          return;
       }
       
-      while (type.is_array()) {
-         type = type.as_array().value_type();
-      }
-      if (!type.is_union()) {
+      if (union_type.empty()) {
+         //
+         // Why are tagged-union options being applied to a non-union?
+         //
          this->failed = true;
          return;
       }
-      auto union_type = type.as_union();
       //
       // Union types have already been validated, but we have no way of marking 
       // types with an error sentinel, so we have to do extra error checking 
@@ -221,7 +240,7 @@ namespace bitpacking::data_options {
          return;
       }
       if (casted->is_internal) {
-         if (!verify_union_internal_tag(union_type, casted->tag_identifier, false)) {
+         if (!verify_union_internal_tag(union_type, casted->tag_identifier, true)) {
             this->failed = true;
             return;
          }

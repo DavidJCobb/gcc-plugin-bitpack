@@ -69,7 +69,7 @@ namespace attribute_handlers {
             if (!union_type.empty()) {
                bool success =
                   bitpacking::verify_union_members(union_type) &&
-                  bitpacking::verify_union_internal_tag(union_type, view.data())
+                  bitpacking::verify_union_internal_tag(union_type, view.data(), false)
                ;
                if (!success)
                   context.report_error("encountered errors (see previous message(s))");

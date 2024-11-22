@@ -15,3 +15,4 @@ Called when a `TYPE` finishes parsing.
 
 * **GCC 11.4.0:** Unlike `PLUGIN_FINISH_DECL`, attributes on a type tag (i.e. `struct [attrs] [name] { ... }`) *are* present here.
 * By the time this runs, it is no longer possible to add attributes to the type.
+* **GCC 11.4.0:** In C, this callback runs whenever a type is forward-declared. This includes any valid reference to a type that wasn't named via `typedef`, even if the type is already complete and this callback has already run on it. (That is: you know how you always have to write `struct Typename` and not just `Typename`, if it wasn't named using `typedef`? *You writing that* will cause `PLUGIN_FINISH_TYPE` to fire again.)

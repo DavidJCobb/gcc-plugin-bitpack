@@ -7,7 +7,6 @@
 
 C++:
 
-* Invalid internally tagged unions (non-integral tags, non-identical leading members, etc.) cause an assertion failure, if the unions are defined types separately from to-be-serialized non-top-level DECLs of those types. The problem is that in order to properly error-check the to-be-serialized output, we'd have to walk not just the top-level list of VAR_DECLs (as we currently do), but the entire tree of their FIELD_DECLs. I would expect similar issues to occur for other attribute errors, so we should do this regardless.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.
   * <dfn>Single-stage functions</dfn> are only invoked on fully-constructed objects (i.e. an object that has been read from the bitstream in full), as is typical in programming generally. To ensure this, we'd define a `static` instance of each individual transformed object that gets split across sectors, so that we can invoke the post-unpack function only after an instance is fully read (and without needing to invoke the pre-pack function as a per-sector pre-process step for reads).

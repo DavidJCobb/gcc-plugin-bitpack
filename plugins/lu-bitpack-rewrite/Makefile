@@ -47,6 +47,7 @@ SOURCES=\
         src/codegen/serialization_items/basic_segment.cpp \
         src/codegen/serialization_items/condition.cpp \
         src/codegen/decl_descriptor.cpp \
+        src/codegen/describe_and_check_decl_tree.cpp \
         src/codegen/divide_items_by_sectors.cpp \
         src/codegen/instruction_generation_context.cpp \
         src/codegen/instruction_tree_stringifier.cpp \

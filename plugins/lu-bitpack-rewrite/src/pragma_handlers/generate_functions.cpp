@@ -15,6 +15,7 @@
 #include "codegen/debugging/print_sectored_serialization_items.h"
 #include "codegen/debugging/print_sectored_rechunked_items.h"
 #include "codegen/decl_descriptor.h"
+#include "codegen/describe_and_check_decl_tree.h"
 #include "codegen/divide_items_by_sectors.h"
 #include "codegen/expr_pair.h"
 #include "codegen/func_pair.h"
@@ -465,7 +466,7 @@ namespace pragma_handlers {
                auto decl = gw::decl::variable::from_untyped(node);
                
                const auto& desc = decl_dictionary.get_or_create_descriptor(decl);
-               if (desc.has_any_errors) {
+               if (!codegen::describe_and_check_decl_tree(desc)) {
                   error_at(start_loc, "%<#pragma lu_bitpack generate_functions%>: aborting codegen due to invalid options applied to a to-be-serialized value");
                   return;
                }
