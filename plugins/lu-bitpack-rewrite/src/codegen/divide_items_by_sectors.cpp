@@ -18,6 +18,12 @@ namespace codegen {
       sector_list sectors;
    };
    
+   //
+   // Leftover from when we tried to implement sector splitting of unions. 
+   // Retained in case we think of a workable solution in the future. (See 
+   // Markdown-format documentation for problems.) Same basic design as 
+   // with `serialization_item_list_ops::get_offsets_and_sizes`.
+   //
    struct branch_state {
       overall_state*    overall;
       segment_condition condition;
@@ -72,72 +78,14 @@ namespace codegen {
          assert(!item.segments.empty());
          
          //
-         // Grab a list of all conditions that pertain to this serialization item.
+         // Union expansion and conditions are not supported w.r.t. sector 
+         // splitting. Unions must be expanded only as a post-process step, 
+         // not in advance. By extension, padding also cannot be split.
          //
-         std::vector<segment_condition> conditions;
-         for(auto& segment : item.segments)
-            if (segment.condition.has_value())
-               conditions.push_back(*segment.condition);
-         //
-         // Check to see if these conditions differ from those that applied to the 
-         // previous item(s).
-         //
-         if (!branches.empty()) {
-            size_t common = 0; // count, not index
-            size_t end    = (std::min)(conditions.size(), branches.size());
-            for(; common < end; ++common)
-               if (conditions[common] != branches[common].condition)
-                  break;
-            
-            while (branches.size() > common) {
-               //
-               // We are no longer subject to (all of) the conditions we were 
-               // previously subject to.
-               //
-               bool same_lhs = false;
-               if (conditions.size() >= branches.size()) {
-                  auto& a = branches.back().condition;
-                  auto& b = conditions[branches.size() - 1];
-                  same_lhs = a.lhs == b.lhs;
-               }
-               if (same_lhs) {
-                  //
-                  // If multiple objects have conditions with the same LHS, then 
-                  // those items go in the same space.
-                  //
-                  branches.pop_back();
-               } else {
-                  //
-                  // The LHS has changed, so this item doesn't go into the same 
-                  // space as the previous. We need to advance the positions of 
-                  // those conditions that we're keeping, to move them past the 
-                  // previous item's position.
-                  //
-                  auto  ended = branches.back();
-                  branches.pop_back();
-                  auto& still = branches.empty() ? root : branches.back();
-                  still.catch_up_to(ended);
-               }
-            }
+         assert(!item.is_padding());
+         for(auto& segment : item.segments) {
+            assert(!segment.condition.has_value());
          }
-         while (conditions.size() > branches.size()) {
-            //
-            // Conditions have been added or changed; start tracking bit positions 
-            // for them.
-            //
-            size_t j    = branches.size();
-            auto&  prev = branches.empty() ? root : branches.back();
-            auto&  next = branches.emplace_back(overall);
-            next.condition      = conditions[j];
-            next.bits_remaining = prev.bits_remaining;
-            next.current_sector = prev.current_sector;
-         }
-         
-         //
-         // All of the logic above is just for dealing with conditions. The logic 
-         // below dictates how we actually try to fit serialization items into the 
-         // current sector.
-         //
          
          auto& current_branch = branches.empty() ? root : branches.back();
          const size_t remaining = current_branch.bits_remaining;
@@ -170,28 +118,13 @@ namespace codegen {
          //
          if (remaining > 0) {
             //
-            // If there are any bits left in this sector, see if we can slice 
-            // or expand the current item to fit it into those bits.
-            //
-            if (item.is_padding()) {
-               //
-               // When multiple permutations of a union have different sizes, 
-               // we zero-pad the smaller ones to match the larger ones. This 
-               // padding can't be expanded, but it's easy to slice.
-               //
-               serialization_item a = item;
-               serialization_item b = item;
-               a.segments.back().as_padding().bitcount  = remaining;
-               b.segments.back().as_padding().bitcount -= remaining;
-               current_branch.insert(a);
-               current_branch.insert(b);
-               continue;
-            }
-            //
             // The item can't fit. Expand it if possible; if not, push it to 
             // the next sector (after we verify that it'll even fit there).
             //
-            if (item.can_expand()) {
+            // NOTE: Splitting unions across sector boundaries involves some 
+            // very, very complicated logistics, so we refuse to do it.
+            //
+            if (item.can_expand() && !item.is_union()) {
                auto   expanded       = item.expanded();
                size_t expanded_count = expanded.size();
                expanded.resize(size - i - 1 + expanded_count);
@@ -232,6 +165,9 @@ namespace codegen {
       
       //
       // POST-PROCESS: FORCE-EXPAND UNIONS, ANONYMOUS STRUCTS, AND ARRAYS THEREOF
+      //
+      // We can't split unions, but we want them expanded after splitting is 
+      // done.
       //
       for(auto& sector : overall.sectors) {
          serialization_item_list_ops::force_expand_unions_and_anonymous(sector);

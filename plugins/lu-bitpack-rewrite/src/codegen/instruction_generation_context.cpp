@@ -23,12 +23,13 @@
 #include "codegen/serialization_item.h"
 #include "codegen/walk_instruction_nodes.h"
 #include "codegen/whole_struct_function_dictionary.h"
+#include "codegen/whole_struct_function_info.h"
 namespace gw {
    using namespace gcc_wrappers;
 }
 
 namespace codegen {
-   func_pair instruction_generation_context::_make_whole_struct_functions_for(gw::type::record type) const {
+   whole_struct_function_info instruction_generation_context::_make_whole_struct_functions_for(gw::type::record type) const {
       const auto& ty = gw::builtin_types::get_fast();
       auto& decl_dict = decl_dictionary::get();
       
@@ -165,15 +166,19 @@ namespace codegen {
       result.read.introduce_to_current_scope();
       result.save.introduce_to_current_scope();
       
-      return result;
+      whole_struct_function_info info;
+      info.functions         = result;
+      info.instructions_root = std::move(root);
+      return info;
    }
    
    func_pair instruction_generation_context::get_whole_struct_functions_for(gw::type::record type) const {
       auto pair = this->whole_struct_functions.get_functions_for(type);
       if (pair.read.empty()) {
          assert(pair.save.empty());
-         pair = this->_make_whole_struct_functions_for(type);
-         this->whole_struct_functions.add_functions_for(type, pair);
+         auto info = this->_make_whole_struct_functions_for(type);
+         pair = info.functions;
+         this->whole_struct_functions.add_functions_for(type, std::move(info));
       } else {
          assert(!pair.save.empty());
       }

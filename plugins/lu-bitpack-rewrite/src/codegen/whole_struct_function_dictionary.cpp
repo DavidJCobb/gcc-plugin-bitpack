@@ -9,12 +9,18 @@ namespace codegen {
       auto it = this->_functions.find(type);
       if (it == this->_functions.end())
          return {};
-      return it->second;
+      return it->second.functions;
+   }
+   const instructions::base* whole_struct_function_dictionary::get_instructions_for(gcc_wrappers::type::base type) const {
+      auto it = this->_functions.find(type);
+      if (it == this->_functions.end())
+         return nullptr;
+      return it->second.instructions_root.get();
    }
    
-   void whole_struct_function_dictionary::add_functions_for(gw::type::base type, func_pair pair) {
+   void whole_struct_function_dictionary::add_functions_for(gw::type::base type, whole_struct_function_info&& info) {
       auto& slot = this->_functions[type];
-      assert(slot.read.empty() && slot.save.empty());
-      slot = pair;
+      assert(slot.functions.read.empty() && slot.functions.save.empty());
+      slot = std::move(info);
    }
 }

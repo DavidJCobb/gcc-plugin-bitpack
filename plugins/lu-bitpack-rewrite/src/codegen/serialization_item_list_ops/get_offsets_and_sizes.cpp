@@ -39,16 +39,28 @@ namespace codegen::serialization_item_list_ops {
       std::vector<branch_state> branches;
       
       //
-      // This function uses the same basic logic as `divide_items_by_sectors` for 
-      // coping with conditional serialization items. We're just counting sizes 
-      // and positions rather than actually moving items around.
+      // We need to account for conditional serialization items, including ones 
+      // that are conditioned on multiple comparisons (i.e. multiple conditional 
+      // segments). To do this, we use "branched" state objects: we compare the 
+      // conditions of the current item to those of the previous item, tracking 
+      // the offsets of the current branch individually.
+      //
+      // We have an "overall" state that we use to hold parameters and results; 
+      // a "branched" state for unconditional content; and then we'll create and  
+      // destroy branched states for each set of conditions that we deal with.
       //
       
       for(auto& item : items) {
+         //
+         // Start by grabbing a list of all conditions that pertain to this item.
+         //
          std::vector<segment_condition> conditions;
          for(auto& segment : item.segments)
             if (segment.condition.has_value())
                conditions.push_back(*segment.condition);
+         //
+         // Check to see if these conditions differ from those that applied to the 
+         // previous item(s).
          //
          if (!branches.empty()) {
             size_t common = 0; // count, not index
@@ -58,6 +70,10 @@ namespace codegen::serialization_item_list_ops {
                   break;
             
             while (branches.size() > common) {
+               //
+               // We are no longer subject to (all of) the conditions we were 
+               // previously subject to.
+               //
                bool same_lhs = false;
                if (conditions.size() >= branches.size()) {
                   auto& a = branches.back().condition;
@@ -65,8 +81,18 @@ namespace codegen::serialization_item_list_ops {
                   same_lhs = a.lhs == b.lhs;
                }
                if (same_lhs) {
+                  //
+                  // If multiple objects have conditions with the same LHS, then 
+                  // those items go in the same space.
+                  //
                   branches.pop_back();
                } else {
+                  //
+                  // The LHS has changed, so this item doesn't go into the same 
+                  // space as the previous. We need to advance the positions of 
+                  // those conditions that we're keeping, to move them past the 
+                  // previous item's position.
+                  //
                   auto  ended = branches.back();
                   branches.pop_back();
                   auto& still = branches.empty() ? root : branches.back();
@@ -75,6 +101,10 @@ namespace codegen::serialization_item_list_ops {
             }
          }
          while (conditions.size() > branches.size()) {
+            //
+            // Conditions have been added or changed; start tracking bit positions 
+            // for them.
+            //
             size_t j    = branches.size();
             auto&  prev = branches.empty() ? root : branches.back();
             auto&  next = branches.emplace_back(overall);
@@ -82,11 +112,20 @@ namespace codegen::serialization_item_list_ops {
             next.offset    = prev.offset;
          }
          
+         //
+         // End of condition-handling logic.
+         //
+         
          auto& current_branch = branches.empty() ? root : branches.back();
          
          current_branch.insert(item);
       }
       if (!branches.empty()) {
+         //
+         // This may not be strictly necessary unless we'd like easy access to the 
+         // total serialized size of the condition list. We're taking any still-open 
+         // branches and catching the overall state up to them.
+         //
          for(ssize_t i = branches.size() - 2; i >= 0; --i) {
             branches[i].catch_up_to(branches[i + 1]);
          }

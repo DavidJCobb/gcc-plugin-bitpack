@@ -14,6 +14,7 @@
 #include "basic_global_state.h"
 #include "codegen/debugging/print_sectored_serialization_items.h"
 #include "codegen/debugging/print_sectored_rechunked_items.h"
+#include "codegen/instructions/base.h"
 #include "codegen/decl_descriptor.h"
 #include "codegen/describe_and_check_decl_tree.h"
 #include "codegen/divide_items_by_sectors.h"
@@ -731,8 +732,9 @@ namespace pragma_handlers {
                xml_gen.process(sector);
             }
             //*/
+            xml_gen.process(functions.whole_struct);
             for(const auto& node_ptr : instructions_by_sector)
-               xml_gen.process(*node_ptr);
+               xml_gen.process(*node_ptr->as<codegen::instructions::container>());
             
             std::ofstream stream(path.c_str());
             assert(!!stream);

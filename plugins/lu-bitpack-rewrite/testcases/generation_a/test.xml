@@ -7,8 +7,8 @@
          <integer min="0" bitcount="32" type="u32" value="sTestStruct.b[0]" />
       </sector>
       <sector>
-         <loop counter-var="__b" count="2" start="1" array="sTestStruct.b">
-            <integer min="0" bitcount="32" type="u32" value="sTestStruct.b[__b]" />
+         <loop counter-var="__a" count="2" start="1" array="sTestStruct.b">
+            <integer min="0" bitcount="32" type="u32" value="sTestStruct.b[__a]" />
          </loop>
          <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[0].tag" />
          <switch operand="sTestStruct.foo[0].tag">
@@ -38,8 +38,8 @@
          <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].tag" />
          <switch operand="sTestStruct.foo[1].tag">
             <case value="2">
-               <loop counter-var="__c" count="2" start="0" array="sTestStruct.foo[1].data.c">
-                  <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].data.c[__c]" />
+               <loop counter-var="__a" count="2" start="0" array="sTestStruct.foo[1].data.c">
+                  <integer min="0" bitcount="32" type="u32" value="sTestStruct.foo[1].data.c[__a]" />
                </loop>
             </case>
             <case value="1">

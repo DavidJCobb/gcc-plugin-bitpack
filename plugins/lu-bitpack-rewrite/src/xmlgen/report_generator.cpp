@@ -3,6 +3,8 @@
 #include "lu/strings/printf_string.h"
 #include "bitpacking/data_options/computed.h"
 #include "codegen/decl_descriptor.h"
+#include "codegen/whole_struct_function_dictionary.h"
+#include "codegen/whole_struct_function_info.h"
 #include "gcc_wrappers/decl/param.h"
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/expr/floating_point_constant.h"
@@ -30,146 +32,32 @@ static std::string _to_string(int v) {
 }
 
 namespace xmlgen {
-   owned_element report_generator::_generate(gcc_wrappers::type::base type) {
-      assert(!type.empty());
-      
-      bitpacking::data_options::computed options;
-      options.load(type);
-      
-      auto  node_ptr = std::make_unique<xml_element>();
-      auto& node     = *node_ptr;
-      
-      if (type.is_record() || type.is_union()) {
-         auto name = type.name();
-         if (!name.empty())
-            node.set_attribute("tag", name);
-         
-         auto decl = type.declaration();
-         if (!decl.empty())
-            node.set_attribute("name", decl.name());
-      } else {
-         node.set_attribute("name", type.pretty_print());
-      }
-      
-      //
-      // TODO: We need to retain the list of serialization items used to 
-      // generate a whole-struct function.
-      //
-      
-      return node_ptr;
-   }
-   
-   owned_element report_generator::_generate(const codegen::serialization_item& item) {
-      auto  child_ptr = std::make_unique<xml_element>();
-      auto& child     = *child_ptr;
-      if (item.is_padding()) {
-         child.node_name = "padding";
-         child.set_attribute("bitcount", _to_string(item.size_in_bits()));
-         return child_ptr;
-      }
-      
-      const auto& descriptor = item.descriptor();
-      const auto& options    = item.options();
-      
-      auto type = descriptor.types.serialized;
-      if (!type.empty()) {
-         child.set_attribute("c-type", type.pretty_print());
-      }
-      
-      child.set_attribute("path", item.to_string());
-      
-      if (item.is_defaulted) {
-         assert(options.default_value_node != NULL_TREE);
-         gw::_wrapped_tree_node data;
-         data.set_from_untyped(options.default_value_node);
-         
-         if (auto casted = data.as<gw::expr::string_constant>(); !casted.empty()) {
-            auto sub = std::make_unique<xml_element>();
-            sub->node_name = "default-value-string";
-            sub->text_content = casted.value_view();
-            child.append_child(std::move(sub));
-         } else if (auto casted = data.as<gw::expr::integer_constant>(); !casted.empty()) {
-            std::string text;
-            {
-               auto opt = casted.try_value_signed();
-               if (opt.has_value()) {
-                  text = lu::strings::printf_string("%d", *opt);
-               } else {
-                  text = "???";
-               }
-            }
-            child.set_attribute("default-value", text);
-         } else if (auto casted = data.as<gw::expr::floating_point_constant>(); !casted.empty()) {
-            auto text = casted.to_string();
-            child.set_attribute("default-value", text);
-         } else if (!data.empty()) {
-            child.set_attribute("default-value", "???");
-         }
-      }
-      if (item.is_omitted) {
-         child.node_name = "omitted";
-         return child_ptr;
-      }
-      
-      child.node_name = "unknown";
-      switch (options.kind) {
-         case bitpacking::member_kind::boolean:
-            child.node_name = "boolean";
-            break;
-         case bitpacking::member_kind::buffer:
-            child.node_name = "buffer";
-            break;
-         case bitpacking::member_kind::integer:
-            child.node_name = "integer";
-            break;
-         case bitpacking::member_kind::pointer:
-            child.node_name = "pointer";
-            break;
-         case bitpacking::member_kind::string:
-            child.node_name = "string";
-            break;
-         case bitpacking::member_kind::structure:
-            child.node_name = "structure";
-            break;
-         case bitpacking::member_kind::transformed:
-            child.node_name = "transformed";
-            break;
-         case bitpacking::member_kind::union_external_tag:
-            child.node_name = "union-external-tag";
-            break;
-         case bitpacking::member_kind::union_internal_tag:
-            child.node_name = "union-internal-tag";
-            break;
-            
-         case bitpacking::member_kind::none:
-         case bitpacking::member_kind::array:
-            break;
-      }
-      
+   void report_generator::_apply_x_options_to(
+      xml_element& node,
+      const bitpacking::data_options::computed& options
+   ) {
       if (options.is_buffer()) {
          const auto& casted = options.buffer_options();
-         child.set_attribute("bytecount", _to_string(casted.bytecount));
+         node.set_attribute("bytecount", _to_string(casted.bytecount));
       } else if (options.is_integral()) {
          const auto& casted = options.integral_options();
-         child.set_attribute("bitcount", _to_string(casted.bitcount));
+         node.set_attribute("bitcount", _to_string(casted.bitcount));
          if (options.kind != bitpacking::member_kind::pointer) {
-            child.set_attribute("min", _to_string(casted.min));
+            node.set_attribute("min", _to_string(casted.min));
          }
       } else if (options.is_string()) {
          const auto& casted = options.string_options();
-         child.set_attribute("length",    _to_string(casted.length));
-         child.set_attribute("nonstring", casted.nonstring ? "true" : "false");
+         node.set_attribute("length",    _to_string(casted.length));
+         node.set_attribute("nonstring", casted.nonstring ? "true" : "false");
       } else if (options.is_tagged_union()) {
          const auto& casted = options.tagged_union_options();
-         child.set_attribute("tag", casted.tag_identifier);
+         node.set_attribute("tag", casted.tag_identifier);
       } else if (options.is_transforms()) {
          const auto& casted = options.transform_options();
-         child.set_attribute("transformed-type", casted.transformed_type.pretty_print());
-         child.set_attribute("pack-function", casted.pre_pack.name());
-         child.set_attribute("unpack-function", casted.post_unpack.name());
+         node.set_attribute("transformed-type", casted.transformed_type.pretty_print());
+         node.set_attribute("pack-function", casted.pre_pack.name());
+         node.set_attribute("unpack-function", casted.post_unpack.name());
       }
-      
-      return child_ptr;
    }
    
    std::string report_generator::_loop_variable_to_string(codegen::decl_pair pair) const {
@@ -347,28 +235,7 @@ namespace xmlgen {
             break;
       }
       
-      if (options.is_buffer()) {
-         const auto& casted = options.buffer_options();
-         node.set_attribute("bytecount", _to_string(casted.bytecount));
-      } else if (options.is_integral()) {
-         const auto& casted = options.integral_options();
-         node.set_attribute("bitcount", _to_string(casted.bitcount));
-         if (options.kind != bitpacking::member_kind::pointer) {
-            node.set_attribute("min", _to_string(casted.min));
-         }
-      } else if (options.is_string()) {
-         const auto& casted = options.string_options();
-         node.set_attribute("length",    _to_string(casted.length));
-         node.set_attribute("nonstring", casted.nonstring ? "true" : "false");
-      } else if (options.is_tagged_union()) {
-         const auto& casted = options.tagged_union_options();
-         node.set_attribute("tag", casted.tag_identifier);
-      } else if (options.is_transforms()) {
-         const auto& casted = options.transform_options();
-         node.set_attribute("transformed-type", casted.transformed_type.pretty_print());
-         node.set_attribute("pack-function", casted.pre_pack.name());
-         node.set_attribute("unpack-function", casted.post_unpack.name());
-      }
+      _apply_x_options_to(node, options);
       
       return node_ptr;
    }
@@ -430,25 +297,13 @@ namespace xmlgen {
       if (auto* casted = instr.as<codegen::instructions::union_switch>())
          return _generate(*casted);
       
-      if (auto* casted = instr.as<codegen::instructions::container>()) {
-         //
-         // Generic root node.
-         //
-         auto  node_ptr = std::make_unique<xml_element>();
-         auto& node     = *node_ptr;
-         
-         node.node_name = "sector";
-         for(auto& child_ptr : casted->instructions) {
-            node.append_child(_generate(*child_ptr));
-         }
-         
-         return node_ptr;
-      }
-      
       assert(false && "unreachable");
    }
    
-   void report_generator::process(const codegen::instructions::base& root) {
+   owned_element report_generator::_generate_root(const codegen::instructions::container& root) {
+      this->_loop_variables.clear();
+      this->_transformed_values.clear();
+      
       codegen::walk_instruction_nodes(
          [this](const codegen::instructions::base& node) {
             if (auto* casted = node.as<codegen::instructions::array_slice>()) {
@@ -463,18 +318,74 @@ namespace xmlgen {
          root
       );
       
-      auto elem = _generate(root);
-      this->_sectors.push_back(std::move(elem));
-   }
-   void report_generator::process(const std::vector<codegen::serialization_item>& sector) {
       auto  node_ptr = std::make_unique<xml_element>();
       auto& node     = *node_ptr;
-      node.node_name = "sector";
-      this->_sectors.push_back(std::move(node_ptr));
-      for(const auto& item : sector) {
-         auto child_ptr = _generate(item);
-         node.append_child(std::move(child_ptr));
+      for(auto& child_ptr : root.instructions) {
+         node.append_child(_generate(*child_ptr));
       }
+      return node_ptr;
+   }
+   
+   void report_generator::process(const codegen::instructions::container& root) {
+      auto elem = _generate_root(root);
+      elem->node_name = "sector";
+      this->_sectors.push_back(std::move(elem));
+   }
+   void report_generator::process(const codegen::whole_struct_function_dictionary& dict) {
+      dict.for_each([this](gw::type::base type, const codegen::whole_struct_function_info& info) {
+         auto elem = _generate_root(*info.instructions_root->as<codegen::instructions::container>());
+         
+         // Node name.
+         if (type.is_record()) {
+            elem->node_name = "struct";
+         } else if (type.is_union()) {
+            elem->node_name = "union";
+         } else {
+            elem->node_name = "unknown-type";
+         }
+         
+         // Node data.
+         if (type.is_record() || type.is_union()) {
+            auto name = type.name();
+            if (!name.empty())
+               elem->set_attribute("tag", name);
+            
+            auto decl = type.declaration();
+            if (!decl.empty())
+               elem->set_attribute("name", decl.name());
+         } else {
+            elem->set_attribute("name", type.pretty_print());
+         }
+         
+         // Options.
+         bitpacking::data_options::computed options;
+         options.load(type);
+         {
+            std::unique_ptr<xml_element> x_opt;
+            if (options.is_buffer()) {
+               x_opt = std::make_unique<xml_element>();
+               x_opt->node_name = "opaque-buffer-options";
+            } else if (options.is_integral()) {
+               x_opt = std::make_unique<xml_element>();
+               x_opt->node_name = "integral-options";
+            } else if (options.is_string()) {
+               x_opt = std::make_unique<xml_element>();
+               x_opt->node_name = "string-options";
+            } else if (options.is_tagged_union()) {
+               x_opt = std::make_unique<xml_element>();
+               x_opt->node_name = "union-options";
+            } else if (options.is_transforms()) {
+               x_opt = std::make_unique<xml_element>();
+               x_opt->node_name = "transform-options";
+            }
+            if (x_opt != nullptr) {
+               _apply_x_options_to(*x_opt, options);
+               elem->append_child(std::move(x_opt));
+            }
+         }
+         
+         this->_types.push_back(std::move(elem));
+      });
    }
    
    std::string report_generator::bake() {
