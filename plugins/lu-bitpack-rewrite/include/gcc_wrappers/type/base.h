@@ -72,6 +72,9 @@ namespace gcc_wrappers::type {
          bool is_complete() const;
          bool is_packed() const;
          
+         size_t alignment_in_bits() const;
+         size_t alignment_in_bytes() const; // rounds down
+         size_t minimum_alignment_in_bits() const; // GCC warns if the type isn't aligned to this threshold
          size_t size_in_bits() const;
          size_t size_in_bytes() const;
          

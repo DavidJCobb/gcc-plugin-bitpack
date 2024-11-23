@@ -18,6 +18,9 @@ namespace xmlgen {
          void append_child(std::unique_ptr<xml_element>&&);
          void remove_child(xml_element&);
          
+         xml_element* first_child_by_node_name(std::string_view);
+         const xml_element* first_child_by_node_name(std::string_view) const;
+         
          // Asserts that the name is a valid name.
          void set_attribute(std::string_view name, std::string_view value);
          

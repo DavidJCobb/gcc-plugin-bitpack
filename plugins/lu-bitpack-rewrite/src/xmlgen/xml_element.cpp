@@ -27,6 +27,16 @@ namespace xmlgen {
       }
    }
    
+   xml_element* xml_element::first_child_by_node_name(std::string_view name) {
+      return const_cast<xml_element*>(std::as_const(*this).first_child_by_node_name(name));
+   }
+   const xml_element* xml_element::first_child_by_node_name(std::string_view name) const {
+      for(const auto& node_ptr : this->children)
+         if (node_ptr->node_name == name)
+            return node_ptr.get();
+      return nullptr;
+   }
+   
    void xml_element::set_attribute(std::string_view name, std::string_view value) {
       assert(is_valid_name(name));
       this->attributes[std::string(name)] = value;

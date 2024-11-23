@@ -242,6 +242,18 @@ namespace gcc_wrappers::type {
       return TYPE_PACKED(this->_node);
    }
    
+   size_t base::alignment_in_bits() const {
+      assert(!empty());
+      return TYPE_ALIGN(this->_node);
+   }
+   size_t base::alignment_in_bytes() const {
+      assert(!empty());
+      return TYPE_ALIGN_UNIT(this->_node);
+   }
+   size_t base::minimum_alignment_in_bits() const {
+      assert(!empty());
+      return TYPE_WARN_IF_NOT_ALIGN(this->_node);
+   }
    size_t base::size_in_bits() const {
       auto size_node = TYPE_SIZE(this->_node);
       if (TREE_CODE(size_node) != INTEGER_CST)

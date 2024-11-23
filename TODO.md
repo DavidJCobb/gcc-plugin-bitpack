@@ -7,17 +7,8 @@
 
 C++:
 
+* Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * XML output
-  * Sectors and structs should wrap generated instructions in an `<instructions />` node, so that we can also emit a `<stats />` node.
-    * Stats to emit per sector:
-      * Bits used
-    * Stats to emit per struct:
-      * Bits used
-      * `alignof`
-      * `sizeof`
-  * Emit global stats
-    * Max sector count, if any limit was set
-    * Max sector size in bits, if any limit was set
   * Tests we need to run (can reuse existing testcases)
     * Transformations (simple)
     * Transformations (transitive)

@@ -22,6 +22,7 @@ namespace codegen {
       class transform;
       class union_switch;
    }
+   class stats_gatherer;
    class value_path;
    class whole_struct_function_dictionary;
 }
@@ -32,8 +33,10 @@ namespace xmlgen {
          using owned_element = std::unique_ptr<xml_element>;
       
       protected:
+         using type_output = std::pair<gcc_wrappers::type::base, owned_element>;
+      
          std::vector<owned_element> _sectors;
-         std::vector<owned_element> _types;
+         std::vector<type_output> _types;
          
          // Used to give each loop variable a unique name and ID. We gather 
          // these up before generating XML. Each variable's ID is its index 
@@ -47,6 +50,11 @@ namespace xmlgen {
          void _apply_x_options_to(
             xml_element&,
             const bitpacking::data_options::computed&
+         );
+         
+         void _apply_type_info_to(
+            xml_element& type_node,
+            gcc_wrappers::type::base
          );
          
          std::string _loop_variable_to_string(codegen::decl_pair) const;
@@ -66,6 +74,7 @@ namespace xmlgen {
       public:
          void process(const codegen::instructions::container& sector_root);
          void process(const codegen::whole_struct_function_dictionary&);
+         void process(const codegen::stats_gatherer&);
          
          std::string bake();
    };

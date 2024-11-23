@@ -45,6 +45,7 @@ namespace gw {
 }
 
 // for generating XML output:
+#include "codegen/stats_gatherer.h"
 #include "xmlgen/report_generator.h"
 #include <fstream>
 
@@ -726,15 +727,13 @@ namespace pragma_handlers {
       if (!gs.xml_output_path.empty()) {
          const auto& path = gs.xml_output_path;
          if (path.ends_with(".xml")) {
+            codegen::stats_gatherer  stats;
             xmlgen::report_generator xml_gen;
-            /*//
-            for(const auto& sector : all_sectors_si) {
-               xml_gen.process(sector);
-            }
-            //*/
+            stats.gather_from_sectors(all_sectors_si);
             xml_gen.process(functions.whole_struct);
             for(const auto& node_ptr : instructions_by_sector)
                xml_gen.process(*node_ptr->as<codegen::instructions::container>());
+            xml_gen.process(stats);
             
             std::ofstream stream(path.c_str());
             assert(!!stream);

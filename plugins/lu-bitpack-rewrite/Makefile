@@ -54,6 +54,7 @@ SOURCES=\
         src/codegen/rechunked.cpp \
         src/codegen/rechunked_items_to_instruction_tree.cpp \
         src/codegen/serialization_item.cpp \
+        src/codegen/stats_gatherer.cpp \
         src/codegen/value_path.cpp \
         src/codegen/whole_struct_function_dictionary.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
