@@ -10,6 +10,7 @@ SOURCES=\
         src/attribute_handlers/bitpack_bitcount.cpp \
         src/attribute_handlers/bitpack_default_value.cpp \
         src/attribute_handlers/bitpack_range.cpp \
+        src/attribute_handlers/bitpack_stat_category.cpp \
         src/attribute_handlers/bitpack_string.cpp \
         src/attribute_handlers/bitpack_tagged_id.cpp \
         src/attribute_handlers/bitpack_transforms.cpp \

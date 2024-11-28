@@ -25,6 +25,20 @@ namespace bitpacking::data_options {
       if (src.union_member_id.has_value())
          this->union_member_id = *src.union_member_id;
       
+      for(const auto& name : src.stat_categories) {
+         bool present = false;
+         for(const auto& prior : this->stat_categories) {
+            if (prior == name) {
+               present = true;
+               break;
+            }
+         }
+         if (present)
+            continue;
+         
+         this->stat_categories.push_back(name);
+      }
+      
       gw::type::base value_type = type;
       while (value_type.is_array())
          value_type = value_type.as_array().value_type();

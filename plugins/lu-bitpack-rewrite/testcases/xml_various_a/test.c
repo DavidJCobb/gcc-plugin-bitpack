@@ -41,7 +41,7 @@
 
 static struct TestStruct {
    u32 a[3];
-   u32 b[3];
+   LU_BITPACK_CATEGORY("test-cat") u32 b[3];
    struct {
       LU_BP_BITCOUNT(2) u32 tag;
       LU_BP_UNION_TAG(tag) union {

@@ -46,10 +46,14 @@ namespace codegen {
          
       public:
          std::vector<sector_stats> stats_by_sector;
+         std::unordered_map<std::string, general_stats> stats_by_category;
          std::unordered_map<gcc_wrappers::type::base, type_stats> stats_by_type; // keys are un-transformed types
          
       protected:
+         void _seen_stats_category_annotation(std::string_view name, const decl_descriptor&, size_t count);
+      
          void _gather_members(const decl_descriptor&, size_t array_count = 1);
+         void _seen_decl(const decl_descriptor&, size_t count = 1);
          void _seen_more_of_type(gcc_wrappers::type::base non_transformed, const decl_descriptor&, size_t count);
          
       public:

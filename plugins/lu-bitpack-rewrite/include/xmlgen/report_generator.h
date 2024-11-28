@@ -35,6 +35,7 @@ namespace xmlgen {
       protected:
          using type_output = std::pair<gcc_wrappers::type::base, owned_element>;
       
+         std::vector<owned_element> _categories;
          std::vector<owned_element> _sectors;
          std::vector<type_output> _types;
          

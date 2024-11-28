@@ -14,6 +14,8 @@ C++:
     * Transformations (transitive)
     * Transformations (nested)
 * Statistics logging
+  * **BUG:** Stat gathering for categories, in the curren testcase, lists `int b[3]` as a single occurrence of the category.
+  * **BUG:** We don't recursively `_gather_members`, so doubly-nested structs within a whole `serialization_item` will be missed.
   * Should be able to count the number of serialized values that are annotated (whether directly on the DECL or indirectly via a TYPE) with a given category or categories. When an array of *n* elements is annotated, that counts as *n* occurrences of the category.
     * Counts should be tracked in total, per sector, and per struct.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.

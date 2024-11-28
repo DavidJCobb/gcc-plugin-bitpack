@@ -22,6 +22,7 @@ static plugin_info _my_plugin_info = {
 #include "attribute_handlers/bitpack_bitcount.h"
 #include "attribute_handlers/bitpack_default_value.h"
 #include "attribute_handlers/bitpack_range.h"
+#include "attribute_handlers/bitpack_stat_category.h"
 #include "attribute_handlers/bitpack_string.h"
 #include "attribute_handlers/bitpack_tagged_id.h"
 #include "attribute_handlers/bitpack_transforms.h"
@@ -144,6 +145,17 @@ namespace _attributes {
       .handler = &attribute_handlers::bitpack_range,
       .exclude = NULL
    };
+   static struct attribute_spec bitpack_stat_category = {
+      .name = "lu_bitpack_stat_category",
+      .min_length = 1, // min argcount
+      .max_length = 1, // max argcount
+      .decl_required = true,
+      .type_required = false,
+      .function_type_required = false,
+      .affects_type_identity  = false,
+      .handler = &attribute_handlers::bitpack_stat_category,
+      .exclude = NULL
+   };
    static struct attribute_spec bitpack_string = {
       .name = "lu_bitpack_string",
       .min_length = 0, // min argcount
@@ -211,6 +223,7 @@ static void register_attributes(void* event_data, void* user_data) {
    register_attribute(&_attributes::bitpack_default_value);
    register_attribute(&_attributes::bitpack_omit);
    register_attribute(&_attributes::bitpack_range);
+   register_attribute(&_attributes::bitpack_stat_category);
    register_attribute(&_attributes::bitpack_string);
    register_attribute(&_attributes::bitpack_transforms);
    register_attribute(&_attributes::bitpack_union_external_tag);

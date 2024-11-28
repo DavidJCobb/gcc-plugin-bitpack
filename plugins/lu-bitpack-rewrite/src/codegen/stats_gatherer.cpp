@@ -3,6 +3,22 @@
 #include "codegen/serialization_item_list_ops/get_offsets_and_sizes.h"
 
 namespace codegen {
+   void stats_gatherer::_seen_stats_category_annotation(std::string_view name, const decl_descriptor& desc, size_t count) {
+      auto& info = this->stats_by_category[std::string(name)];
+      info.count_seen.total += count;
+      {
+         auto& list = info.count_seen.by_sector;
+         if (list.size() < this->_state.current_sector + 1)
+            list.resize(this->_state.current_sector + 1);
+         list[this->_state.current_sector] += count;
+      }
+      
+      auto type = desc.types.innermost;
+      //
+      info.total_sizes.packed   += desc.serialized_type_size_in_bits() * count;
+      info.total_sizes.unpacked += type.size_in_bytes() * 8 * count;
+   }
+   
    void stats_gatherer::_gather_members(const decl_descriptor& desc, size_t array_count) {
       auto type = desc.types.serialized;
       if (!type.is_record() && !type.is_union())
@@ -12,8 +28,15 @@ namespace codegen {
          for(auto extent : memb->array.extents)
             memb_count *= extent;
          
+         this->_seen_decl(*memb, memb_count);
          auto type = memb->types.innermost;
          this->_seen_more_of_type(type, *memb, memb_count);
+      }
+   }
+   
+   void stats_gatherer::_seen_decl(const decl_descriptor& desc, size_t count) {
+      for(const auto& name : desc.options.stat_categories) {
+         this->_seen_stats_category_annotation(name, desc, count);
       }
    }
    
@@ -89,9 +112,12 @@ namespace codegen {
             }
             
             size_t count = 1;
-            for(const auto& entry : stack)
+            for(const auto& entry : stack) {
                for(const auto& access : entry.array_accesses)
                   count *= access.count;
+               
+               this->_seen_decl(*entry.desc, count);
+            }
             
             while (stack.size() < item.segments.size()) {
                size_t i = stack.size();
@@ -107,6 +133,7 @@ namespace codegen {
                for(const auto& access : data.array_accesses)
                   count *= access.count;
                //
+               this->_seen_decl(*desc, count);
                auto type = desc->types.innermost;
                this->_seen_more_of_type(type, *desc, count);
             }

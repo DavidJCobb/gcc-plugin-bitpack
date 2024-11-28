@@ -499,6 +499,47 @@ namespace xmlgen {
          // Done with type.
       }
       
+      // Category stats.
+      for(auto& pair : gatherer.stats_by_category) {
+         const auto& name  = pair.first;
+         const auto& stats = pair.second;
+         
+         // Per-sector stats for this category.
+         for(size_t i = 0; i < stats.count_seen.by_sector.size(); ++i) {
+            auto count = stats.count_seen.by_sector[i];
+            if (count == 0)
+               continue;
+            
+            auto& sector_node = *(this->_sectors[i]);
+            
+            auto* stats_node_ptr = sector_node.first_child_by_node_name("stats");
+            if (!stats_node_ptr) {
+               auto stats_node_uniq = std::make_unique<xml_element>();
+               stats_node_ptr = stats_node_uniq.get();
+               stats_node_ptr->node_name = "stats";
+               sector_node.append_child(std::move(stats_node_uniq));
+            }
+            auto& stats_node = *stats_node_ptr;
+            
+            auto child_ptr = std::make_unique<xml_element>();
+            child_ptr->node_name = "category";
+            child_ptr->set_attribute("name",  name);
+            child_ptr->set_attribute("count", _to_string(count));
+            stats_node.append_child(std::move(child_ptr));
+         }
+         
+         // Global stats for this category.
+         auto  node_ptr = std::make_unique<xml_element>();
+         auto& node     = *node_ptr;
+         node.node_name = "category";
+         node.set_attribute("name",  name);
+         node.set_attribute("count", _to_string(stats.count_seen.total));
+         node.set_attribute("total-packed-bitcount", _to_string(stats.total_sizes.packed));
+         node.set_attribute("total-unpacked-bitcount", _to_string(stats.total_sizes.unpacked));
+         
+         this->_categories.push_back(std::move(node_ptr));
+      }
+      
       // Done with gatherer.
    }
    
@@ -528,6 +569,17 @@ namespace xmlgen {
             out += '\n';
          }
          out += "   </config>\n";
+      }
+      {  // categories
+         auto& list = this->_categories;
+         if (!list.empty()) {
+            out += "   <categories>\n";
+            for(const auto& node_ptr : list) {
+               out += node_ptr->to_string(2);
+               out += '\n';
+            }
+            out += "   </categories>\n";
+         }
       }
       {  // seen types
          auto& list = this->_types;

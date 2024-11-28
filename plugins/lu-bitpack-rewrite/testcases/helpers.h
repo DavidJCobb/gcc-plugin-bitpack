@@ -11,6 +11,8 @@
 #define LU_BP_TRANSFORM(pre_pack, post_unpack) \
    __attribute__((lu_bitpack_transforms("pre_pack=" #pre_pack ",post_unpack=" #post_unpack)))
 
+#define LU_BITPACK_CATEGORY(name) __attribute__((lu_bitpack_stat_category(name)))
+
 // Not yet implemented.
 // Indicate the value that acts as a union's tag, when that value is not 
 // inside of [all of the members of] the union itself. The union must be 

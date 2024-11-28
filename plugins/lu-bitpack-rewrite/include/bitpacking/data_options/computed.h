@@ -33,6 +33,8 @@ namespace bitpacking::data_options {
             computed_x_options::transforms
          > data;
          
+         std::vector<std::string> stat_categories;
+         
       protected:
          void _load_impl(const requested&, gcc_wrappers::type::base, std::optional<size_t> bitfield_width);
       public:

@@ -4,6 +4,7 @@
 #include <vector>
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/expr/integer_constant.h"
+#include "gcc_wrappers/expr/string_constant.h"
 #include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/untagged_union.h"
 #include "gcc_wrappers/builtin_types.h"
@@ -101,6 +102,11 @@ namespace bitpacking::data_options {
          }
          if (key == "lu_bitpack_union_member_id") {
             this->union_member_id = attr.arguments().front().as<gw::expr::integer_constant>().value<intmax_t>();
+            continue;
+         }
+         if (key == "lu_bitpack_stat_category") {
+            auto str = attr.arguments().front().as<gw::expr::string_constant>();
+            this->stat_categories.push_back(str.value());
             continue;
          }
          

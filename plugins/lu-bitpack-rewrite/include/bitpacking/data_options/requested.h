@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <variant>
+#include <vector>
 #include "bitpacking/data_options/x_options.h"
 #include "bitpacking/for_each_influencing_entity.h"
 #include "gcc_wrappers/decl/field.h"
@@ -29,6 +30,8 @@ namespace bitpacking::data_options {
             requested_x_options::tagged_union,
             requested_x_options::transforms
          > x_options;
+         
+         std::vector<std::string> stat_categories;
          
          bool failed = false;
          
