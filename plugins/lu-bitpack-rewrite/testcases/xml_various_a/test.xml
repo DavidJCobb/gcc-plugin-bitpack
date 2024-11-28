@@ -4,7 +4,7 @@
       <option value="40" name="max-sector-bytecount" />
    </config>
    <categories>
-      <category total-unpacked-bitcount="32" total-packed-bitcount="32" count="1" name="test-cat" />
+      <category total-unpacked-bitcount="96" total-packed-bitcount="96" count="3" name="test-cat" />
    </categories>
    <c-types>
       <struct c-sizeof="80" c-alignment="4" tag="TestStruct">
@@ -47,7 +47,7 @@
          </instructions>
          <stats>
             <stat value="260" name="total-packed-bitcount" />
-            <category count="1" name="test-cat" />
+            <category count="3" name="test-cat" />
          </stats>
       </sector>
       <sector>

@@ -31,6 +31,8 @@ namespace codegen {
          this->_seen_decl(*memb, memb_count);
          auto type = memb->types.innermost;
          this->_seen_more_of_type(type, *memb, memb_count);
+         
+         this->_gather_members(*memb, memb_count);
       }
    }
    
@@ -132,6 +134,13 @@ namespace codegen {
                //
                for(const auto& access : data.array_accesses)
                   count *= access.count;
+               {
+                  const auto&  ranks = desc->array.extents;
+                  const size_t from  = stack.back().array_accesses.size();
+                  for(size_t i = from; i < ranks.size(); ++i) {
+                     count *= ranks[i];
+                  }
+               }
                //
                this->_seen_decl(*desc, count);
                auto type = desc->types.innermost;
