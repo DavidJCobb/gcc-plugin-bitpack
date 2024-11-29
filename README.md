@@ -355,4 +355,4 @@ struct Foo {
 
 When running the plug-in, you can specify the path to an output XML file. This file will contain a representation of the serialization format that this plug-in generates code for, as well as information that can be processed to measure stats about the packed output (e.g. space-efficiency, etc.).
 
-See [README - XML OUTPUT](README - XML OUTPUT.md) for further details.
+See [README - XML OUTPUT](README%20-%20XML%20OUTPUT.md) for further details.

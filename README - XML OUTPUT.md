@@ -115,7 +115,7 @@ Example:
 
 Each of these elements represent a single value to serialize. The value is identified by the `value` attribute.
 
-A `value` attribute follows similar syntax to C accessors, e.g. `a.b.c[4][5][6].d`. This may include the use of loop counter variables, such as `list[__a]` or `list[__i_12]`. Loop counters are scoped to (read: unique within) the nearest enclosing `instructions` element.
+A `value` attribute follows similar syntax to C accessors, e.g. `a.b.c[4][5][6].d`. This may include the use of loop counter variables, such as `list[__a]` or `list[__i_12]`, or the use of locals for `transform` nodes, such as `__transformed_var_0.member`. Loop counters and transformed locals are scoped to (read: unique within) the nearest enclosing `instructions` element.
 
 These elements may also have a `type` attribute indicating the value's declared type in C. If a `typedef` was used, this attribute will name the typedef, not the original type. The attribute should include most qualifiers and other type information mimicking C syntax, e.g. `int` or `int[3]` or `const volatile float*`.
 
