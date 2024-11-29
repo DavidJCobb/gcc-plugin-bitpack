@@ -8,13 +8,11 @@
 C++:
 
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
-* XML output
-  * Tests we need to run (can reuse existing testcases)
-    * Transformations (simple)
-    * Transformations (transitive)
-    * Transformations (nested)
-* Statistics logging
-  * Testcase: doubly-nested named structs (i.e. A, which fits entirely in a sector, contains B, which contains C). Ensure that `struct` tags for all types appear in the XML output.
+* Investigate removing `bitpacking::member_kind::array`. It was only ever used as a sentinel value for `member_descriptor_view` in the old (pre-rewrite) codegen implementation.
+* Investigate removing `bitpacking::member_kind::transformed`. We now treat transformation as an operation to be applied "around" values (akin to for loops), rather than as something to be applied per value.
+* Look into renaming `lu::strings::printf_string` to something else, since it uses `printf`-style syntax but doesn't actually print anything. I don't want to burn the name "format" since that would be better-suited to something that polyfills `std::format`, should I ever bother to do that. Perhaps `lu::stringf`?
+* Work on rewriting the GCC wrappers to distinguish between pointer-style wrappers and reference-style wrappers. Do that separately and in its own folder; then gradually bring pieces of the plug-in over to rewrite.
+* Delete `lu-plugin-bitpack` and all other outdated copies of the plug-in; have just the main plug-in.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.
   * <dfn>Single-stage functions</dfn> are only invoked on fully-constructed objects (i.e. an object that has been read from the bitstream in full), as is typical in programming generally. To ensure this, we'd define a `static` instance of each individual transformed object that gets split across sectors, so that we can invoke the post-unpack function only after an instance is fully read (and without needing to invoke the pre-pack function as a per-sector pre-process step for reads).
@@ -25,68 +23,3 @@ C++:
     * If any single-stage functions are used, then the caller of `generate_read` will need a way to manually signal that a read operation has started/completed/aborted, irrespective of what sectors are read first and last.
 
 After we've gotten the redesign implemented, and our codegen is done, we should investigate using `gengtype` to mark our singletons as roots and ensure that tree nodes don't get deleted out from under our `basic_global_state`.
-
-
-### Future features
-
-#### Statistics
-
-The XML output should include the information needed to generate reports and statistics on space usage and savings.
-
-* Every C bitfield should be annotated with its C bitfield width.
-* Every type element (e.g. `struct-type`) should report the following stats:
-  * Number of instances seen in the serialized output
-    * Per top-level identifier
-    * Total
-  * `sizeof`
-  * `serialized-bitcount`
-  * If the type is an array type (could happen if an array typedef has bitpacking options), then its array ranks.
-  * If the type originates from a typedef, then it should have an `is-typedef-of` attribute listing the name of the nearest type worth outputting an XML element for or, if none are worth it, the end of the transitive typedef chain.
-* If a type is annotated with `__attribute__((lu_bitpack_track_type_stats))`, then we should guarantee that the XML output will contain an element representing that type. If it's not a struct, then it should get an appropriate tagname (even just `type` would do).
-
-Accordingly, type XML should reformatted:
-
-```xml
-<!-- `general-type` or `struct-type` -->
-<general-type name="..." c-type="..." sizeof="..." serialized-bitcount="...">
-   <array-rank extent="1" /> <!-- optional; repeatable -->
-   
-   <!-- bitpack options listed as attributes here, incl. x-options type -->
-   <options />
-   
-   <fields>
-      <!-- ... -->
-   </fields>
-   <stats>
-      <times-seen total="5">
-         <per-top-level-identifier identifier="foo" count="3" />
-         <!-- if the type IS the type of a top-level identifer, then consider that a count of 1 for that identifier -->
-      </times-seen>
-   </stats>
-</general-type>
-```
-
-Goal:
-
-```c
-#define LU_BP_MAX_ONLY(n) __attribute__((lu_bitpack_range(0,n)))
-#define LU_BP_RANGE(x,y)  __attribute__((lu_bitpack_range(x,y)))
-#define LU_BP_TRACK       __attribute__((lu_bitpack_track_statistics))
-
-enum {
-   LANG_UNDEFINED,
-   LANG_ENGLISH,
-   LANG_FRENCH,
-   LANG_GERMAN,
-   LANG_ITALIAN,
-   LANG_JAPANESE,
-   LANG_KOREAN,
-   LANG_SPANISH,
-   
-   LANG_COUNT
-};
-
-LU_BP_TRACK LU_BP_MAX_ONLY(LANG_COUNT) typedef uint8_t language_t;
-
-LU_BP_TRACK LU_BP_STRING_UT typedef char player_name_t [7];
-```

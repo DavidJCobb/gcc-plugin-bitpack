@@ -5,25 +5,20 @@ An attempt at building a GCC plug-in that can generate code for bitpacking data 
 
 As of this writing, I'm currently targeting GCC 11.4.0.
 
-## Feature goals
+## Features
 
 * Annotate struct members with information specifying how they should be bitpacked
-  * Set a bitcount explicitly or compute one dynamically.
-  * Booleans should encode as single-bit by default.
-  * Integral fields should be able to compute a bitcount based on their min and max values. Where these are not set, they default to the minimum and maximum representable values in the integral's type.
-  * For strings, indicate whether they're null-terminated in memory.
-  * Ability to mark types for statistics reporting purposes.
+  * Integral fields can be annotated with their minimum and maximum possible values, from which we'll compute the minimum bitcount necessary to pack them; or you can choose a bitcount explicitly.
+  * Booleans encode as a single bit by default.
+  * Values can be marked as strings to use alternate bitpacking functions, and can additionally be marked as not requiring a null terminator when residing unpacked in memory.
+  * Tagged unions can be annotated to facilitate bitpacking of their contents.
 * Automatically generate code to serialize structs to a bitpacked format, and read them back from that format.
-  * Optional capacity limits
-    * Optionally divide bitpacked data into "sectors" of a limited size. Serialization should pause at the end of one sector &mdash; even if this means serializing only part of a struct or array &mdash; and resume where it left off when beginning the next sector.
+  * Optionally divide bitpacked data into "sectors" of a limited size. Serialization should pause at the end of one sector &mdash; even if this means serializing only part of a struct or array &mdash; and resume where it left off when beginning the next sector. Sectors can be serialized in any order.
     * Sector size
     * Sector count
-    * Overall size
-  * Export an XML file describing the resulting format.
-    * This is meant to aid with structs that may change, by facilitating the development of external tools that (guided by the XML) can read data in an older format and convert it to a newer one.
-    * Currently possible via a command line argument: `-fplugin-arg-lu_bitpack-xml-out=$(DESIRED_PATH)/test.xml`
-  * Export a human-readable report stating how much space would be consumed by a non-bitpacked representation (i.e. blind `memcpy`ing) versus how much is consumed by the bitpacked representation.
-    * This is meant to aid with retrofitting this bitpacking scheme into programs that did not previously use it: use the report to figure out what parts of a struct are more "expensive," and then study them and the code that operates on them in detail, to figure out how you can tighten the bitpacking options for those fields.
+* Export an XML file describing the resulting bitpacked format.
+  * This is meant to aid with structs that may change, by facilitating the development of external tools that (guided by the XML) can read data in an older format and convert it to a newer one.
+  * This can also offer statistics useful for retrofitting this bitpacking scheme into older programs: the report can contain statistics that can help you measure which pieces of data are more "expensive" or appear more frequently. This can help you reason about how much space you have to work with and how much space certain changes may consume.
 
 ## Distant goals
 
@@ -34,10 +29,10 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 
 ## Non-goals
 
-* Presence bits (think "`std::optional`"): the ability to pack data using the smallest possible representation. My current use case entails packing data into a limited storage space in such a manner that the largest possible data must fit; ergo bitpacked data must always be uniform in size, so we can check statically whether we have enough room.
+* Presence bits (think "`std::optional`") and variable-length data. My current use case entails packing data into a limited storage space, such that the largest possible data must fit. Ergo bitpacked data must always be uniform in size, so we can check statically whether we have enough room.
+  * Tagged unions are zero-padded as necessary, so that all "branches" of the union have equal-size serialized representations.
 
-
-## Features
+## Advanced features
 
 ### Transformations
 
@@ -142,6 +137,16 @@ The following attributes may be used on non-array types or on struct field decla
       <dd><p>Indicates that this entity inherits a set of options defined via <code>#pragma lu_bitpack heritable</code>.</p></dd>
    <dt><code>lu_bitpack_omit</code></dt>
       <dd><p>Indicates that this entity should be omitted from bitpacking. If an omitted field has a default value, then the generated "read" function will set the field to that value.</p></dd>
+</dl>
+
+The following attributes may be used on variable and field declarations only:
+
+<dl>
+   <dt><code>lu_bitpack_stat_category("<var>name</var>")</code></dt>
+      <dd>
+         <p>Applies a given name to the declaration for stat-tracking purposes. The XML output, if enabled, will report how many values of a given category appear in various parts of the serialized output. In the case of arrays, the element type is used unless the array is marked as a string (see below), in which case the innermost array type is considered "one instance."</p>
+         <p>This attribute can be used multiple times on the same declaration, with different names, and the values will be considered members of each named category.</p>
+      </dd>
 </dl>
 
 The following groups of options are mutually exclusive.
@@ -348,45 +353,6 @@ struct Foo {
 
 ### Generated XML
 
-When running the plug-in, you can specify the path to an XML file as `-fplugin-arg-lu_bitpack-xml-out=$(DESIRED_PATH)/test.xml`. If you do so, then every time the plug-in generates serialization code, it will write information about the computed bitpacking format to the specified XML file. (Note that the `.xml` file extension is required and case-sensitive.)
+When running the plug-in, you can specify the path to an output XML file. This file will contain a representation of the serialization format that this plug-in generates code for, as well as information that can be processed to measure stats about the packed output (e.g. space-efficiency, etc.).
 
-The XML data has a single root `data` node which may contain the following children: `heritables`, `types`, `variables`, and `sectors`.
-
-#### Types
-
-A `struct-type` element denotes any non-anonymous `struct`-keyword type seen during code generation, and will have the following attributes:
-
-<dl>
-   <dt><code>name</code></dt>
-      <dd>The unqualified name of the type.</dd>
-   <dt><code>c-type</code></dt>
-      <dd>The name of the type as produced by <code>gcc_wrappers::type::base::pretty_print</code>. This could potentially include qualifiers such as <code>volatile</code>.</dd>
-</dl>
-
-A `struct-type` element's children represent an ordered list of the struct's members. If the struct has an anonymous struct member, then the anonymous struct won't be listed; rather, its children are transitively included.
-
-All member elements possess a `name` attribute indicating the field name, and a `c-type` attribute indicating the field's C language type.
-
-Members whose bitpacking options indicate pre-pack or post-unpack transform functions may have `pre-pack-transform` and `post-unpack-transform` attributes noting the identifiers of those functions.
-
-Additionally, if a member is an array, it will possess at least one `array-rank` child element, whose `extent` attribute indicates the array extent; for multi-dimensional arrays, these child elements are ordered matching left-to-right ordering of the array extents. (If a field is marked to be serialized as a string, then the deepest-nested array rank is not considered "an array." For example, if `char names[5][10]` is marked as a string, then this is considered a one-dimensional array, extent five, of ten-character strings; not a two-dimensional array.)
-
-Members will have either a `default-value` attribute, or a `default-value-string` child element (whose text content is string content), if the elements were annotated with `lu_bitpack_default_value`. The default value is recorded even if it isn't used in the generated code (i.e. even if no such members are omitted from bitpacking).
-
-The node name of a member element varies depending on its type, and some attributes are also type-specific:
-
-* `omitted` elements represent fields that aren't serialized at all. These elements are only emitted if the fields have some other property worth capturing (e.g. their default value).
-* `boolean` elements represent fields that are serialized as 1-bit booleans.
-* `integer` elements represent fields that are serialized as integer values.
-  * The `bitcount` attribute indicates the final used bitcount.
-  * The `min` attribute indices the final used minimum value, such that in a bitstream, the serialized value will be *v - min*.
-* `opaque-buffer` elements represent fields that are serialized as opaque buffers.
-  * The `bytecount` attribute indicates the buffer size in bytes.
-* `pointer` elements represent pointer fields.
-  * The `bitcount` attribute indicates the final used bitcount.
-* `string` elements represent string fields.
-  * The `length` attribute indicates the final serialized length in characters.
-  * The `with-terminator` attribute indicates whether the string requires a null terminator in memory. The null terminator is only serialized into the bitstream if it comes early (i.e. if a string's max length is 5, then "Lucia" does not serialize an 0x00 byte).
-* `struct` elements represent nested structs.
-* `union` elements represent tagged unions. (Support for these is not implemented yet.)
-  * The `tag-type` attribute is either `external` or `internal`.
+See [README - XML OUTPUT](README - XML OUTPUT.md) for further details.

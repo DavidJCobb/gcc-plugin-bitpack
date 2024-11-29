@@ -1,0 +1,53 @@
+<data>
+   <config>
+      <option value="2" name="max-sector-count" />
+      <option value="16" name="max-sector-bytecount" />
+   </config>
+   <c-types>
+      <struct tag="PackedOuter">
+         <instructions>
+            <integer min="0" bitcount="8" type="u8" value="a" />
+            <structure type="PackedInner" value="b" />
+         </instructions>
+         <stats>
+            <bitcounts total-packed="0" total-unpacked="0" />
+            <counts>
+               <in-top-level-value count="1" name="sOuter" />
+            </counts>
+         </stats>
+      </struct>
+      <struct c-sizeof="2" c-alignment="2" tag="PackedInner">
+         <instructions>
+            <integer min="0" bitcount="16" type="u16" value="n" />
+         </instructions>
+         <stats>
+            <bitcounts total-packed="16" total-unpacked="16" />
+            <counts total="1">
+               <in-sector count="1" index="0" />
+               <in-top-level-value count="1" name="sOuter" />
+            </counts>
+         </stats>
+      </struct>
+      <struct c-sizeof="4" c-alignment="4" tag="Outer">
+         <transform-options unpack-function="UnpackOuter" pack-function="PackOuter" transformed-type="PackedOuter" />
+         <stats>
+            <bitcounts total-packed="24" total-unpacked="64" />
+            <counts total="1">
+               <in-sector count="1" index="0" />
+            </counts>
+         </stats>
+      </struct>
+   </c-types>
+   <sectors>
+      <sector>
+         <instructions>
+            <transform transformed-value="__transformed_var_0" transformed-type="PackedOuter" value="sOuter">
+               <structure type="PackedOuter" value="__transformed_var_0" />
+            </transform>
+         </instructions>
+         <stats>
+            <bitcounts total-packed="24" />
+         </stats>
+      </sector>
+   </sectors>
+</data>
