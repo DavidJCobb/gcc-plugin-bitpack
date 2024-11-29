@@ -7,6 +7,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/base.h"
 #include "codegen/serialization_item.h"
 
@@ -24,6 +25,7 @@ namespace codegen {
             struct {
                size_t total = 0;
                std::vector<size_t> by_sector; // includes pieces of split objects
+               std::unordered_map<std::string, size_t> by_top_level;
             } count_seen;
             struct {
                size_t unpacked = 0; // bits // even if a value is transformed, this refers to the original type
@@ -58,5 +60,7 @@ namespace codegen {
          
       public:
          void gather_from_sectors(const std::vector<std::vector<serialization_item>>& items_by_sector);
+         
+         void gather_from_top_level(gcc_wrappers::decl::variable);
    };
 }

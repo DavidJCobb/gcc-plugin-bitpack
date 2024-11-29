@@ -104,13 +104,13 @@ namespace codegen {
    }
    
    size_t decl_descriptor::serialized_type_size_in_bits() const {
-      if (options.is_buffer())
+      if (this->options.is_buffer())
          return options.buffer_options().bytecount * 8;
       
-      if (options.is_integral())
+      if (this->options.is_integral())
          return options.integral_options().bitcount;
       
-      if (options.is_string())
+      if (this->options.is_string())
          return options.string_options().length * 8;
       
       auto type = this->types.serialized;
@@ -149,6 +149,23 @@ namespace codegen {
       }
       
       return 0;
+   }
+   
+   size_t decl_descriptor::unpacked_single_size_in_bits() const {
+      if (this->options.is_buffer())
+         return options.buffer_options().bytecount * 8;
+      
+      auto type = this->types.serialized;
+      if (this->options.is_string()) {
+         if (type.is_array()) {
+            auto array_type = type.as_array();
+            auto value_type = array_type.value_type();
+            return *array_type.extent() * value_type.size_in_bits();
+         }
+      } else if (this->options.is_transforms()) {
+         type = this->types.innermost;
+      }
+      return type.size_in_bits();
    }
    
    bool decl_descriptor::is_or_contains_defaulted() const {

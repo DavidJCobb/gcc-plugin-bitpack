@@ -36,6 +36,23 @@ static std::string _to_string(int v) {
 }
 
 namespace xmlgen {
+   report::stats& report_generator::_get_or_create_category_info(std::string_view name) {
+      for(auto& pair : this->_categories)
+         if (pair.first == name)
+            return pair.second;
+      auto& pair = this->_categories.emplace_back();
+      pair.first = name;
+      return pair.second;
+   }
+   report::c_type& report_generator::_get_or_create_type_info(gw::type::base type) {
+      for(auto& info : this->_types)
+         if (info.type.as_untyped() == type.as_untyped())
+            return info;
+      auto& info = this->_types.emplace_back(type);
+      this->_apply_type_info_to(*info.as_xml, type);
+      return info;
+   }
+   
    void report_generator::_apply_x_options_to(
       xml_element& node,
       const bitpacking::data_options::computed& options
@@ -65,28 +82,6 @@ namespace xmlgen {
    }
    
    void report_generator::_apply_type_info_to(xml_element& node, gw::type::base type) {
-      // Type keyword as node name.
-      if (type.is_record()) {
-         node.node_name = "struct";
-      } else if (type.is_union()) {
-         node.node_name = "union";
-      } else {
-         node.node_name = "unknown-type";
-      }
-      
-      // Typename.
-      if (type.is_record() || type.is_union()) {
-         auto name = type.name();
-         if (!name.empty())
-            node.set_attribute("tag", name);
-         
-         auto decl = type.declaration();
-         if (!decl.empty())
-            node.set_attribute("name", decl.name());
-      } else {
-         node.set_attribute("name", type.pretty_print());
-      }
-      
       // Options.
       bitpacking::data_options::computed options;
       options.load(type);
@@ -375,55 +370,41 @@ namespace xmlgen {
       
       auto  node_ptr = std::make_unique<xml_element>();
       auto& node     = *node_ptr;
-      
-      auto  inst_ptr = std::make_unique<xml_element>();
-      auto& inst     = *inst_ptr;
-      inst.node_name = "instructions";
-      node.append_child(std::move(inst_ptr));
+      node.node_name = "instructions";
       for(auto& child_ptr : root.instructions) {
-         inst.append_child(_generate(*child_ptr));
+         node.append_child(_generate(*child_ptr));
       }
       return node_ptr;
    }
    
    void report_generator::process(const codegen::instructions::container& root) {
-      auto elem = _generate_root(root);
-      elem->node_name = "sector";
-      this->_sectors.push_back(std::move(elem));
+      auto& info = this->_sectors.emplace_back();
+      
+      auto elem_ptr = _generate_root(root);
+      info.as_xml->append_child(std::move(elem_ptr));
    }
    void report_generator::process(const codegen::whole_struct_function_dictionary& dict) {
-      dict.for_each([this](gw::type::base type, const codegen::whole_struct_function_info& info) {
-         auto elem = _generate_root(*info.instructions_root->as<codegen::instructions::container>());
+      dict.for_each([this](gw::type::base type, const codegen::whole_struct_function_info& ws_info) {
+         auto  elem_ptr = _generate_root(*ws_info.instructions_root->as<codegen::instructions::container>());
          
-         _apply_type_info_to(*elem, type);
-         
-         this->_types.push_back(type_output(type, std::move(elem)));
+         auto& info = this->_get_or_create_type_info(type);
+         auto& node = *info.as_xml;
+         if (auto* prior = node.first_child_by_node_name("instructions")) {
+            node.remove_child(*prior);
+         }
+         node.append_child(std::move(elem_ptr));
       });
    }
    void report_generator::process(const codegen::stats_gatherer& gatherer) {
       {  // Per-sector stats
          size_t end = (std::min)(gatherer.stats_by_sector.size(), this->_sectors.size());
          for(size_t i = 0; i < end; ++i) {
-            auto& stats           = gatherer.stats_by_sector[i];
-            auto& sector_node_ptr = this->_sectors[i];
-            auto& sector_node     = *sector_node_ptr;
+            auto& src  = gatherer.stats_by_sector[i];
+            auto& info = this->_sectors[i];
             
-            auto* stats_node_ptr = sector_node.first_child_by_node_name("stats");
-            if (!stats_node_ptr) {
-               auto stats_node_uniq = std::make_unique<xml_element>();
-               stats_node_ptr = stats_node_uniq.get();
-               stats_node_ptr->node_name = "stats";
-               sector_node.append_child(std::move(stats_node_uniq));
-            }
-            auto& stats_node = *stats_node_ptr;
+            info.stats_data.bitcounts.total_packed = src.total_packed_size;
             
-            {
-               auto child_ptr = std::make_unique<xml_element>();
-               child_ptr->node_name = "stat";
-               child_ptr->set_attribute("name", "total-packed-bitcount");
-               child_ptr->set_attribute("value", _to_string(stats.total_packed_size));
-               stats_node.append_child(std::move(child_ptr));
-            }
+            info.update_stats_xml();
          }
       }
       
@@ -431,72 +412,36 @@ namespace xmlgen {
       for(const auto& pair : gatherer.stats_by_type) {
          auto         type     = pair.first;
          const auto&  stats    = pair.second;
-         xml_element* node_ptr = nullptr;
-         for(auto& known : this->_types) {
-            if (known.first == type) {
-               node_ptr = known.second.get();
-               break;
-            }
-         }
-         if (!node_ptr) {
-            auto elem = std::make_unique<xml_element>();
-            node_ptr = elem.get();
-            _apply_type_info_to(*node_ptr, type);
-            this->_types.push_back(type_output(type, std::move(elem)));
-         }
-         auto& node = *node_ptr;
+         
+         auto& info = this->_get_or_create_type_info(type);
          
          if (stats.c_align_of > 0) {
-            node.set_attribute("c-alignment", _to_string(stats.c_align_of));
+            info.c_info.align_of = stats.c_align_of;
          }
          if (stats.c_size_of > 0) {
-            node.set_attribute("c-sizeof", _to_string(stats.c_size_of));
+            info.c_info.size_of = stats.c_align_of;
+         }
+         info.stats_data.bitcounts.total_packed   = stats.total_sizes.packed;
+         info.stats_data.bitcounts.total_unpacked = stats.total_sizes.unpacked;
+         
+         info.stats_data.counts.total = stats.count_seen.total;
+         info.stats_data.counts.by_sector.clear();
+         info.stats_data.counts.by_top_level_identifier.clear();
+         for(size_t i = 0; i < stats.count_seen.by_sector.size(); ++i) {
+            size_t count = stats.count_seen.by_sector[i];
+            if (count <= 0)
+               continue;
+            auto& item = info.stats_data.counts.by_sector.emplace_back();
+            item.sector_index = i;
+            item.count        = count;
+         }
+         for(auto& pair : stats.count_seen.by_top_level) {
+            auto& item = info.stats_data.counts.by_top_level_identifier.emplace_back();
+            item.identifier = pair.first;
+            item.count      = pair.second;
          }
          
-         auto* stats_node_ptr = node.first_child_by_node_name("stats");
-         if (!stats_node_ptr) {
-            auto stats_node_uniq = std::make_unique<xml_element>();
-            stats_node_ptr = stats_node_uniq.get();
-            stats_node_ptr->node_name = "stats";
-            node.append_child(std::move(stats_node_uniq));
-         }
-         auto& stats_node = *stats_node_ptr;
-         
-         {
-            auto child_ptr = std::make_unique<xml_element>();
-            child_ptr->node_name = "stat";
-            child_ptr->set_attribute("name", "total-count-seen");
-            child_ptr->set_attribute("value", _to_string(stats.count_seen.total));
-            stats_node.append_child(std::move(child_ptr));
-         }
-         {
-            auto child_ptr = std::make_unique<xml_element>();
-            child_ptr->node_name = "stat";
-            child_ptr->set_attribute("name", "total-packed-bitcount");
-            child_ptr->set_attribute("value", _to_string(stats.total_sizes.packed));
-            stats_node.append_child(std::move(child_ptr));
-         }
-         {
-            auto child_ptr = std::make_unique<xml_element>();
-            child_ptr->node_name = "stat";
-            child_ptr->set_attribute("name", "total-unpacked-bitcount");
-            child_ptr->set_attribute("value", _to_string(stats.total_sizes.unpacked));
-            stats_node.append_child(std::move(child_ptr));
-         }
-         {
-            auto  child_ptr = std::make_unique<xml_element>();
-            auto& child     = *child_ptr;
-            child_ptr->node_name = "stats-by-sector";
-            stats_node.append_child(std::move(child_ptr));
-            
-            for(auto count : stats.count_seen.by_sector) {
-               auto cn = std::make_unique<xml_element>();
-               cn->node_name = "sector";
-               cn->set_attribute("count", _to_string(count));
-               child.append_child(std::move(cn));
-            }
-         }
-         // Done with type.
+         info.update_stats_xml();
       }
       
       // Category stats.
@@ -504,40 +449,27 @@ namespace xmlgen {
          const auto& name  = pair.first;
          const auto& stats = pair.second;
          
+         auto& info = this->_get_or_create_category_info(name);
+         
+         info.counts.total = stats.count_seen.total;
+         info.bitcounts.total_packed   = stats.total_sizes.packed;
+         info.bitcounts.total_unpacked = stats.total_sizes.unpacked;
+         
          // Per-sector stats for this category.
          for(size_t i = 0; i < stats.count_seen.by_sector.size(); ++i) {
             auto count = stats.count_seen.by_sector[i];
             if (count == 0)
                continue;
             
-            auto& sector_node = *(this->_sectors[i]);
-            
-            auto* stats_node_ptr = sector_node.first_child_by_node_name("stats");
-            if (!stats_node_ptr) {
-               auto stats_node_uniq = std::make_unique<xml_element>();
-               stats_node_ptr = stats_node_uniq.get();
-               stats_node_ptr->node_name = "stats";
-               sector_node.append_child(std::move(stats_node_uniq));
-            }
-            auto& stats_node = *stats_node_ptr;
-            
-            auto child_ptr = std::make_unique<xml_element>();
-            child_ptr->node_name = "category";
-            child_ptr->set_attribute("name",  name);
-            child_ptr->set_attribute("count", _to_string(count));
-            stats_node.append_child(std::move(child_ptr));
+            auto& item = info.counts.by_sector.emplace_back();
+            item.sector_index = i;
+            item.count        = count;
          }
-         
-         // Global stats for this category.
-         auto  node_ptr = std::make_unique<xml_element>();
-         auto& node     = *node_ptr;
-         node.node_name = "category";
-         node.set_attribute("name",  name);
-         node.set_attribute("count", _to_string(stats.count_seen.total));
-         node.set_attribute("total-packed-bitcount", _to_string(stats.total_sizes.packed));
-         node.set_attribute("total-unpacked-bitcount", _to_string(stats.total_sizes.unpacked));
-         
-         this->_categories.push_back(std::move(node_ptr));
+         for(auto& pair : stats.count_seen.by_top_level) {
+            auto& item = info.counts.by_top_level_identifier.emplace_back();
+            item.identifier = pair.first;
+            item.count      = pair.second;
+         }
       }
       
       // Done with gatherer.
@@ -555,7 +487,7 @@ namespace xmlgen {
             auto& node     = *node_ptr;
             node.node_name = "option";
             node.set_attribute("name", "max-sector-count");
-            node.set_attribute("value", _to_string(go.sectors.max_count));
+            node.set_attribute_i("value", go.sectors.max_count);
             out += node.to_string(2);
             out += '\n';
          }
@@ -564,7 +496,7 @@ namespace xmlgen {
             auto& node     = *node_ptr;
             node.node_name = "option";
             node.set_attribute("name", "max-sector-bytecount");
-            node.set_attribute("value", _to_string(go.sectors.size_per));
+            node.set_attribute_i("value", go.sectors.size_per);
             out += node.to_string(2);
             out += '\n';
          }
@@ -574,7 +506,11 @@ namespace xmlgen {
          auto& list = this->_categories;
          if (!list.empty()) {
             out += "   <categories>\n";
-            for(const auto& node_ptr : list) {
+            for(const auto& pair : list) {
+               auto node_ptr = pair.second.to_xml();
+               node_ptr->node_name = "category";
+               node_ptr->set_attribute("name", pair.first);
+               
                out += node_ptr->to_string(2);
                out += '\n';
             }
@@ -585,9 +521,9 @@ namespace xmlgen {
          auto& list = this->_types;
          if (!list.empty()) {
             out += "   <c-types>\n";
-            for(const auto& pair : list) {
-               const auto& node_ptr = pair.second;
-               out += node_ptr->to_string(2);
+            for(auto& info : list) {
+               info.update_stats_xml();
+               out += info.as_xml->to_string(2);
                out += '\n';
             }
             out += "   </c-types>\n";
@@ -597,8 +533,9 @@ namespace xmlgen {
          auto& list = this->_sectors;
          if (!list.empty()) {
             out += "   <sectors>\n";
-            for(const auto& node_ptr : list) {
-               out += node_ptr->to_string(2);
+            for(auto& info : list) {
+               info.update_stats_xml();
+               out += info.as_xml->to_string(2);
                out += '\n';
             }
             out += "   </sectors>\n";

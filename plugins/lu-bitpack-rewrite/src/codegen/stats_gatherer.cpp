@@ -13,10 +13,8 @@ namespace codegen {
          list[this->_state.current_sector] += count;
       }
       
-      auto type = desc.types.innermost;
-      //
       info.total_sizes.packed   += desc.serialized_type_size_in_bits() * count;
-      info.total_sizes.unpacked += type.size_in_bytes() * 8 * count;
+      info.total_sizes.unpacked += desc.unpacked_single_size_in_bits() * count;
    }
    
    void stats_gatherer::_gather_members(const decl_descriptor& desc, size_t array_count) {
@@ -163,5 +161,43 @@ namespace codegen {
          }
          ++this->_state.current_sector;
       }
+   }
+   
+   void stats_gatherer::gather_from_top_level(gcc_wrappers::decl::variable decl) {
+      
+      const auto decl_name = std::string(decl.name());
+      auto walk = [this, &decl_name](gcc_wrappers::decl::variable inside) {
+         auto _impl = [this, &decl_name](
+            gcc_wrappers::decl::variable inside,
+            const codegen::decl_descriptor& desc,
+            size_t in_array_count,
+            auto&  recurse
+         ) -> void {
+            size_t count = in_array_count;
+            for(auto extent : desc.array.extents)
+               count *= extent;
+            
+            auto type = desc.types.serialized;
+            for(const auto& name : desc.options.stat_categories) {
+               auto& info = this->stats_by_category[std::string(name)];
+               info.count_seen.by_top_level[decl_name] += count;
+            }
+            
+            if (type.is_record() || type.is_union()) {
+               if (!type.name().empty()) {
+                  auto& info = this->stats_by_type[type];
+                  info.count_seen.by_top_level[decl_name] += count;
+               }
+               for(const auto* m : desc.members_of_serialized()) {
+                  (recurse)(inside, *m, count, recurse);
+               }
+            }
+         };
+         
+         auto& dict = codegen::decl_dictionary::get();
+         auto& desc = dict.get_or_create_descriptor(inside);
+         _impl(inside, desc, 1, _impl);
+      };
+      walk(decl);
    }
 }

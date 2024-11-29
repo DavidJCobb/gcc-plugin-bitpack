@@ -72,6 +72,9 @@ SOURCES=\
         src/pragma_handlers/enable.cpp \
         src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/set_options.cpp \
+        src/xmlgen/report/c_type.cpp \
+        src/xmlgen/report/sector.cpp \
+        src/xmlgen/report/stats.cpp \
         src/xmlgen/is_valid_name.cpp \
         src/xmlgen/report_generator.cpp \
         src/xmlgen/string_as_cdata.cpp \

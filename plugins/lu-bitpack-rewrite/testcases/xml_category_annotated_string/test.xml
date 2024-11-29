@@ -1,0 +1,39 @@
+<data>
+   <config>
+      <option value="2" name="max-sector-count" />
+      <option value="40" name="max-sector-bytecount" />
+   </config>
+   <categories>
+      <category name="player-name">
+         <bitcounts total-packed="40" total-unpacked="48" />
+         <counts total="1">
+            <in-sector count="1" index="0" />
+            <in-top-level-value count="1" name="sTestStruct" />
+         </counts>
+      </category>
+   </categories>
+   <c-types>
+      <struct c-sizeof="1" c-alignment="1" tag="TestStruct">
+         <instructions>
+            <string nonstring="false" length="5" type="char[6]" value="name" />
+         </instructions>
+         <stats>
+            <bitcounts total-packed="40" total-unpacked="48" />
+            <counts total="1">
+               <in-sector count="1" index="0" />
+               <in-top-level-value count="1" name="sTestStruct" />
+            </counts>
+         </stats>
+      </struct>
+   </c-types>
+   <sectors>
+      <sector>
+         <instructions>
+            <structure type="TestStruct" value="sTestStruct" />
+         </instructions>
+         <stats>
+            <bitcounts total-packed="40" />
+         </stats>
+      </sector>
+   </sectors>
+</data>

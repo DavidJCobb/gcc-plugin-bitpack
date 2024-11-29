@@ -1,6 +1,7 @@
 #include "xmlgen/xml_element.h"
 #include <cassert>
-#include <charconv>
+#include <inttypes.h>
+#include "lu/strings/printf_string.h"
 #include "xmlgen/is_valid_name.h"
 #include "xmlgen/write_string_as_attribute_value.h"
 #include "xmlgen/write_string_as_text_content.h"
@@ -26,6 +27,22 @@ namespace xmlgen {
          }
       }
    }
+   std::unique_ptr<xml_element> xml_element::take_child(xml_element& child) {
+      assert(child.parent == this);
+      
+      std::unique_ptr<xml_element> result;
+      
+      auto&  list = this->children;
+      size_t size = list.size();
+      for(size_t i = 0; i < size; ++i) {
+         if (list[i].get() == &child) {
+            result = std::move(list[i]);
+            list.erase(list.begin() + i);
+            break;
+         }
+      }
+      return result;
+   }
    
    xml_element* xml_element::first_child_by_node_name(std::string_view name) {
       return const_cast<xml_element*>(std::as_const(*this).first_child_by_node_name(name));
@@ -37,9 +54,24 @@ namespace xmlgen {
       return nullptr;
    }
    
+   void xml_element::remove_attribute(std::string_view name) {
+      this->attributes.erase(std::string(name));
+   }
+   
    void xml_element::set_attribute(std::string_view name, std::string_view value) {
       assert(is_valid_name(name));
       this->attributes[std::string(name)] = value;
+   }
+   void xml_element::set_attribute_b(std::string_view name, bool value) {
+      this->set_attribute(name, value ? "true" : "false");
+   }
+   void xml_element::set_attribute_i(std::string_view name, intmax_t value) {
+      auto vs = lu::strings::printf_string("%" PRIdMAX, value);
+      this->set_attribute(name, vs);
+   }
+   void xml_element::set_attribute_f(std::string_view name, float value) {
+      auto vs = lu::strings::printf_string("%f", value);
+      this->set_attribute(name, vs);
    }
    
    std::string xml_element::to_string(size_t indent_level) const {
@@ -51,7 +83,7 @@ namespace xmlgen {
       out += this->node_name;
       for(auto& pair : this->attributes) {
          out += ' ';
-         out += pair.first; // TODO: validate
+         out += pair.first;
          out += '=';
          out += '"';
          write_string_as_attribute_value(pair.second, '"', out);

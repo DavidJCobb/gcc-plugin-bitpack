@@ -517,7 +517,7 @@ namespace pragma_handlers {
          std::vector<codegen::func_pair> per_sector;
          
          // void __lu_bitpack_read(const buffer_byte_type* src, int sector_id);
-         // void __lu_bitpack_save(buffer_byte_type* src, int sector_id);
+         // void __lu_bitpack_save(buffer_byte_type* dst, int sector_id);
          codegen::func_pair top_level;
          
          codegen::whole_struct_function_dictionary whole_struct;
@@ -728,8 +728,18 @@ namespace pragma_handlers {
          const auto& path = gs.xml_output_path;
          if (path.ends_with(".xml")) {
             codegen::stats_gatherer  stats;
-            xmlgen::report_generator xml_gen;
             stats.gather_from_sectors(all_sectors_si);
+            for(auto& group : identifier_groups) {
+               for(auto& identifier : group) {
+                  auto ident = get_identifier(identifier.c_str());
+                  auto node  = lookup_name(ident);
+                  assert(node != NULL_TREE && TREE_CODE(node) == VAR_DECL);
+                  auto decl = gw::decl::variable::from_untyped(node);
+                  stats.gather_from_top_level(decl);
+               }
+            }
+            
+            xmlgen::report_generator xml_gen;
             xml_gen.process(functions.whole_struct);
             for(const auto& node_ptr : instructions_by_sector)
                xml_gen.process(*node_ptr->as<codegen::instructions::container>());

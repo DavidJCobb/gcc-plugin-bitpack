@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include "codegen/decl_pair.h"
+#include "xmlgen/report/c_type.h"
+#include "xmlgen/report/sector.h"
+#include "xmlgen/report/stats.h"
 #include "xmlgen/xml_element.h"
 #include "gcc_wrappers/type/base.h"
 
@@ -33,11 +36,11 @@ namespace xmlgen {
          using owned_element = std::unique_ptr<xml_element>;
       
       protected:
-         using type_output = std::pair<gcc_wrappers::type::base, owned_element>;
+         using category_info = std::pair<std::string, report::stats>;
       
-         std::vector<owned_element> _categories;
-         std::vector<owned_element> _sectors;
-         std::vector<type_output> _types;
+         std::vector<category_info>  _categories;
+         std::vector<report::sector> _sectors;
+         std::vector<report::c_type> _types;
          
          // Used to give each loop variable a unique name and ID. We gather 
          // these up before generating XML. Each variable's ID is its index 
@@ -48,6 +51,9 @@ namespace xmlgen {
          std::vector<codegen::decl_pair> _transformed_values;
          
       protected:
+         report::stats& _get_or_create_category_info(std::string_view name);
+         report::c_type& _get_or_create_type_info(gcc_wrappers::type::base);
+      
          void _apply_x_options_to(
             xml_element&,
             const bitpacking::data_options::computed&
