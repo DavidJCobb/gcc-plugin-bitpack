@@ -281,7 +281,6 @@ namespace xmlgen {
             break;
             
          case bitpacking::member_kind::none:
-         case bitpacking::member_kind::array:
             break;
       }
       

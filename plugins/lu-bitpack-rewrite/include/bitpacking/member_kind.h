@@ -3,7 +3,6 @@
 namespace bitpacking {
    enum class member_kind {
       none,
-      array, // only used by member_descriptor_view, as a return value
       boolean,
       buffer,
       integer,

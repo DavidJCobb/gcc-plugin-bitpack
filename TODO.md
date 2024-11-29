@@ -8,8 +8,9 @@
 C++:
 
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
-* Investigate removing `bitpacking::member_kind::array`. It was only ever used as a sentinel value for `member_descriptor_view` in the old (pre-rewrite) codegen implementation.
 * Investigate removing `bitpacking::member_kind::transformed`. We now treat transformation as an operation to be applied "around" values (akin to for loops), rather than as something to be applied per value.
+  * It's set on a `decl_descriptor` if the computed options are transform options, but I'm not sure it's checked anywhere. We'd have to check for what code reads the member-kind generally, in case any value we might want to use instead (e.g. `none`) might alter behavior.
+  * Maybe we want to replace this with something like `value_kind`, or do a better job of integrating it with X-options so that the options `variant` it's associated with just... also acts as the tag.
 * Look into renaming `lu::strings::printf_string` to something else, since it uses `printf`-style syntax but doesn't actually print anything. I don't want to burn the name "format" since that would be better-suited to something that polyfills `std::format`, should I ever bother to do that. Perhaps `lu::stringf`?
 * Work on rewriting the GCC wrappers to distinguish between pointer-style wrappers and reference-style wrappers. Do that separately and in its own folder; then gradually bring pieces of the plug-in over to rewrite.
 * Delete `lu-plugin-bitpack` and all other outdated copies of the plug-in; have just the main plug-in.
