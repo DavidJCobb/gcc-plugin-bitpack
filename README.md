@@ -70,7 +70,7 @@ It will generally be easiest to use global item IDs in memory, while the game is
 
 The highest local weapon ID is 5, requiring only 3 bits to encode; and the highest local armor ID is 3, requiring only 2 bits to encode; and so now, the total serialized size is (3 * 10) + (2 * 5) = 40 bits. The thing is, this requires being able to transform the in-memory data before it's bitpacked, and transform the bitpacked data after it's read but before it's stored.
 
-Taking advantage of this idea using a future version of this plug-in might look like this:
+Taking advantage of this idea, we can do this:
 
 ```c
 #define LU_BP_MAX(n) __attribute__((lu_bitpack_range(0, n)))
