@@ -64,7 +64,10 @@ namespace gcc_wrappers {
    }
    
    tree list_node::untyped_value_by_untyped_key(tree key) {
-      return purpose_member(key, this->_node);
+      auto pair = purpose_member(key, this->_node);
+      if (pair == NULL_TREE)
+         return NULL_TREE;
+      return TREE_VALUE(pair);
    }
    tree list_node::untyped_kv_pair_for_untyped_value(tree value) {
       return value_member(value, this->_node);

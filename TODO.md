@@ -7,6 +7,13 @@
 
 C++:
 
+* GCC wrapper rewrite
+  * Rename `node::as_raw` to `node::unwrap` and update the already-ported code to match.
+  * `list` shouldn't be a view-like wrapper. Make it a reference-like wrapper.
+  * Consider alternate names for reference-like, pointer-like, and view-like wrappers.
+    * Valued, nullable, and view? Naming convention could be `node` versus `node_nb`, and getting rid of pointers-as-allegories means we can get rid of `operator->` and the casting shenanigans it requires.
+  * Set up a small plug-in that allows us to just dump info about various identifiers using the wrappers. Treat it as a unit test. Look, also, into writing helper functions for things that are currently done in `lu-bitpack-rewrite`'s plug-in-specific codegen (e.g. printing the signature of a `FUNCTION_DECL`, as is done in `generate_functions.cpp` when we report problems with finding builtins).
+  * Once we've proofed the basic wrapper functionality, start work on porting `lu-bitpack-rewrite` to `lu-bitpack-rewrite-2`. Try to do so in a modular way: focus on the attribute handlers and the code to load global settings; then the rest of codegen. We should try to avoid getting ourselves in a situation where we have to port a couple dozen files before we can build again, even if that means straight-up *rebuilding* the codegen and settings and whatnot instead of merely porting them.
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * Look into renaming `lu::strings::printf_string` to something else, since it uses `printf`-style syntax but doesn't actually print anything. I don't want to burn the name "format" since that would be better-suited to something that polyfills `std::format`, should I ever bother to do that. Perhaps `lu::stringf`?
 * Work on rewriting the GCC wrappers to distinguish between pointer-style wrappers and reference-style wrappers. Do that separately and in its own folder; then gradually bring pieces of the plug-in over to rewrite.
