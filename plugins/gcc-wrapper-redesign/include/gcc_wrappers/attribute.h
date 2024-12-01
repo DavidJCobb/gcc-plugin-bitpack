@@ -2,6 +2,8 @@
 #include <string_view>
 #include "lu/strings/zview.h"
 #include "gcc_wrappers/node.h"
+#include "gcc_wrappers/optional.h"
+#include "gcc_wrappers/list_node.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
@@ -58,8 +60,8 @@ namespace gcc_wrappers {
          };
       
       public:
-         attribute(identifier, list args);
-         attribute(lu::strings::zview name, list args);
+         attribute(identifier, optional_list_node args);
+         attribute(lu::strings::zview name, optional_list_node args);
       
          std::string_view name() const;
          std::string_view namespace_name() const; // i.e. `"foo"` for `[[foo::bar]]`

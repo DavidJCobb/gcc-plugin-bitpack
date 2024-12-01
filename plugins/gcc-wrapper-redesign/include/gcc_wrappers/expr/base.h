@@ -22,10 +22,10 @@ namespace gcc_wrappers::expr {
          // as possible. If `manifestly_constant_evaluated` is true, then we treat 
          // the expression as manifestly constant evaluated (i.e. evaluated in a 
          // context where C++ `std::is_constant_evaluated()` would be `true`).
-         value folded(bool manifestly_constant_evaluated = false) const;
+         optional_value folded(bool manifestly_constant_evaluated = false) const;
          
          // Returns empty if not a constant.
-         value fold_to_c_constant(
+         optional_value fold_to_c_constant(
             bool  initializer,
             bool  as_lvalue
          ) const;

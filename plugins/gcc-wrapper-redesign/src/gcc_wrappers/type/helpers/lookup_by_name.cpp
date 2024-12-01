@@ -5,7 +5,7 @@
 namespace gcc_wrappers::type {
    extern optional_base lookup_by_name(lu::strings::zview name) {
       auto id_node = identifier(name);
-      auto node    = lookup_name(id_node);
+      auto node    = lookup_name(id_node.unwrap());
       //
       // The `lookup_name` function returns a `*_DECL` node with the given 
       // identifier. However, TYPE_DECLs only exist in C when the `typedef` 
@@ -16,7 +16,7 @@ namespace gcc_wrappers::type {
          //
          // That "other approach" is to look for a "tag."
          //
-         node = identifier_global_tag(id_node);
+         node = identifier_global_tag(id_node.unwrap());
          if (node == NULL_TREE)
             return {};
       }

@@ -11,15 +11,15 @@ namespace gcc_wrappers::constant {
    }
    
    /*explicit*/ floating_point::floating_point(type::floating_point t, integer n) {
-      this->_node = build_real_from_int_cst(t.as_raw(), n.as_raw());
+      this->_node = build_real_from_int_cst(t.unwrap(), n.unwrap());
    }
 
    /*static*/ floating_point floating_point::from_string(type::floating_point type, lu::strings::zview str) {
       REAL_VALUE_TYPE raw;
-      int overflow = real_from_string(&raw, str.c_str());
+      /*int overflow =*/ real_from_string(&raw, str.c_str());
       
       // TODO: Set TREE_OVERFLOW(node) based on `overflow != 0`?
-      return floating_point::wrap(build_real(type.as_raw(), raw));
+      return floating_point::wrap(build_real(type.unwrap(), raw));
    }
    
    /*static*/ floating_point floating_point::make_infinity(type::floating_point type, bool sign) {
@@ -30,7 +30,7 @@ namespace gcc_wrappers::constant {
          real_inf(&raw);
          raw.sign = sign;
       #endif
-      return floating_point::wrap(build_real(type.as_raw(), raw));
+      return floating_point::wrap(build_real(type.unwrap(), raw));
    }
 
    bool floating_point::is_zero() const {

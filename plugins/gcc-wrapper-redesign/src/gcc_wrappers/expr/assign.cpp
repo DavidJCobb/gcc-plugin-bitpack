@@ -15,14 +15,15 @@ namespace gcc_wrappers::expr {
       
       // build_modify_expr declared in c-common.h, defined in c/c-typeck.cc
       this->_node = build_modify_expr(
-         UNKNOWN_LOCATION, // expression source location
-         dst.unwrap(),     // LHS
-         NULL_TREE,        // original type of LHS (needed if it's an enum bitfield)
-         NOP_EXPR,         // operation (e.g. PLUS_EXPR if we want to make a +=)
-         UNKNOWN_LOCATION, // RHS source location
-         src.unwrap(),     // RHS
-         NULL_TREE         // original type of RHS (needed if it's an enum)
+         UNKNOWN_LOCATION,   // expression source location
+         (tree)dst.unwrap(), // LHS
+         NULL_TREE,          // original type of LHS (needed if it's an enum bitfield)
+         NOP_EXPR,           // operation (e.g. PLUS_EXPR if we want to make a +=)
+         UNKNOWN_LOCATION,   // RHS source location
+         (tree)src.unwrap(), // RHS
+         NULL_TREE           // original type of RHS (needed if it's an enum)
       );
+      // casts needed due to `const_tree` versus `tree`
    }
    
    /*static*/ assign assign::make_with_modification(
@@ -32,15 +33,16 @@ namespace gcc_wrappers::expr {
    ) {
       return assign::wrap(
          build_modify_expr(
-            UNKNOWN_LOCATION, // expression source location
-            dst.unwrap(),     // LHS
-            NULL_TREE,        // original type of LHS (needed if it's an enum bitfield)
-            operation,        // operation (e.g. PLUS_EXPR if we want to make a +=)
-            UNKNOWN_LOCATION, // RHS source location
-            src.unwrap(),     // RHS
-            NULL_TREE         // original type of RHS (needed if it's an enum)
+            UNKNOWN_LOCATION,   // expression source location
+            (tree)dst.unwrap(), // LHS
+            NULL_TREE,          // original type of LHS (needed if it's an enum bitfield)
+            operation,          // operation (e.g. PLUS_EXPR if we want to make a +=)
+            UNKNOWN_LOCATION,   // RHS source location
+            (tree)src.unwrap(), // RHS
+            NULL_TREE           // original type of RHS (needed if it's an enum)
          )
       );
+      // casts needed due to `const_tree` versus `tree`
    }
    
    value assign::src() const {

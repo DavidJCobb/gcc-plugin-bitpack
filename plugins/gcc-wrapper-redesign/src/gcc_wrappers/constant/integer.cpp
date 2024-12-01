@@ -1,11 +1,11 @@
-#include "gcc_wrappers/expr/integer.h"
+#include "gcc_wrappers/constant/integer.h"
 #include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::constant {
    GCC_NODE_WRAPPER_BOILERPLATE(integer)
    
    /*explicit*/ integer::integer(type::integral t, int n) {
-      this->_node = build_int_cst(t.as_untyped(), n);
+      this->_node = build_int_cst(t.unwrap(), n);
    }
    
    type::integral integer::value_type() const {

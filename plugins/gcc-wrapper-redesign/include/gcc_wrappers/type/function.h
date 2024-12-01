@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/type/base.h"
-#include "gcc_wrappers/list.h"
+#include "gcc_wrappers/list_node.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::type {
@@ -14,11 +14,11 @@ namespace gcc_wrappers::type {
       public:
          template<typename... Args> requires (std::is_base_of_v<base, Args> && ...)
          function(base return_type, Args... args) {
-            return wrap(build_function_type_list( // tree.h
-               return_type.as_untyped(),
-               args.as_untyped()...,
+            this->_node = build_function_type_list( // tree.h
+               return_type.unwrap(),
+               args.unwrap()...,
                NULL_TREE
-            ));
+            );
          };
          
          base return_type() const;

@@ -1,5 +1,8 @@
 #pragma once
+#include "gcc_wrappers/decl/field.h"
+#include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/chain.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {

@@ -24,7 +24,7 @@ namespace gcc_wrappers::constant {
          HOST_WIDE_INT _to_host_wide_int() const;
       
       public:
-         explicit floating_point(type::floating_point, integer_constant);
+         explicit floating_point(type::floating_point, integer);
          
          static floating_point from_string(type::floating_point, lu::strings::zview);
          
@@ -51,8 +51,8 @@ namespace gcc_wrappers::constant {
             return (Integral) _to_host_wide_int();
          }
          
-         bool operator<(const floating_point) const;
-         bool operator==(const floating_point) const;
+         bool operator<(const floating_point&) const;
+         bool operator==(const floating_point&) const;
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(floating_point);
 }

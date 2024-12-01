@@ -2,7 +2,7 @@
 #include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::decl {
-   WRAPPED_TREE_NODE_BOILERPLATE(type_def)
+   GCC_NODE_WRAPPER_BOILERPLATE(type_def)
    
    type::optional_base type_def::declared() const {
       return TREE_TYPE(this->_node);

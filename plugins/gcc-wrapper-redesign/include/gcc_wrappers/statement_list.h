@@ -1,5 +1,6 @@
 #pragma once
 #include "gcc_wrappers/node.h"
+#include "gcc_wrappers/optional.h"
 #include <tree-iterator.h>
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
@@ -51,6 +52,8 @@ namespace gcc_wrappers {
          
          iterator begin();
          iterator end();
+         
+         bool empty() const;
          
          void append(const expr::base&);
          void append(statement_list&&);

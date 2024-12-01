@@ -30,9 +30,9 @@ namespace gcc_wrappers::expr {
                }
             }
             this->_node = build_call_expr(
-               func_decl.as_untyped(),
+               func_decl.unwrap(),
                sizeof...(Args),
-               args.as_untyped()...
+               args.unwrap()...
             );
          }
          

@@ -20,13 +20,13 @@ namespace gcc_wrappers::expr {
          GCC_NODE_WRAPPER_BOILERPLATE(return_result)
       
       public:
-         return_result(const decl::result&);
+         return_result(decl::result);
          
          // The `dst` must be a `decl::result`.
-         return_result(const expr::assign&); // MODIFY_EXPR
+         return_result(expr::assign); // MODIFY_EXPR
          
          // TODO: allow INIT_EXPR
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(return_result);
-
+}
 #include "gcc_wrappers/_node_boilerplate.undef.h"

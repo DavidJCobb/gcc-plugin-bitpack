@@ -33,7 +33,7 @@ namespace gcc_wrappers::expr {
       return type::base::wrap(TREE_TYPE(this->_node));
    }
    
-   base base::folded(bool manifestly_constant_evaluated) const {
+   optional_value base::folded(bool manifestly_constant_evaluated) const {
       if (manifestly_constant_evaluated) {
          #if GCCPLUGIN_VERSION_MAJOR >= 12
             return ::fold_init(this->_node);
@@ -45,13 +45,13 @@ namespace gcc_wrappers::expr {
             //
             auto op = TREE_OPERAND(node, 0);
             TREE_OPERAND(node, 0) = NULL_TREE;
-            return base::wrap(op);
+            return op;
          #endif
       }
-      return base::wrap(::fold(this->_node));
+      return ::fold(this->_node);
    }
    
-   base base::fold_to_c_constant(
+   optional_value base::fold_to_c_constant(
       bool initializer,
       bool as_lvalue
    ) const {
@@ -59,7 +59,7 @@ namespace gcc_wrappers::expr {
       auto expr = ::c_fully_fold(this->_node, initializer, &maybe_const, as_lvalue);
       if (!maybe_const)
          return {};
-      return base::wrap(expr);
+      return expr;
    }
    
    bool base::is_associative_operator() const {

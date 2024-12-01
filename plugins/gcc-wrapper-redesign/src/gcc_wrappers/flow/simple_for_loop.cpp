@@ -1,8 +1,8 @@
 #include "gcc_wrappers/flow/simple_for_loop.h"
 #include "gcc_wrappers/constant/integer.h"
 #include "gcc_wrappers/expr/assign.h"
+#include "gcc_wrappers/expr/declare_label.h"
 #include "gcc_wrappers/expr/go_to_label.h"
-#include "gcc_wrappers/expr/label.h"
 #include "gcc_wrappers/expr/ternary.h"
 
 namespace gcc_wrappers::flow {
@@ -48,7 +48,7 @@ namespace gcc_wrappers::flow {
       statements.append(
          this->counter.as_value().increment_pre(
             constant::integer(counter_type, this->counter_bounds.increment)
-         ).as_expr<expr::base>()
+         ).as_expr()
       );
       statements.append(expr::declare_label(this->label_condition));
       statements.append(

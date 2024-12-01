@@ -14,8 +14,8 @@ namespace gcc_wrappers::decl {
       );
    }
    
-   expr::label label::make_label_expr() {
-      return expr::label(*this);
+   expr::declare_label label::make_label_expr() {
+      return expr::declare_label(*this);
    }
    
    value label::address_of() {

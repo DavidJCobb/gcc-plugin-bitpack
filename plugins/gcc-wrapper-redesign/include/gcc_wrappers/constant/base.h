@@ -7,11 +7,11 @@
 namespace gcc_wrappers {
    namespace constant {
       class base : public value {
+         GCC_NODE_WRAPPER_BOILERPLATE(base)
          public:
             static bool raw_node_is(tree t) {
                return CONSTANT_CLASS_P(t);
             }
-            GCC_NODE_WRAPPER_BOILERPLATE(base)
          
          public:
             type::base value_type() const;

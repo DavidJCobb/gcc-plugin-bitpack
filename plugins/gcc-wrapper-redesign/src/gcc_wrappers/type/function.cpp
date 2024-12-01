@@ -1,5 +1,5 @@
 #include "gcc_wrappers/type/function.h"
-#include "gcc_helpers/gcc_version_info.h"
+#include "gcc_headers/plugin-version.h"
 #include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
@@ -37,7 +37,7 @@ namespace gcc_wrappers::type {
          return false; // unprototyped
       
       auto back = args->back();
-      if (TREE_VALUE(back.as_raw()) == void_list_node)
+      if (TREE_VALUE(back.unwrap()) == void_list_node)
          return true;
       
       return false;

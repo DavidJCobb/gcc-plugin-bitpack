@@ -5,11 +5,11 @@
 namespace gcc_wrappers::expr {
    GCC_NODE_WRAPPER_BOILERPLATE(declare_label)
    
-   label::label(decl::label decl) {
+   declare_label::declare_label(decl::label decl) {
       this->_node = build1(LABEL_EXPR, void_type_node, decl.unwrap());
    }
    
-   decl::label label::declaration() const {
+   decl::label declare_label::declaration() const {
       return decl::label::wrap(LABEL_EXPR_LABEL(this->_node));
    }
 }

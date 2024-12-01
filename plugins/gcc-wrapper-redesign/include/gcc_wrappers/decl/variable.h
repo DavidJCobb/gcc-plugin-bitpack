@@ -21,19 +21,16 @@ namespace gcc_wrappers::decl {
       public:
          variable(
             lu::strings::zview identifier_name,
-            const type::base&  value_type,
+            type::base&        value_type,
             location_t         source_location = UNKNOWN_LOCATION
          );
          variable(
-            identifier         identifier_node,
-            const type::base&  value_type,
-            location_t         source_location = UNKNOWN_LOCATION
+            identifier  identifier_node,
+            type::base& value_type,
+            location_t  source_location = UNKNOWN_LOCATION
          );
          
          expr::declare make_declare_expr();
-         
-         value initial_value() const;
-         void set_initial_value(value);
          
          bool is_defined_elsewhere() const;
          void set_is_defined_elsewhere(bool);

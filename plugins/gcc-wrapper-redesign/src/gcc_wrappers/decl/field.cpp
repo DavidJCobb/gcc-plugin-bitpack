@@ -2,7 +2,7 @@
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/type/container.h"
 #include "gcc_wrappers/scope.h"
-#include "gcc_wrappers/_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <cassert>
 #include <c-family/c-common.h> // DECL_C_BIT_FIELD
 #include <diagnostic.h> // debugging
@@ -29,7 +29,7 @@
 
 
 namespace gcc_wrappers::decl {
-   WRAPPED_TREE_NODE_BOILERPLATE(field)
+   GCC_NODE_WRAPPER_BOILERPLATE(field)
    
    type::optional_container field::member_of() const {
       auto scope = this->context();
@@ -102,7 +102,7 @@ namespace gcc_wrappers::decl {
          container = {};
          if (!type_decl)
             break;
-         auto context = type_decl.context();
+         auto context = type_decl->context();
          if (!context)
             break;
          switch (context->code()) {

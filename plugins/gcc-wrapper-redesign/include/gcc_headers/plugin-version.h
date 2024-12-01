@@ -8,5 +8,6 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <plugin-version.h>
 #pragma GCC diagnostic pop

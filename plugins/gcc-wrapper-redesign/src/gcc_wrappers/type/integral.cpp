@@ -37,6 +37,6 @@ namespace gcc_wrappers::type {
    }
    
    bool integral::can_hold_value(const constant::integer c) const {
-      return int_fits_type_p(c.as_raw(), this->as_raw());
+      return int_fits_type_p(c.unwrap(), this->unwrap());
    }
 }

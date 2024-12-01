@@ -11,7 +11,7 @@ namespace gcc_wrappers::constant {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == STRING_CST;
          }
-         GCC_NODE_WRAPPER_BOILERPLATE(string_constant)
+         GCC_NODE_WRAPPER_BOILERPLATE(string)
          
       public:
          string(const std::string&);
@@ -34,6 +34,7 @@ namespace gcc_wrappers::constant {
          //
          // If the input type is empty, we default to `char` (and we assert 
          // in that case that the built-in type nodes are actually ready).
+         ::gcc_wrappers::value to_string_literal();
          ::gcc_wrappers::value to_string_literal(type::base character_type);
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(string);

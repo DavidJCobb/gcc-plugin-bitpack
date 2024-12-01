@@ -1,4 +1,5 @@
 #include "gcc_wrappers/constant/string.h"
+#include <cassert>
 #include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::constant {
@@ -20,12 +21,12 @@ namespace gcc_wrappers::constant {
    }
    
    size_t string::length() const {
-      auto v = this->terminated_length();
+      auto v = this->size();
       assert(v > 0);
       --v;
       return v;
    }
-   size_t string::terminated_length() const {
+   size_t string::size() const {
       return TREE_STRING_LENGTH(this->_node);
    }
    
@@ -38,15 +39,15 @@ namespace gcc_wrappers::constant {
       return TREE_TYPE(this->_node) != NULL_TREE;
    }
    
+   value string::to_string_literal() {
+      assert(char_type_node != NULL_TREE);
+      return this->to_string_literal(type::base::wrap(char_type_node));
+   }
    value string::to_string_literal(type::base character_type) {
-      if (character_type.empty()) {
-         character_type.set_from_untyped(char_type_node);
-         assert(!character_type.empty());
-      }
       {
          auto prior = TREE_TYPE(this->_node);
-         if (prior != NULL_TREE && prior != character_type.as_untyped()) {
-            auto data  = this->value_view();
+         if (prior != NULL_TREE && prior != character_type.unwrap()) {
+            auto data  = this->value();
             auto clone = string(data.data(), data.size() + 1);
             return clone.to_string_literal(character_type);
          }
@@ -58,8 +59,8 @@ namespace gcc_wrappers::constant {
       // Based on `build_string_literal`:
       //
       
-      tree index  = build_index_type(size_int(this->terminated_length()));
-      tree e_type = build_type_variant(character_type.as_untyped(), 1, 0);
+      tree index  = build_index_type(size_int(this->size()));
+      tree e_type = build_type_variant(character_type.unwrap(), 1, 0);
       tree a_type = build_array_type(e_type, index);
       
       TREE_TYPE(this->_node)     = a_type;
@@ -83,6 +84,6 @@ namespace gcc_wrappers::constant {
          )
       );
       
-      return value::wrap(literal);
+      return ::gcc_wrappers::value::wrap(literal);
    }
 }

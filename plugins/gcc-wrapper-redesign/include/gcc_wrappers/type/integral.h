@@ -1,5 +1,5 @@
 #pragma once
-#include "gcc_wrappers/type/numeric.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::constant {
@@ -7,7 +7,7 @@ namespace gcc_wrappers::constant {
 }
 
 namespace gcc_wrappers::type {
-   class integral : public numeric {
+   class integral : public base {
       public:
          static bool raw_node_is(tree t) {
             switch (TREE_CODE(t)) {

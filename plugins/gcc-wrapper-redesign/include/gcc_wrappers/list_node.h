@@ -11,7 +11,7 @@ namespace gcc_wrappers {
          GCC_NODE_WRAPPER_BOILERPLATE(list_node)
          
          class iterator {
-            friend list;
+            friend list_node;
             protected:
                iterator(optional_node);
                
@@ -27,7 +27,7 @@ namespace gcc_wrappers {
          };
          
       public:
-         list(); // construct a pair node with a null key and value
+         list_node(); // construct a pair node with a null key and value
          
          iterator begin();
          iterator end();
@@ -62,11 +62,11 @@ namespace gcc_wrappers {
          //
          
          void append(optional_node key, optional_node value);
-         void concat(list&&);
+         void concat(list_node&&);
          void prepend(optional_node key, optional_node value);
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(list_node);
 }
 
 #include "gcc_wrappers/_node_boilerplate.undef.h"
-#include "gcc_wrappers/list.inl"
+#include "gcc_wrappers/list_node.inl"

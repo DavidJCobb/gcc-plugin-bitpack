@@ -2,6 +2,7 @@
 #include <string_view>
 #include "gcc_wrappers/node.h"
 #include "gcc_wrappers/optional.h"
+#include "gcc_wrappers/attribute_list.h"
 #include "gcc_wrappers/scope.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 

@@ -7,11 +7,11 @@ namespace gcc_wrappers {
    namespace decl {
       class base;
       class function;
-      using function_ptr = node_pointer_template<function>;
+      DECLARE_GCC_OPTIONAL_NODE_WRAPPER(function);
    }
    namespace type {
       class base;
-      using base_ptr = node_pointer_template<base>;
+      DECLARE_GCC_OPTIONAL_NODE_WRAPPER(base);
    }
 }
 
@@ -25,7 +25,7 @@ namespace gcc_wrappers {
          GCC_NODE_WRAPPER_BOILERPLATE(scope)
          
       public:
-         scope_ptr containing_scope();
+         optional_scope containing_scope();
          
          bool is_declaration() const;
          bool is_file_scope() const;
@@ -36,10 +36,10 @@ namespace gcc_wrappers {
          type::base as_type();
          
          // Returns self, the nearest enclosing function, or nullptr.
-         decl::function_ptr nearest_function();
+         decl::optional_function nearest_function();
          
          // Returns self, the nearest enclosing type, or nullptr.
-         type::base_ptr nearest_type();
+         type::optional_base nearest_type();
    };
 }
 

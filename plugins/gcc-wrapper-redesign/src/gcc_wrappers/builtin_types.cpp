@@ -7,10 +7,10 @@
 namespace gcc_wrappers {
    builtin_types::builtin_types()
    :
-      basic_bool(
-         assert(boolean_type_node != NULL_TREE && "You must be careful not to create this singleton too early, i.e. before GCC has initialized the built-in C types."),
-         type::base::wrap(boolean_type_node)
-      ),
+      basic_bool([]() {
+         assert(boolean_type_node != NULL_TREE && "You must be careful not to create this singleton too early, i.e. before GCC has initialized the built-in C types.");
+         return type::base::wrap(boolean_type_node);
+      }()),
       basic_char(type::base::wrap(char_type_node)),
       basic_int (type::integral::wrap(integer_type_node)),
       basic_void(type::base::wrap(void_type_node)),

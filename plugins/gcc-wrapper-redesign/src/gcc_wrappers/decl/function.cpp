@@ -20,15 +20,17 @@ namespace gcc_wrappers::decl {
    GCC_NODE_WRAPPER_BOILERPLATE(function)
    
    void function::_make_decl_arguments_from_type() {
-      size_t i = 0;
-      
       auto args = this->function_type().arguments();
-      tree prev = NULL_TREE;
-      for(auto pair : args) {
-         if (pair.second == NULL_TREE) {
+      if (!args)
+         return;
+      
+      size_t i    = 0;
+      tree   prev = NULL_TREE;
+      for(auto pair : *args) {
+         if (!pair.second) {
             break;
          }
-         if (TREE_CODE(pair.second) == VOID_TYPE) {
+         if (TREE_CODE(pair.second.unwrap()) == VOID_TYPE) {
             //
             // Sentinel indicating that this is not a varargs function.
             //
@@ -39,36 +41,35 @@ namespace gcc_wrappers::decl {
          // null IDENTIFIER_NODE when dumping function info elsewhere.
          auto arg_name = lu::stringf("__arg_%u", i++);
          
-         auto p = param::from_untyped(build_decl(
+         auto p = param::wrap(build_decl(
             UNKNOWN_LOCATION,
             PARM_DECL,
             get_identifier(arg_name.c_str()),
-            pair.second
+            pair.second.unwrap()
          ));
-         DECL_ARG_TYPE(p.as_untyped()) = pair.second;
-         DECL_CONTEXT(p.as_untyped()) = this->_node;
+         DECL_ARG_TYPE(p.unwrap()) = pair.second.unwrap();
+         DECL_CONTEXT(p.unwrap()) = this->_node;
          if (prev == NULL_TREE) {
-            DECL_ARGUMENTS(this->_node) = p.as_untyped();
+            DECL_ARGUMENTS(this->_node) = p.unwrap();
          } else {
-            TREE_CHAIN(prev) = p.as_untyped();
+            TREE_CHAIN(prev) = p.unwrap();
          }
-         prev = p.as_untyped();
+         prev = p.unwrap();
       }
    }
    
-   function::function(const char* name, const type::function& function_type) {
+   function::function(lu::strings::zview name, type::function& function_type) {
       //
       // Create the node with GCC's defaults (defined elsewhere, extern, 
       // artificial, nothrow).
       //
-      this->_node = build_fn_decl(name, function_type.as_untyped());
+      this->_node = build_fn_decl(name.c_str(), function_type.unwrap());
       //
       // NOTE: That doesn't automatically build DECL_ARGUMENTS. We need 
       // to do so manually.
       //
       this->_make_decl_arguments_from_type();
    }
-   function::function(const std::string& name, const type::function& function_type) : function(name.c_str(), function_type) {}
    
    type::function function::function_type() const {
       return type::function::wrap(TREE_TYPE(this->_node));
@@ -165,9 +166,9 @@ namespace gcc_wrappers::decl {
    }
    
    void function::introduce_to_current_scope() {
-      auto prior = lookup_name(DECL_NAME(this->as_raw()));
+      auto prior = lookup_name(DECL_NAME(this->unwrap()));
       if (prior == NULL_TREE) {
-         pushdecl(this->as_raw());
+         pushdecl(this->unwrap());
       }
    }
    void function::introduce_to_global_scope() {
@@ -196,12 +197,12 @@ namespace gcc_wrappers::decl {
       function(_modifiable_subconstruct_tag{})
    {
       this->_node = n;
-      assert(node_is(n));
+      assert(raw_node_is(n));
    }
    
    void function_with_modifiable_body::set_result_decl(result decl) {
-      DECL_RESULT(this->_node) = decl.as_raw();
-      DECL_CONTEXT(decl.as_raw()) = this->_node;
+      DECL_RESULT(this->_node) = decl.unwrap();
+      DECL_CONTEXT(decl.unwrap()) = this->_node;
    }
    
    void function_with_modifiable_body::set_root_block(expr::local_block& lb) {
@@ -230,9 +231,9 @@ namespace gcc_wrappers::decl {
       //       BLOCK_SUPERCONTEXT(block)
       //          The parent BLOCK or FUNCTION_DECL node.
       //
-      gcc_assert(BIND_EXPR_BLOCK(lb.as_raw()) == NULL_TREE && "This local block seems to already be in use elsewhere.");
+      gcc_assert(BIND_EXPR_BLOCK(lb.unwrap()) == NULL_TREE && "This local block seems to already be in use elsewhere.");
       
-      DECL_SAVED_TREE(this->_node) = lb.as_raw();
+      DECL_SAVED_TREE(this->_node) = lb.unwrap();
       TREE_STATIC(this->_node) = 1;
       
       DECL_CONTEXT(DECL_RESULT(this->_node)) = this->_node;
@@ -242,7 +243,7 @@ namespace gcc_wrappers::decl {
       // similar as appropriate on local declarations within this function.
       //
       
-      tree _root_ut = lb.as_untyped();
+      tree _root_ut = lb.unwrap();
       //
       struct block_to_be {
          tree bind_expr_node = NULL_TREE;
@@ -269,7 +270,7 @@ namespace gcc_wrappers::decl {
          nullptr
       );
       assert(!seen_blocks.empty());
-      assert(seen_blocks.front().bind_expr_node == lb.as_untyped());
+      assert(seen_blocks.front().bind_expr_node == lb.unwrap());
       //
       // Next, walk the subtrees for each local block, but not sub-sub-trees. 
       // That is: if local block A contains local block B, then when we walk 
@@ -286,10 +287,11 @@ namespace gcc_wrappers::decl {
       //
       for(auto& seen : seen_blocks) {
          struct _inner_link_state {
-            function containing_function;
-            tree     parent_bind_expr    = NULL_TREE;
-            tree     prev_child_block    = NULL_TREE;
-            tree     prev_variable_decl  = NULL_TREE;
+            optional_function containing_function;
+            //
+            tree parent_bind_expr    = NULL_TREE;
+            tree prev_child_block    = NULL_TREE;
+            tree prev_variable_decl  = NULL_TREE;
          } state;
          state.containing_function = *this;
          state.parent_bind_expr    = seen.bind_expr_node;
@@ -337,9 +339,9 @@ namespace gcc_wrappers::decl {
                   if (TREE_CODE(decl) == VAR_DECL) {
                      assert((
                         DECL_CONTEXT(decl) == NULL_TREE ||
-                        DECL_CONTEXT(decl) == state.containing_function.as_untyped()
+                        DECL_CONTEXT(decl) == state.containing_function.unwrap()
                      ) && "This VAR_DECL, tied to a DECL_EXPR in this function, must not already belong to a different function.");
-                     DECL_CONTEXT(decl) = state.containing_function.as_untyped();
+                     DECL_CONTEXT(decl) = state.containing_function.unwrap();
                      
                      assert(TREE_CHAIN(decl) == NULL_TREE && "This VAR_DECL must not already be linked to a BLOCK's variables. If it is, then the same VAR_DECL may have been declared in multiple functions, or multiple times in the same function, by mistake.");
                      if (state.prev_variable_decl != NULL_TREE) {
@@ -360,9 +362,9 @@ namespace gcc_wrappers::decl {
                   assert(TREE_CODE(decl) == LABEL_DECL && "A LABEL_EXPR must not be malformed.");
                   assert((
                      DECL_CONTEXT(decl) == NULL_TREE ||
-                     DECL_CONTEXT(decl) == state.containing_function.as_untyped()
+                     DECL_CONTEXT(decl) == state.containing_function.unwrap()
                   ) && "This LABEL_DECL must not already belong to a different function than the one it's currently being used in.");
-                  DECL_CONTEXT(decl) = state.containing_function.as_untyped();
+                  DECL_CONTEXT(decl) = state.containing_function.unwrap();
                   return NULL_TREE;
                }
                
@@ -410,8 +412,8 @@ namespace gcc_wrappers::decl {
       
       #ifndef NDEBUG
       {
-         tree fd  = this->as_raw();
-         tree lbn = lb.as_raw();
+         tree fd  = this->unwrap();
+         tree lbn = lb.unwrap();
          walk_tree(
             &lbn,
             [](tree* current_ptr, int* walk_subtrees, void* data) -> tree {

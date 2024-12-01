@@ -44,13 +44,11 @@ namespace gcc_wrappers {
    void statement_list::_append(tree t) {
       auto it = tsi_last(this->_node);
       tsi_link_after(&it, t, TSI_CONTINUE_LINKING);
-      assert(!empty());
    }
    void statement_list::_prepend(tree t) {
       _require_not_moved_from();
       auto it = tsi_start(this->_node);
       tsi_link_after(&it, t, TSI_CONTINUE_LINKING);
-      assert(!empty());
    }
    
    statement_list::statement_list() {
@@ -77,22 +75,22 @@ namespace gcc_wrappers {
    }
    
    void statement_list::append(const expr::base& expr) {
-      _append(expr.as_raw());
+      _append((tree)expr.unwrap());
    }
    void statement_list::append(statement_list&& other) {
-      _append(other.as_raw());;
+      _append((tree)other.unwrap());;
       other._node = NULL_TREE;
    }
    void statement_list::prepend(const expr::base& expr) {
-      _prepend(expr.as_raw());
+      _prepend((tree)expr.unwrap());
    }
    void statement_list::prepend(statement_list&& other) {
-      _prepend(other.as_raw());
+      _prepend((tree)other.unwrap());
       other._node = NULL_TREE;
    }
    
    void statement_list::append_untyped(node expr) {
       _require_not_moved_from();
-      _append(expr.as_raw());
+      _append((tree)expr.unwrap());
    }
 }

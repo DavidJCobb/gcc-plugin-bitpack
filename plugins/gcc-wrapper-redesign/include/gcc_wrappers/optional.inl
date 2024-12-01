@@ -27,7 +27,7 @@ namespace gcc_wrappers {
    constexpr CLASS_NAME::optional(const optional<Subclass>& o)
       requires std::is_base_of_v<typename CLASS_NAME::value_type, Subclass>
    {
-      this->_set_tree(o.unwrap());
+      this->_set_tree((tree)o.unwrap()); // unwrapped may be const
    }
    
    // Move-construct from optional.
@@ -36,7 +36,7 @@ namespace gcc_wrappers {
    constexpr CLASS_NAME::optional(optional<Subclass>&& o) noexcept
       requires std::is_base_of_v<typename CLASS_NAME::value_type, Subclass>
    {
-      this->_set_tree(o.unwrap());
+      this->_set_tree((tree)o.unwrap()); // unwrapped may be const
       o._tree = NULL_TREE;
    }
    
@@ -46,7 +46,7 @@ namespace gcc_wrappers {
    constexpr CLASS_NAME::optional(const Subclass& o)
       requires std::is_base_of_v<typename CLASS_NAME::value_type, Subclass>
    {
-      this->_set_tree(o.unwrap());
+      this->_set_tree((tree)o.unwrap()); // unwrapped may be const
    }
    
    // Construct from bare node pointer.

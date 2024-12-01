@@ -1,9 +1,9 @@
 #pragma once
-#include "gcc_wrappers/type/numeric.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::type {
-   class floating_point : public numeric {
+   class floating_point : public base {
       public:
          static bool node_is(tree t) {
             return TREE_CODE(t) != REAL_TYPE;

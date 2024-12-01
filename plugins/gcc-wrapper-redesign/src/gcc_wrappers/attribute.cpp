@@ -3,8 +3,10 @@
 #include <stdexcept>
 #include <stringpool.h> // get_identifier, and dependency for <attribs.h>
 #include <attribs.h>
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers {
+   GCC_NODE_WRAPPER_BOILERPLATE(attribute)
    
    //
    // attribute::arguments_wrapper::iterator
@@ -110,21 +112,19 @@ namespace gcc_wrappers {
    // attribute
    //
    
-   attribute::attribute(identifier name, list args) {
-      auto raw = tree_cons(
+   attribute::attribute(identifier name, optional_list_node args) {
+      this->_node = tree_cons(
          name.unwrap(),
-         args.empty() ? NULL_TREE : args.front().unwrap(),
+         args.unwrap(),
          NULL_TREE
       );
-      return wrap(raw);
    }
-   attribute::attribute(lu::strings::zview name, list args) {
-      auto raw = tree_cons(
+   attribute::attribute(lu::strings::zview name, optional_list_node args) {
+      this->_node = tree_cons(
          get_identifier(name.c_str()),
-         args.empty() ? NULL_TREE : args.front().unwrap(),
+         args.unwrap(),
          NULL_TREE
       );
-      return wrap(raw);
    }
    
    std::string_view attribute::name() const {

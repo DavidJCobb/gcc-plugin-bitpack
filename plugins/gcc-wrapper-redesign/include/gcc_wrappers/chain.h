@@ -32,6 +32,7 @@ namespace gcc_wrappers {
       public:
          chain() {}
          chain(node);
+         chain(tree);
          
          template<typename Wrapper>
          chain(const optional<Wrapper>& o) : _node(o) {}

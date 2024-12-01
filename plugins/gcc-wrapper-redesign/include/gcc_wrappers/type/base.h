@@ -42,8 +42,8 @@ namespace gcc_wrappers::type {
       public:
          // Equality comparison. Use `is_same` for identity.
          bool operator==(const base) const;
-         bool is_equal(const base) const {
-            return *this == base;
+         bool is_equal(const base o) const {
+            return operator==(o);
          }
          
          std::string name() const;

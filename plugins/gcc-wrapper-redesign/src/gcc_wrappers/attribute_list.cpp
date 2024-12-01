@@ -10,14 +10,14 @@ namespace gcc_wrappers {
    // attribute_list::iterator
    //
    
-   attribute_list::iterator::iterator(node_ptr n) : _node(n) {}
+   attribute_list::iterator::iterator(optional_node n) : _node(n) {}
    
    attribute attribute_list::iterator::operator*() {
       return attribute::wrap(this->_node.unwrap());
    }
 
    attribute_list::iterator& attribute_list::iterator::operator++() {
-      assert(this->_node != nullptr);
+      assert(this->_node);
       this->_node = TREE_CHAIN(this->_node.unwrap());
       return *this;
    }
@@ -33,8 +33,8 @@ namespace gcc_wrappers {
    
    bool attribute_list::operator==(const attribute_list other) const noexcept {
       if (this->empty())
-         return other->empty();
-      else if (other->empty())
+         return other.empty();
+      else if (other.empty())
          return false;
       return attribute_list_equal(this->unwrap(), other.unwrap());
    }
@@ -42,7 +42,7 @@ namespace gcc_wrappers {
    bool attribute_list::contains(const attribute attr) const {
       if (empty())
          return false;
-      return attribute_list_contained(this->_head->unwrap(), attr.as_untyped());
+      return attribute_list_contained(this->_head->unwrap(), attr.unwrap());
    }
    bool attribute_list::empty() const {
       return !this->_head;
@@ -71,21 +71,21 @@ namespace gcc_wrappers {
       return std::as_const(*this).first_attribute_with_prefix(prefix);
    }
    const optional_attribute attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) const {
-      return lookup_attribute_by_prefix(prefix.c_str(), this->_head.unwrap());
+      return lookup_attribute_by_prefix(prefix.c_str(), this->unwrap());
    }
    
    optional_attribute attribute_list::get_attribute(lu::strings::zview name) {
       return std::as_const(*this).get_attribute(name);
    }
    const optional_attribute attribute_list::get_attribute(lu::strings::zview name) const {
-      return lookup_attribute(name.c_str(), this->_head.unwrap());
+      return lookup_attribute(name.c_str(), this->unwrap());
    }
    
    bool attribute_list::has_attribute(lu::strings::zview name) const {
       if (empty())
          return false;
       auto attr = this->get_attribute(name);
-      return attr != nullptr;
+      return (bool)attr;
    }
    bool attribute_list::has_attribute(tree id_node) const {
       assert(id_node != NULL_TREE);
@@ -98,6 +98,6 @@ namespace gcc_wrappers {
    void attribute_list::remove_attribute(lu::strings::zview name) {
       if (empty())
          return;
-      this->_head = ::remove_attribute(name.c_str(), this->_head.unwrap());
+      this->_head = ::remove_attribute(name.c_str(), this->unwrap());
    }
 }

@@ -8,8 +8,8 @@ namespace gcc_wrappers::type {
    bool pointer::compatible_address_space_with(pointer other) const {
       auto target_a = this->remove_pointer();
       auto target_b = other.remove_pointer();
-      auto as_a = TYPE_ADDR_SPACE(target_a.as_raw());
-      auto as_b = TYPE_ADDR_SPACE(target_b.as_raw());
+      auto as_a = TYPE_ADDR_SPACE(target_a.unwrap());
+      auto as_b = TYPE_ADDR_SPACE(target_b.unwrap());
       if (as_a == as_b)
          return true;
       
@@ -28,8 +28,8 @@ namespace gcc_wrappers::type {
       auto main_a = this->remove_pointer().main_variant();
       auto main_b = other.remove_pointer().main_variant();
       
-      auto strip_a  = base::from_untyped(strip_array_types(main_a.as_raw()));
-      auto strip_b  = base::from_untyped(strip_array_types(main_b.as_raw()));
+      auto strip_a  = base::wrap(strip_array_types(main_a.unwrap()));
+      auto strip_b  = base::wrap(strip_array_types(main_b.unwrap()));
       //
       if (strip_a.is_atomic())
          main_a = main_a.with_all_qualifiers_stripped().add_atomic();

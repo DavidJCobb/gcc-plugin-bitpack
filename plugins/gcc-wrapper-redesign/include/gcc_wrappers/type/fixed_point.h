@@ -1,9 +1,9 @@
 #pragma once
-#include "gcc_wrappers/type/numeric.h"
+#include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::type {
-   class fixed_point : public numeric {
+   class fixed_point : public base {
       public:
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) != FIXED_POINT_TYPE;

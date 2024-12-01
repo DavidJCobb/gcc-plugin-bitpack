@@ -11,7 +11,7 @@ namespace gcc_wrappers::constant {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == INTEGER_CST;
          }
-         GCC_NODE_WRAPPER_BOILERPLATE(integer_constant)
+         GCC_NODE_WRAPPER_BOILERPLATE(integer)
          
          using host_wide_int_type  = HOST_WIDE_INT;
          using host_wide_uint_type = std::make_unsigned_t<host_wide_int_type>;
@@ -30,8 +30,8 @@ namespace gcc_wrappers::constant {
          
          int sign() const;
          
-         bool operator<(const integer) const;
-         bool operator==(const integer) const;
+         bool operator<(const integer&) const;
+         bool operator==(const integer&) const;
          
          bool operator==(host_wide_uint_type) const;
    };

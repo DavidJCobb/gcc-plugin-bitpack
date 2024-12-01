@@ -11,7 +11,11 @@
 #include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/pointer.h"
 
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
+
 namespace gcc_wrappers {
+   GCC_NODE_WRAPPER_BOILERPLATE(value)
+   
    /*static*/ bool value::raw_node_is(tree n) {
       if (decl::base_value::raw_node_is(n))
          return true;
@@ -20,11 +24,11 @@ namespace gcc_wrappers {
       return false;
    }
    
-   decl::base_value as_decl() const {
+   decl::base_value value::as_decl() const {
       assert(decl::base_value::raw_node_is(this->_node));
       return decl::base_value::wrap(this->_node);
    }
-   expr::base as_expr() const {
+   expr::base value::as_expr() const {
       assert(expr::base::raw_node_is(this->_node));
       return expr::base::wrap(this->_node);
    }
@@ -68,7 +72,7 @@ namespace gcc_wrappers {
       return value::wrap(build_array_ref(
          UNKNOWN_LOCATION,
          this->_node,
-         index.as_untyped()
+         index.unwrap()
       ));
    }
    
@@ -91,7 +95,7 @@ namespace gcc_wrappers {
       assert(vt.is_pointer()); // TODO: allow reference types too
       return value::wrap(build1(
          INDIRECT_REF,
-         this->value_type().remove_pointer().as_untyped(),
+         this->value_type().remove_pointer().unwrap(),
          this->_node
       ));
    }
@@ -175,6 +179,8 @@ namespace gcc_wrappers {
                return true;
             case COMPLEX_TYPE:
                return true;
+            default:
+               break;
          }
          return false;
       }
@@ -213,6 +219,8 @@ namespace gcc_wrappers {
                   return false;
                }
                return true;
+            default:
+               break;
          }
          return false;
       }
@@ -229,6 +237,8 @@ namespace gcc_wrappers {
             case BITINT_TYPE:
             #endif
                return true;
+            default:
+               break;
          }
          return false;
       }
@@ -246,6 +256,8 @@ namespace gcc_wrappers {
                   return false;
                }
                return true;
+            default:
+               break;
          }
          return false;
          
@@ -253,27 +265,27 @@ namespace gcc_wrappers {
       
       value value::convert_to_enum(type::enumeration desired) {
          assert(convertible_to_enum(desired));
-         auto raw = ::convert_to_integer(desired.as_untyped(), this->_node);
+         auto raw = ::convert_to_integer(desired.unwrap(), this->_node);
          assert(raw != error_mark_node); // if this fails, update the `convertible_to...` func
          return value::wrap(raw);
       }
       value value::convert_to_floating_point(type::floating_point desired) {
          assert(convertible_to_floating_point());
-         auto raw = ::convert_to_real(desired.as_untyped(), this->_node);
+         auto raw = ::convert_to_real(desired.unwrap(), this->_node);
          assert(raw != error_mark_node); // if this fails, update the `convertible_to...` func
          return value::wrap(raw);
       }
       value value::convert_to_integer(type::integral desired) {
          assert(desired.is_integer());
          assert(convertible_to_integer(desired));
-         auto raw = ::convert_to_integer(desired.as_untyped(), this->_node); 
+         auto raw = ::convert_to_integer(desired.unwrap(), this->_node); 
          assert(raw != error_mark_node); // if this fails, update the `convertible_to...` func
          return value::wrap(raw);
       }
       value value::convert_to_pointer(type::pointer desired) {
          assert(convertible_to_pointer());
          value out;
-         auto raw = ::convert_to_pointer(desired.as_untyped(), this->_node);
+         auto raw = ::convert_to_pointer(desired.unwrap(), this->_node);
          assert(raw != error_mark_node); // if this fails, update the `convertible_to...` func
          return value::wrap(raw);
       }
@@ -303,7 +315,7 @@ namespace gcc_wrappers {
          if (INDIRECT_REF_P(this->_node)) {
             return value::wrap(
                convert(
-                  pointer_type.as_untyped(),
+                  pointer_type.unwrap(),
                   TREE_OPERAND(this->_node, 0)
                )
             );
@@ -311,7 +323,7 @@ namespace gcc_wrappers {
          
          return value::wrap(
             convert(
-               pointer_type.as_untyped(),
+               pointer_type.unwrap(),
                build_unary_op(
                   UNKNOWN_LOCATION,
                   ADDR_EXPR,
@@ -325,7 +337,7 @@ namespace gcc_wrappers {
       value value::conversion_sans_bytecode(type::base desired) {
          return value::wrap(build1(
             NOP_EXPR,
-            desired.as_untyped(),
+            desired.unwrap(),
             this->_node
          ));
       }
@@ -345,7 +357,7 @@ namespace gcc_wrappers {
       assert(vt_b.is_integer() || vt_b.is_floating_point());
       
       auto result_type = boolean_type_node;
-      if (vt_t == vt_b && vt_t == type::base::from_untyped(integer_type_node)) {
+      if (vt_t == vt_b && vt_t == type::base::wrap(integer_type_node)) {
          result_type = integer_type_node;
       }
       
@@ -383,7 +395,7 @@ namespace gcc_wrappers {
       assert(vt.is_integer() || vt.is_floating_point());
       return value::wrap(build1(
          expr_type,
-         this->value_type().as_untyped(),
+         this->value_type().unwrap(),
          this->_node
       ));
    }
@@ -408,7 +420,7 @@ namespace gcc_wrappers {
       
       return value::wrap(build2(
          expr_type,
-         vt_t.as_untyped(),
+         vt_t.unwrap(),
          this->_node,
          arg._node
       ));
@@ -421,7 +433,7 @@ namespace gcc_wrappers {
       
       return value::wrap(build2(
          expr_type,
-         vt.as_untyped(),
+         vt.unwrap(),
          this->_node,
          other._node
       ));
@@ -441,7 +453,7 @@ namespace gcc_wrappers {
          
          return value::wrap(build1(
             CONJ_EXPR,
-            this->value_type().as_untyped(),
+            this->value_type().unwrap(),
             this->_node
          ));
       }
@@ -508,7 +520,7 @@ namespace gcc_wrappers {
          
          return value::wrap(build2(
             TRUNC_MOD_EXPR,
-            vt.as_untyped(),
+            vt.unwrap(),
             this->_node,
             other._node
          ));
@@ -528,7 +540,7 @@ namespace gcc_wrappers {
             
             return value::wrap(build2(
                RDIV_EXPR,
-               vt_a.as_untyped(),
+               vt_a.unwrap(),
                this->_node,
                arg._node
             ));
@@ -555,7 +567,7 @@ namespace gcc_wrappers {
             
             return value::wrap(build2(
                code,
-               vt_a.as_untyped(),
+               vt_a.unwrap(),
                this->_node,
                arg._node
             ));
@@ -591,7 +603,7 @@ namespace gcc_wrappers {
          assert(vt.is_integer());
          return value::wrap(build1(
             BIT_NOT_EXPR,
-            vt.as_untyped(),
+            vt.unwrap(),
             this->_node
          ));
       }
@@ -624,7 +636,7 @@ namespace gcc_wrappers {
             code,
             truthvalue_type_node,
             c_common_truthvalue_conversion(UNKNOWN_LOCATION, this->_node),
-            c_common_truthvalue_conversion(UNKNOWN_LOCATION, other.as_untyped())
+            c_common_truthvalue_conversion(UNKNOWN_LOCATION, other.unwrap())
          ));
       }
       value value::logical_or(value other, bool short_circuit) {
@@ -634,7 +646,7 @@ namespace gcc_wrappers {
             code,
             truthvalue_type_node,
             c_common_truthvalue_conversion(UNKNOWN_LOCATION, this->_node),
-            c_common_truthvalue_conversion(UNKNOWN_LOCATION, other.as_untyped())
+            c_common_truthvalue_conversion(UNKNOWN_LOCATION, other.unwrap())
          ));
       }
       value value::logical_xor(value other) {
@@ -642,7 +654,7 @@ namespace gcc_wrappers {
             TRUTH_XOR_EXPR,
             truthvalue_type_node,
             c_common_truthvalue_conversion(UNKNOWN_LOCATION, this->_node),
-            c_common_truthvalue_conversion(UNKNOWN_LOCATION, other.as_untyped())
+            c_common_truthvalue_conversion(UNKNOWN_LOCATION, other.unwrap())
          ));
       }
    //#pragma endregion

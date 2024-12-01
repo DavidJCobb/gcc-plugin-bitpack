@@ -15,11 +15,4 @@ namespace gcc_wrappers {
    const std::string_view node::code_name() const noexcept {
       return get_tree_code_name(TREE_CODE(this->_node));
    }
-   
-   const_tree node::unwrap() const {
-      return this->_node;
-   }
-   tree node::unwrap()  {
-      return this->_node;
-   }
 }

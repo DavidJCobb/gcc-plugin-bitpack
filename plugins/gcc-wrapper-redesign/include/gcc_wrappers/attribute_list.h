@@ -1,10 +1,12 @@
 #pragma once
 #include "lu/strings/zview.h"
 #include "gcc_wrappers/node.h"
+#include "gcc_wrappers/optional.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    class attribute;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(attribute);
 }
 
 namespace gcc_wrappers {
@@ -13,7 +15,14 @@ namespace gcc_wrappers {
          optional_node _head;
       
       public:
-         GCC_NODE_WRAPPER_BOILERPLATE(attribute_list)
+         static attribute_list wrap(tree t) {
+            attribute_list out;
+            out._head = t;
+            return out;
+         }
+         tree unwrap() const {
+            return (tree)this->_head.unwrap();
+         }
          
          class iterator {
             friend attribute_list;

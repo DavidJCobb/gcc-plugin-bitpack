@@ -5,7 +5,7 @@
 
 namespace gcc_wrappers::type {
    class container;
-   using container_ptr = node_pointer_template<container>;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(container);
 }
 
 namespace gcc_wrappers::decl {
@@ -18,6 +18,8 @@ namespace gcc_wrappers::decl {
          
       public:
          type::optional_container member_of() const; // RECORD_TYPE or UNION_TYPE
+         
+         type::base value_type() const; // override, to handle bitfields
          
          size_t offset_in_bits() const;
          size_t size_in_bits() const;

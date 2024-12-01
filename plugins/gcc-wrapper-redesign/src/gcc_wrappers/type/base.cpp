@@ -69,7 +69,7 @@ namespace gcc_wrappers::type {
             if (pt.is_function()) {
                ft = pt.as_function();
                is_function_pointer = true;
-               is_const_pointer    = ft.is_const();
+               is_const_pointer    = ft->is_const();
             }
          }
          if (ft) {
@@ -88,19 +88,22 @@ namespace gcc_wrappers::type {
                bool first   = true;
                bool varargs = true;
                auto args    = ft->arguments();
-               args.for_each_value([&first, &out, &varargs](tree raw) {
-                  if (raw == void_type_node) {
-                     varargs = false;
-                     return;
-                  }
-                  base t = base::wrap(raw);
-                  if (first) {
-                     first = false;
-                  } else {
-                     out += ", ";
-                  }
-                  out += t.pretty_print();
-               });
+               if (args) {
+                  args->for_each_value([&first, &out, &varargs](optional_node arg) {
+                     assert(arg);
+                     if (arg.unwrap() == void_type_node) {
+                        varargs = false;
+                        return;
+                     }
+                     base t = (*arg).as<base>();
+                     if (first) {
+                        first = false;
+                     } else {
+                        out += ", ";
+                     }
+                     out += t.pretty_print();
+                  });
+               }
                if (varargs) {
                   if (!first)
                      out += ", ";
@@ -208,7 +211,7 @@ namespace gcc_wrappers::type {
          if (TREE_CODE(dn) != TYPE_DECL)
             dn = NULL_TREE;
       }
-      return decl::type_def_ptr(dn);
+      return dn;
    }
    
    bool base::is_type_or_transitive_typedef_thereof(base other) const {
@@ -538,8 +541,8 @@ namespace gcc_wrappers::type {
    
    bool base::is_assignable_to(base lhs, const assign_check_options& options) const {
       const auto rhs     = *this;
-      const_tree lhs_raw = lhs.as_raw();
-      const_tree rhs_raw = rhs.as_raw();
+      const_tree lhs_raw = lhs.unwrap();
+      const_tree rhs_raw = rhs.unwrap();
       
       //
       // Logic here is based on GCC's `convert_for_assignment` in 
@@ -634,8 +637,8 @@ namespace gcc_wrappers::type {
                      ) {
                         any_legal = true;
                         
-                        auto quals_lhs = TYPE_QUALS(deref_lhs.as_raw());
-                        auto quals_rhs = TYPE_QUALS(deref_rhs.as_raw());
+                        auto quals_lhs = TYPE_QUALS(deref_lhs.unwrap());
+                        auto quals_rhs = TYPE_QUALS(deref_rhs.unwrap());
                         quals_lhs &= ~TYPE_QUAL_ATOMIC;
                         quals_rhs &= ~TYPE_QUAL_ATOMIC;
                         if (quals_lhs == quals_rhs) {
@@ -680,7 +683,7 @@ namespace gcc_wrappers::type {
          if (deref_rhs.is_atomic())
             main_rhs = main_rhs._with_qualifiers_replaced(TYPE_QUAL_ATOMIC);
          
-         bool is_opaque_pointer = vector_targets_convertible_p(deref_lhs.as_raw(), deref_rhs.as_raw());
+         bool is_opaque_pointer = vector_targets_convertible_p(deref_lhs.unwrap(), deref_rhs.unwrap());
          
          /*//
          if (
@@ -709,11 +712,11 @@ namespace gcc_wrappers::type {
             lhs_p.same_target_and_address_space_as(rhs_p)   ||
             is_opaque_pointer ||
             (
-               c_common_unsigned_type(main_lhs.as_raw()) ==
-               c_common_unsigned_type(main_rhs.as_raw())
+               c_common_unsigned_type(main_lhs.unwrap()) ==
+               c_common_unsigned_type(main_rhs.unwrap())
                &&
-               c_common_signed_type(main_lhs.as_raw()) ==
-               c_common_signed_type(main_rhs.as_raw())
+               c_common_signed_type(main_lhs.unwrap()) ==
+               c_common_signed_type(main_rhs.unwrap())
                &&
                main_lhs.is_atomic() == main_rhs.is_atomic()
             )

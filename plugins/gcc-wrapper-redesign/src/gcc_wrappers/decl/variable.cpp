@@ -12,7 +12,7 @@ namespace gcc_wrappers::decl {
    
    variable::variable(
       lu::strings::zview identifier_name,
-      const type::base&  variable_type,
+      type::base&        variable_type,
       location_t         source_location
    ) {
       auto identifier_node = identifier(identifier_name);
@@ -20,35 +20,24 @@ namespace gcc_wrappers::decl {
          source_location,
          VAR_DECL,
          identifier_node.unwrap(),
-         variable_type.as_untyped()
+         variable_type.unwrap()
       );
    }
    variable::variable(
-      identifier         identifier_node,
-      const type::base&  variable_type,
-      location_t         source_location
+      identifier  identifier_node,
+      type::base& variable_type,
+      location_t  source_location
    ) {
       this->_node = build_decl(
          source_location,
          VAR_DECL,
          identifier_node.unwrap(),
-         variable_type.as_untyped()
+         variable_type.unwrap()
       );
    }
    
    expr::declare variable::make_declare_expr() {
       return expr::declare(*this);
-   }
-   
-   type::base variable::value_type() const {
-      return type::base::wrap(TREE_TYPE(this->_node));
-   }
-   
-   value variable::initial_value() const {
-      return value::wrap(DECL_INITIAL(this->_node));
-   }
-   void variable::set_initial_value(value v) {
-      DECL_INITIAL(this->_node) = v.as_raw();
    }
    
    bool variable::is_defined_elsewhere() const {

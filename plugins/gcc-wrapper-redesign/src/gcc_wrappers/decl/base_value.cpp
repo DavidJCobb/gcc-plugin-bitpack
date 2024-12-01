@@ -6,8 +6,8 @@
 namespace gcc_wrappers::decl {
    GCC_NODE_WRAPPER_BOILERPLATE(base_value)
    
-   /*static*/ bool base_value::raw_node_is(tree t) const {
-      switch (TREE_CODE(this->_node)) {
+   /*static*/ bool base_value::raw_node_is(tree t) {
+      switch (TREE_CODE(t)) {
          case FUNCTION_DECL:
          case RESULT_DECL:
          case TYPE_DECL:
@@ -25,5 +25,16 @@ namespace gcc_wrappers::decl {
    
    value base_value::as_value() {
       return value::wrap(this->_node);
+   }
+   
+   type::base base_value::value_type() const {
+      return type::base::wrap(TREE_TYPE(this->_node));
+   }
+   
+   optional_value base_value::initial_value() const {
+      return DECL_INITIAL(this->_node);
+   }
+   void base_value::set_initial_value(optional_value v) {
+      DECL_INITIAL(this->_node) = v.unwrap();
    }
 }

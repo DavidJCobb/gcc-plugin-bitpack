@@ -14,7 +14,7 @@ namespace gcc_wrappers::events {
       // handler.
       //
       for(const auto type : self._seen)
-         if (type.as_raw() == node)
+         if (type.unwrap() == node)
             return;
       auto type = type::base::wrap(node);
       self._seen.push_back(type);

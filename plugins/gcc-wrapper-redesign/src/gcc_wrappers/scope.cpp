@@ -37,7 +37,7 @@ namespace gcc_wrappers {
       return false;
    }
    
-   scope_ptr scope::containing_scope() {
+   optional_scope scope::containing_scope() {
       return ::get_containing_scope(this->_node);
    }
    
@@ -63,20 +63,20 @@ namespace gcc_wrappers {
       return type::base::wrap(this->_node);
    }
          
-   decl::function_ptr scope::nearest_function() {
+   decl::optional_function scope::nearest_function() {
       // Can't use this; it assumes the argument is a DECL.
       //return decl_function_context(this->_node);
       
-      scope_ptr current = *this;
-      while (current != nullptr && current->code() != FUNCTION_DECL) {
+      optional_scope current = *this;
+      while (current && current->code() != FUNCTION_DECL) {
          current = current->containing_scope();
       }
       return current.unwrap();
    }
    
-   type::base_ptr scope::nearest_type() {
-      scope_ptr current = *this;
-      while (current != nullptr) {
+   type::optional_base scope::nearest_type() {
+      optional_scope current = *this;
+      while (current) {
          switch (current->code()) {
             case TRANSLATION_UNIT_DECL:
             case NAMESPACE_DECL:

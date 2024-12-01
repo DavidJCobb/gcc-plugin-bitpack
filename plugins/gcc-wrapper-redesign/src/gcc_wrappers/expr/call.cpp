@@ -9,12 +9,9 @@ namespace gcc_wrappers::expr {
    }
    
    size_t call::argument_count() const {
-      if (empty())
-         return 0;
       return call_expr_nargs(this->_node);
    }
    value call::nth_argument(size_t n) const {
-      assert(!empty());
       assert(n < argument_count());
       return value::wrap(CALL_EXPR_ARG(this->_node, n));
    }

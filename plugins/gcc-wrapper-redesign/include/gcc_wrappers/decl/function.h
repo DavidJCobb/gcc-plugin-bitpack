@@ -1,4 +1,5 @@
 #pragma once
+#include "lu/strings/zview.h"
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/param.h"
 #include "gcc_wrappers/decl/result.h"
@@ -31,15 +32,9 @@ namespace gcc_wrappers::decl {
          void _make_decl_arguments_from_type();
          
       public:
-         // Creates a new FUNCTION_DECL. To wrap an existing one, 
-         // use the static `from_untyped` member function.
          function(
-            const char*           identifier_name,
-            const type::function& function_type
-         );
-         function(
-            const std::string&    identifier_name,
-            const type::function& function_type
+            lu::strings::zview identifier_name,
+            type::function&    function_type
          );
          
          type::function function_type() const;

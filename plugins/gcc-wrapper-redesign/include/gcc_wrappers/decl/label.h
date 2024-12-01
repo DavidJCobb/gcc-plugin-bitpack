@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/decl/base.h"
-#include "gcc_wrappers/expr/label.h"
+#include "gcc_wrappers/expr/declare_label.h"
 #include "gcc_wrappers/value.h"
 #include "gcc_wrappers/_node_boilerplate.define.h"
 
@@ -15,7 +15,7 @@ namespace gcc_wrappers::decl {
       public:
          label(location_t source_location = UNKNOWN_LOCATION);
          
-         expr::label make_label_expr();
+         expr::declare_label make_label_expr();
          
          // You're allowed to take the address of a label when using 
          // GCC extensions.

@@ -14,7 +14,7 @@ namespace gcc_wrappers {
    }
 
    chain::iterator& chain::iterator::operator++() {
-      assert(this->_node != nullptr);
+      assert(this->_node);
       this->_node = TREE_CHAIN(this->_node.unwrap());
       return *this;
    }
@@ -39,7 +39,7 @@ namespace gcc_wrappers {
    //
    
    chain::chain(node n) : _node(n) {}
-   chain::chain(optional_node n) : _node(n) {}
+   chain::chain(tree n) : _node(n) {}
    
    chain::iterator chain::begin() {
       return iterator(this->_node);
@@ -61,14 +61,14 @@ namespace gcc_wrappers {
    node chain::back() {
       return node::wrap(tree_last(this->_node.unwrap()));
    }
-   node chain::nth(size_t n) {
-      if (empty())
+   node chain::operator[](size_t n) {
+      if (!this->_node)
          throw std::out_of_range("out-of-bounds indexed access to empty `chain`");
       
       size_t i = 0;
-      for(auto item = this->_node; item != NULL_TREE; item = TREE_CHAIN(item)) {
+      for(auto item = this->_node; item; item = TREE_CHAIN(item.unwrap())) {
          if (i == n)
-            return node::wrap(item);
+            return *item;
       }
       throw std::out_of_range("out-of-bounds indexed access to `chain`");
    }
