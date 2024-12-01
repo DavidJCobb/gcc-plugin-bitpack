@@ -1,24 +1,37 @@
 #include "gcc_wrappers/decl/variable.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/identifier.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
-#include <stringpool.h> // get_identifier
 #include <toplev.h> // rest_of_decl_compilation
 
 // Defined in GCC source, `c/c-tree.h`; not included in the plug-in headers.
 extern void c_bind(location_t, tree, bool);
 
 namespace gcc_wrappers::decl {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(variable)
+   GCC_NODE_WRAPPER_BOILERPLATE(variable)
    
    variable::variable(
-      const char*       identifier_name,
-      const type::base& variable_type,
-      location_t        source_location
+      lu::strings::zview identifier_name,
+      const type::base&  variable_type,
+      location_t         source_location
+   ) {
+      auto identifier_node = identifier(identifier_name);
+      this->_node = build_decl(
+         source_location,
+         VAR_DECL,
+         identifier_node.unwrap(),
+         variable_type.as_untyped()
+      );
+   }
+   variable::variable(
+      identifier         identifier_node,
+      const type::base&  variable_type,
+      location_t         source_location
    ) {
       this->_node = build_decl(
          source_location,
          VAR_DECL,
-         get_identifier(identifier_name),
+         identifier_node.unwrap(),
          variable_type.as_untyped()
       );
    }

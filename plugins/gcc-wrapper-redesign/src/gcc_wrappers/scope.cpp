@@ -3,10 +3,10 @@
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/type/base.h"
 
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(scope)
+   GCC_NODE_WRAPPER_BOILERPLATE(scope)
    
    /*static*/ bool scope::raw_node_is(tree t) {
       if (t == NULL_TREE)

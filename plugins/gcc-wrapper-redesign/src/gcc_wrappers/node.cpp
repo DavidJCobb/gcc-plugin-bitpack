@@ -16,10 +16,10 @@ namespace gcc_wrappers {
       return get_tree_code_name(TREE_CODE(this->_node));
    }
    
-   const_tree node::as_raw() const {
+   const_tree node::unwrap() const {
       return this->_node;
    }
-   tree node::as_raw()  {
+   tree node::unwrap()  {
       return this->_node;
    }
 }

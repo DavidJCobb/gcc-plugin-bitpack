@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/node.h"
-#include "gcc_wrappers/node_pointer_template.h"
+#include "gcc_wrappers/optional.h"
 
 namespace gcc_wrappers {
    //
@@ -8,15 +8,15 @@ namespace gcc_wrappers {
    //
    class chain : public node {
       protected:
-         node_ptr _node;
+         optional_node _node;
       
       public:
          class iterator {
             friend chain;
             protected:
-               iterator(node_ptr);
+               iterator(optional_node);
                
-               node_ptr _node;
+               optional_node _node;
                
             public:
                node operator*();
@@ -32,7 +32,9 @@ namespace gcc_wrappers {
       public:
          chain() {}
          chain(node);
-         chain(node_ptr);
+         
+         template<typename Wrapper>
+         chain(const optional<Wrapper>& o) : _node(o) {}
       
          iterator begin();
          iterator end();

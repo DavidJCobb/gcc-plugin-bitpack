@@ -1,9 +1,9 @@
 #include "gcc_wrappers/expr/assign.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <c-family/c-common.h>
 
 namespace gcc_wrappers::expr {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(assign)
+   GCC_NODE_WRAPPER_BOILERPLATE(assign)
    
    assign::assign(const value& dst, const value& src) {
       auto dst_type = dst.value_type();
@@ -16,19 +16,13 @@ namespace gcc_wrappers::expr {
       // build_modify_expr declared in c-common.h, defined in c/c-typeck.cc
       this->_node = build_modify_expr(
          UNKNOWN_LOCATION, // expression source location
-         dst.as_raw(),     // LHS
+         dst.unwrap(),     // LHS
          NULL_TREE,        // original type of LHS (needed if it's an enum bitfield)
          NOP_EXPR,         // operation (e.g. PLUS_EXPR if we want to make a +=)
          UNKNOWN_LOCATION, // RHS source location
-         src.as_raw(),     // RHS
+         src.unwrap(),     // RHS
          NULL_TREE         // original type of RHS (needed if it's an enum)
       );
-      /*this->_node = build2(
-         MODIFY_EXPR,
-         dst.value_type().as_untyped(),
-         dst.as_untyped(),
-         src.as_untyped()
-      );*/
    }
    
    /*static*/ assign assign::make_with_modification(
@@ -39,11 +33,11 @@ namespace gcc_wrappers::expr {
       return assign::wrap(
          build_modify_expr(
             UNKNOWN_LOCATION, // expression source location
-            dst.as_raw(),     // LHS
+            dst.unwrap(),     // LHS
             NULL_TREE,        // original type of LHS (needed if it's an enum bitfield)
             operation,        // operation (e.g. PLUS_EXPR if we want to make a +=)
             UNKNOWN_LOCATION, // RHS source location
-            src.as_raw(),     // RHS
+            src.unwrap(),     // RHS
             NULL_TREE         // original type of RHS (needed if it's an enum)
          )
       );

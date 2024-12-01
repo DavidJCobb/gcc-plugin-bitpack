@@ -1,8 +1,8 @@
 #include "gcc_wrappers/type/array.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(array)
+   GCC_NODE_WRAPPER_BOILERPLATE(array)
    
    bool array::is_variable_length_array() const {
       return this->extent().has_value();

@@ -1,8 +1,8 @@
 #include "gcc_wrappers/type/enumeration.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(enumeration)
+   GCC_NODE_WRAPPER_BOILERPLATE(enumeration)
    
    [[nodiscard]] std::vector<enumeration::member> enumeration::all_enum_members() const {
       std::vector<member> list;

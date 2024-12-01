@@ -2,7 +2,7 @@
 #include "gcc_wrappers/expr/base.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/statement_list.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::expr {
    //
@@ -18,7 +18,7 @@ namespace gcc_wrappers::expr {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == BIND_EXPR;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(local_block)
+         GCC_NODE_WRAPPER_BOILERPLATE(local_block)
       
       public:
          local_block(); // void-type with allocated statement list
@@ -28,7 +28,7 @@ namespace gcc_wrappers::expr {
          
          statement_list statements();
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(local_block);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(local_block);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

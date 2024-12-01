@@ -1,4 +1,5 @@
 #include "gcc_wrappers/attribute.h"
+#include "gcc_wrappers/identifier.h"
 #include <stdexcept>
 #include <stringpool.h> // get_identifier, and dependency for <attribs.h>
 #include <attribs.h>
@@ -109,10 +110,18 @@ namespace gcc_wrappers {
    // attribute
    //
    
+   attribute::attribute(identifier name, list args) {
+      auto raw = tree_cons(
+         name.unwrap(),
+         args.empty() ? NULL_TREE : args.front().unwrap(),
+         NULL_TREE
+      );
+      return wrap(raw);
+   }
    attribute::attribute(lu::strings::zview name, list args) {
       auto raw = tree_cons(
          get_identifier(name.c_str()),
-         args.empty() ? NULL_TREE : args.front().as_raw(),
+         args.empty() ? NULL_TREE : args.front().unwrap(),
          NULL_TREE
       );
       return wrap(raw);
@@ -131,12 +140,25 @@ namespace gcc_wrappers {
       return IDENTIFIER_POINTER(id_node);
    }
    
+   optional_identifier attribute::name_node() const {
+      auto raw = get_attribute_name(this->_node);
+      if (raw == NULL_TREE || identifier::raw_node_is(raw))
+         return raw;
+      return {};
+   }
+   optional_identifier attribute::namespace_name_node() const {
+      auto raw = get_attribute_namespace(this->_node);
+      if (raw == NULL_TREE || identifier::raw_node_is(raw))
+         return raw;
+      return {};
+   }
+   
    bool attribute::is_cpp11() const {
       return cxx11_attribute_p(this->_node);
    }
    
    bool attribute::compare_values(const attribute other) const {
-      return attribute_value_equal(this->as_raw(), other.as_raw());
+      return attribute_value_equal(this->unwrap(), other.unwrap());
    }
    
    attribute::arguments_wrapper attribute::arguments() {

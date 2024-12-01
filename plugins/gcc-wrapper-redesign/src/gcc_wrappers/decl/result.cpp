@@ -1,5 +1,5 @@
 #include "gcc_wrappers/decl/result.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(result)

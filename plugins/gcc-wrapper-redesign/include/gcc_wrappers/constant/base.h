@@ -2,7 +2,7 @@
 #include <type_traits>
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/value.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace constant {
@@ -11,13 +11,13 @@ namespace gcc_wrappers {
             static bool raw_node_is(tree t) {
                return CONSTANT_CLASS_P(t);
             }
-            GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(base)
+            GCC_NODE_WRAPPER_BOILERPLATE(base)
          
          public:
             type::base value_type() const;
       };
-      DECLARE_GCC_NODE_POINTER_WRAPPER(base);
+      DECLARE_GCC_OPTIONAL_NODE_WRAPPER(base);
    }
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

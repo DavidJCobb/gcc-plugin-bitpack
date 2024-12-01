@@ -47,8 +47,8 @@ namespace gcc_wrappers {
          tree_code code() const;
          const std::string_view code_name() const noexcept;
          
-         const_tree as_raw() const;
-         tree as_raw();
+         const_tree unwrap() const;
+         tree unwrap();
          
          template<typename Subclass> requires impl::can_is_as<node, Subclass>
          bool is() {
@@ -61,11 +61,5 @@ namespace gcc_wrappers {
                return Subclass::wrap(this->_node);
             return Subclass{};
          }
-   };
-   
-   template<typename T>
-   concept is_node_reference_wrapper = requires() {
-      requires std::is_base_of_v<node, T>;
-      requires sizeof(T) == sizeof(node);
    };
 }

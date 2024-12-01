@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/expr/base.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::expr {
    class assign : public base {
@@ -8,7 +8,7 @@ namespace gcc_wrappers::expr {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == MODIFY_EXPR;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(assign)
+         GCC_NODE_WRAPPER_BOILERPLATE(assign)
       
       public:
          assign(const value& dst, const value& src);
@@ -23,7 +23,7 @@ namespace gcc_wrappers::expr {
          value src() const;
          value dst() const;
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(assign);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(assign);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

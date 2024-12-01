@@ -1,9 +1,9 @@
 #include "gcc_wrappers/type/pointer.h"
 #include <target.h> // `targetm`
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(pointer)
+   GCC_NODE_WRAPPER_BOILERPLATE(pointer)
    
    bool pointer::compatible_address_space_with(pointer other) const {
       auto target_a = this->remove_pointer();

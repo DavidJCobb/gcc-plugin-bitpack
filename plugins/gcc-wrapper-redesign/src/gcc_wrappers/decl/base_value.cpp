@@ -1,10 +1,10 @@
 #include "gcc_wrappers/decl/base_value.h"
 #include "gcc_wrappers/value.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <cassert>
 
 namespace gcc_wrappers::decl {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(base_value)
+   GCC_NODE_WRAPPER_BOILERPLATE(base_value)
    
    /*static*/ bool base_value::raw_node_is(tree t) const {
       switch (TREE_CODE(this->_node)) {

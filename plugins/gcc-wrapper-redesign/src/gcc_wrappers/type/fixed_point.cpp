@@ -1,8 +1,8 @@
 #include "gcc_wrappers/type/fixed_point.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(fixed_point)
+   GCC_NODE_WRAPPER_BOILERPLATE(fixed_point)
    
    size_t fixed_point::fractional_bitcount() const {
       return TYPE_FBIT(this->_node);

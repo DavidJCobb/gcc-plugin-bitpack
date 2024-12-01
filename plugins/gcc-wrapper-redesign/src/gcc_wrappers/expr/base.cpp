@@ -3,10 +3,10 @@
 #include <c-family/c-common.h> // c_fully_fold
 #include <fold-const.h> // fold
 #include "gcc_headers/plugin-version.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::expr {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(base)
+   GCC_NODE_WRAPPER_BOILERPLATE(base)
    
    location_t base::source_location() const {
       return EXPR_LOCATION(this->_node);

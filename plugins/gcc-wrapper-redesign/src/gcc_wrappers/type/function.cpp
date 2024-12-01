@@ -1,16 +1,16 @@
 #include "gcc_wrappers/type/function.h"
 #include "gcc_helpers/gcc_version_info.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(function)
+   GCC_NODE_WRAPPER_BOILERPLATE(function)
    
    base function::return_type() const {
       return base::wrap(TREE_TYPE(this->_node));
    }
    
-   list function::arguments() const {
-      return list(TYPE_ARG_TYPES(this->_node));
+   optional_list_node function::arguments() const {
+      return TYPE_ARG_TYPES(this->_node);
    }
    
    base function::nth_argument_type(size_t n) const {
@@ -33,10 +33,10 @@ namespace gcc_wrappers::type {
       #endif
       
       auto args = this->arguments();
-      if (args.empty())
+      if (!args)
          return false; // unprototyped
       
-      auto back = args.back();
+      auto back = args->back();
       if (TREE_VALUE(back.as_raw()) == void_list_node)
          return true;
       
@@ -48,6 +48,6 @@ namespace gcc_wrappers::type {
    }
    
    bool function::is_unprototyped() const {
-      return TYPE_ARG_TYPES(this->_node) == NULL;
+      return TYPE_ARG_TYPES(this->_node) == NULL_TREE;
    }
 }

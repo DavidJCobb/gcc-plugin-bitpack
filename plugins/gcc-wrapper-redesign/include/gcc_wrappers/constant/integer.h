@@ -3,7 +3,7 @@
 #include <type_traits>
 #include "gcc_wrappers/constant/base.h"
 #include "gcc_wrappers/type/integral.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::constant {
    class integer : public base {
@@ -11,7 +11,7 @@ namespace gcc_wrappers::constant {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == INTEGER_CST;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(integer_constant)
+         GCC_NODE_WRAPPER_BOILERPLATE(integer_constant)
          
          using host_wide_int_type  = HOST_WIDE_INT;
          using host_wide_uint_type = std::make_unsigned_t<host_wide_int_type>;
@@ -35,8 +35,8 @@ namespace gcc_wrappers::constant {
          
          bool operator==(host_wide_uint_type) const;
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(integer);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(integer);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"
 #include "gcc_wrappers/constant/integer.inl"

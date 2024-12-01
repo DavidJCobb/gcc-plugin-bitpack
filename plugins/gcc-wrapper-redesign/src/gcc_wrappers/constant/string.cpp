@@ -1,8 +1,8 @@
 #include "gcc_wrappers/constant/string.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::constant {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(string)
+   GCC_NODE_WRAPPER_BOILERPLATE(string)
    
    string::string(const std::string& s) {
       this->_node = build_string(s.size() + sizeof('\0'), s.c_str());

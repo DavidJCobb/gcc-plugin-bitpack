@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/type/numeric.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::type {
    class fixed_point : public numeric {
@@ -8,7 +8,7 @@ namespace gcc_wrappers::type {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) != FIXED_POINT_TYPE;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(fixed_point)
+         GCC_NODE_WRAPPER_BOILERPLATE(fixed_point)
          
       public:
          size_t fractional_bitcount() const; // TYPE_FBIT
@@ -25,7 +25,7 @@ namespace gcc_wrappers::type {
          fixed_point make_signed() const;
          fixed_point make_unsigned() const;
    };
-   using fixed_point_ptr = node_pointer_template<fixed_point>;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(fixed_point);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

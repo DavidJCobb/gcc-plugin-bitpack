@@ -70,7 +70,7 @@ namespace gcc_wrappers {
          type::integral smallest_integral_for(size_t bitcount, bool is_signed = false) const;
          
          template<typename T>
-         type::integral_ptr type_for() const requires integer_type_ready_for<T> {
+         type::optional_integral type_for() const requires integer_type_ready_for<T> {
             if constexpr (std::is_same_v<T, int>)
                return basic_int;
             if constexpr (std::is_same_v<T, int8_t>)

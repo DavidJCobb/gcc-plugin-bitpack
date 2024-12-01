@@ -1,10 +1,10 @@
 #include "gcc_wrappers/type/helpers/lookup_by_name.h"
+#include "gcc_wrappers/identifier.h"
 #include <c-family/c-common.h> // identifier_global_tag, lookup_name
-#include <stringpool.h> // get_identifier
 
 namespace gcc_wrappers::type {
-   extern base_ptr lookup_by_name(const char* name) {
-      auto id_node = get_identifier(name);
+   extern optional_base lookup_by_name(lu::strings::zview name) {
+      auto id_node = identifier(name);
       auto node    = lookup_name(id_node);
       //
       // The `lookup_name` function returns a `*_DECL` node with the given 
@@ -26,8 +26,5 @@ namespace gcc_wrappers::type {
          return {};
       }
       return node;
-   }
-   extern base_ptr lookup_by_name(lu::strings::zview s) {
-      return lookup_by_name(s.c_str());
    }
 }

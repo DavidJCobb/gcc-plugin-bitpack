@@ -1,10 +1,10 @@
 #include "gcc_wrappers/statement_list.h"
 #include "gcc_wrappers/expr/base.h"
 #include <cassert>
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(statement_list)
+   GCC_NODE_WRAPPER_BOILERPLATE(statement_list)
    
    using iterator_type = statement_list::iterator;
    

@@ -1,7 +1,7 @@
 #pragma once
 #include "gcc_wrappers/node.h"
 #include <tree-iterator.h>
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace expr {
@@ -15,7 +15,7 @@ namespace gcc_wrappers {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == STATEMENT_LIST;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(statement_list)
+         GCC_NODE_WRAPPER_BOILERPLATE(statement_list)
          
          class iterator {
             friend statement_list;
@@ -59,7 +59,7 @@ namespace gcc_wrappers {
          
          void append_untyped(node expr);
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(statement_list);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(statement_list);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

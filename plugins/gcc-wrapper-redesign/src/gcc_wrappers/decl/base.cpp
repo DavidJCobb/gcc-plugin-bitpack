@@ -2,11 +2,11 @@
 #include "lu/strings/builder.h"
 #include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/scope.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <cassert>
 
 namespace gcc_wrappers::decl {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(base)
+   GCC_NODE_WRAPPER_BOILERPLATE(base)
    
    std::string_view base::name() const {
       auto id_node = DECL_NAME(this->_node);
@@ -114,7 +114,7 @@ namespace gcc_wrappers::decl {
       TREE_USED(this->_node) = v;
    }
    
-   scope_ptr base::context() const {
-      return scope_ptr(DECL_CONTEXT(this->_node));
+   optional_scope base::context() const {
+      return DECL_CONTEXT(this->_node);
    }
 }

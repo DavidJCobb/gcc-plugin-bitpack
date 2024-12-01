@@ -1,9 +1,9 @@
 #pragma once
 #include <string_view>
 #include "gcc_wrappers/node.h"
-#include "gcc_wrappers/node_pointer_template.h"
+#include "gcc_wrappers/optional.h"
 #include "gcc_wrappers/scope.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace decl {
@@ -12,7 +12,7 @@ namespace gcc_wrappers {
             static bool raw_node_is(tree t) {
                return DECL_P(t);
             }
-            GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(base)
+            GCC_NODE_WRAPPER_BOILERPLATE(base)
             
          public:
             std::string_view name() const;
@@ -44,10 +44,10 @@ namespace gcc_wrappers {
             void make_used();
             void set_is_used(bool);
             
-            scope_ptr context() const;
+            optional_scope context() const;
       };
-      DECLARE_GCC_NODE_POINTER_WRAPPER(base);
+      DECLARE_GCC_OPTIONAL_NODE_WRAPPER(base);
    }
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

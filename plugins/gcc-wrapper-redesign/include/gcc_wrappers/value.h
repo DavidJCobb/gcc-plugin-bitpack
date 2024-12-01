@@ -4,8 +4,8 @@
 #include "gcc_wrappers/type/enumeration.h"
 #include "gcc_wrappers/type/floating_point.h"
 #include "gcc_wrappers/type/integral.h"
-
 #include "gcc_wrappers/enums/round_value_toward.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace decl {
@@ -18,6 +18,7 @@ namespace gcc_wrappers {
    class value : public node {
       public:
          static bool raw_node_is(tree);
+         GCC_NODE_WRAPPER_BOILERPLATE(value)
       
          decl::base_value as_decl() const;
          expr::base as_expr() const;
@@ -181,6 +182,7 @@ namespace gcc_wrappers {
             value logical_xor(value); // TRUTH_XOR_EXPR. never short-circuits
          //#pragma endregion
    };
-   
-   using value_ptr = node_pointer_template<value>;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(value);
 }
+
+#include "gcc_wrappers/_node_boilerplate.undef.h"

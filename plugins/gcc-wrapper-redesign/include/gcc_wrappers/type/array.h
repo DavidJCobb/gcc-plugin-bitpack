@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
 #include "gcc_wrappers/type/base.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::type {
    class array : public base {
@@ -9,7 +9,7 @@ namespace gcc_wrappers::type {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == ARRAY_TYPE;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(array)
+         GCC_NODE_WRAPPER_BOILERPLATE(array)
          
       public:
          bool is_variable_length_array() const;
@@ -22,7 +22,7 @@ namespace gcc_wrappers::type {
          
          base value_type() const;
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(array);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(array);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

@@ -1,6 +1,6 @@
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/decl/param.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <cassert>
 #include <stdexcept>
 #include "lu/stringf.h"
@@ -17,7 +17,7 @@ extern tree pushdecl(tree);
 
 // function
 namespace gcc_wrappers::decl {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(function)
+   GCC_NODE_WRAPPER_BOILERPLATE(function)
    
    void function::_make_decl_arguments_from_type() {
       size_t i = 0;
@@ -183,7 +183,7 @@ namespace gcc_wrappers::decl {
 }
 
 // Avoid warnings on later includes:
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"
 
 #include "gcc_wrappers/decl/result.h"
 #include "gcc_wrappers/expr/local_block.h"

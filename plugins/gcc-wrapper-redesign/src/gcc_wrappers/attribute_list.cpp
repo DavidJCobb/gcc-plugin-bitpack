@@ -13,7 +13,7 @@ namespace gcc_wrappers {
    attribute_list::iterator::iterator(node_ptr n) : _node(n) {}
    
    attribute attribute_list::iterator::operator*() {
-      return attribute::from_untyped(this->_node);
+      return attribute::wrap(this->_node.unwrap());
    }
 
    attribute_list::iterator& attribute_list::iterator::operator++() {
@@ -36,13 +36,13 @@ namespace gcc_wrappers {
          return other->empty();
       else if (other->empty())
          return false;
-      return attribute_list_equal(this->as_raw(), other.as_raw());
+      return attribute_list_equal(this->unwrap(), other.unwrap());
    }
    
    bool attribute_list::contains(const attribute attr) const {
       if (empty())
          return false;
-      return attribute_list_contained(this->_head->as_raw(), attr.as_untyped());
+      return attribute_list_contained(this->_head->unwrap(), attr.as_untyped());
    }
    bool attribute_list::empty() const {
       return !this->_head;
@@ -67,17 +67,17 @@ namespace gcc_wrappers {
       return iterator(raw);
    }
    
-   attribute_ptr attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) {
+   optional_attribute attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) {
       return std::as_const(*this).first_attribute_with_prefix(prefix);
    }
-   const attribute_ptr attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) const {
+   const optional_attribute attribute_list::first_attribute_with_prefix(lu::strings::zview prefix) const {
       return lookup_attribute_by_prefix(prefix.c_str(), this->_head.unwrap());
    }
    
-   attribute_ptr attribute_list::get_attribute(lu::strings::zview name) {
+   optional_attribute attribute_list::get_attribute(lu::strings::zview name) {
       return std::as_const(*this).get_attribute(name);
    }
-   const attribute_ptr attribute_list::get_attribute(lu::strings::zview name) const {
+   const optional_attribute attribute_list::get_attribute(lu::strings::zview name) const {
       return lookup_attribute(name.c_str(), this->_head.unwrap());
    }
    

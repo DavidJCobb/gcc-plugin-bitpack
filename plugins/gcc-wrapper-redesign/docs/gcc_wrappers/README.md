@@ -511,18 +511,18 @@ Anyway, onto more information about the library.
 
 There are three basic categories for these wrappers.
 
-* **Reference-like** wrappers will wrap a single `tree`, which is guaranteed not to be `NULL_TREE` unless the wrapper has been left in a moved-from state. The base class for all such wrappers is `node`, with subclasses for specific wrapper types (e.g. `attribute`, `decl::variable`, `type::floating_point`). Reference-like wrappers can be rebound, similarly to `std::reference_wrapper` (i.e. copy-assignment and copy-construction affects the wrapper, not the underlying `tree`).
+* **General wrappers** will wrap a single `tree`, which is guaranteed not to be `NULL_TREE` unless the wrapper has been left in a moved-from state. The base class for all such wrappers is `node`, with subclasses for specific wrapper types (e.g. `attribute`, `decl::variable`, `type::floating_point`).
   
-  Aside from copying or rebinding to another reference, a new reference-like wrapper can only be instantiated through three means:
-  * Dereferencing a pointer-like wrapper.
+  Aside from copying or rebinding to another wrapper, a new general wrapper can only be instantiated through three means:
+  * Dereferencing an optional wrapper.
   * Calling <code><var>wrapper_type</var>.wrap</code> passing a raw `tree`. We will `assert` that the tree is non-null and of the correct type for the chosen wrapper.
-  * Reference-like wrapper types that have non-copy constructors will create new `tree`s of the wrapped type when those constructors are used.
-* **Pointer-like** wrappers will wrap a single `tree`, which may be `NULL_TREE`. These wrappers dereference to reference-like wrappers. We define a pointer-like wrapper for each reference-like wrapper following the naming convention <code><var>basename</var>_ptr</code> (e.g. `node` and `node_ptr`; `decl::field` and `decl::field_ptr`; `type::pointer` and `type::pointer_ptr`).
+  * Using non-copy constructors, when available, to create new `tree`s of the wrapped type.
+* **Optional wrappers** will wrap a single `tree`, which may be `NULL_TREE`. These wrappers dereference to reference-like wrappers with an interface similar to `std::optional`. We define an optional wrapper for each reference-like wrapper following the naming convention <code>optional_<var>basename</var></code> (e.g. `node` and `optional_node`; `decl::field` and `decl::optional_field`; `type::pointer` and `type::optional_pointer`).
   
-  Pointer-like wrappers can be constructed from one another, from a reference-like wrapper, or from a bare `tree`. You can quickly unwrap a pointer-like wrapper by calling `unwrap` on it.
-* **View-like** wrappers are a special case offered for chains (`chain`) and lists (`list`).
-  * The `chain` view exists separately from reference and pointer wrappers because tree nodes of (more or less) any type can also be chains or links therein; "chain-ness" is orthogonal to the node type and doesn't fit within the `node` wrapper type hierarchy.
-  * The `list` view is a mistake, conceptually, and I should turn it into a pair of reference-like and pointer-like wrappers.
+  Optional wrappers can be constructed from one another, from a general wrapper, or from a bare `tree`.
+* **View-like wrappers** are a special case offered for attribute lists (`attribute_list`) and chains (`chain`).
+  * The `chain` wrapper is a view because tree nodes of (more or less) any type can also be chains or links therein; "chain-ness" is orthogonal to the node type and doesn't fit within the `node` wrapper type hierarchy.
+  * The `attribute_list` wrapper is a view because access to attributes is more ergonomic this way. I reserve the right to wrap the attribute-owning `DECL` or `TYPE` directly in the future, but for now, `attribute_list` wraps the list head, and having to distinguish between `attribute_list` and `optional_attribute_list` is clumsy given the interface that we offer for attribute lists.
 
 ## Class hierarchy
 
@@ -534,18 +534,28 @@ In general, `expr` wrappers exist for "advanced" operations, like function calls
 
 [^decl-exprs]: `DECL` nodes indicate the existence, source code location, and content of a declaration, but they don't have a "location" in *practical* terms. However, `DECLARE_EXPR` and `LABEL_EXPR` are needed to actually place a `DECL` in a particular scope and at a particular position relative to other expressions in that scope.
 
-### Reference-like wrappers
+### General wrappers
 
 * `node`
   * `attribute`
-  * `attribute_list`
+  * `identifier`
+  * `list_node`
   * `scope`
   * `statement_list`
   * `value`
-  * `constant::base`
-    * `constant::floating_point`
-    * `constant::integer`
-    * `constant::string`
+    * `constant::base`
+      * `constant::floating_point`
+      * `constant::integer`
+      * `constant::string`
+    * `expr::base`
+      * `expr::assign`
+      * `expr::call`
+      * `expr::declare`
+      * `expr::declare_label`
+      * `expr::go_to_label`
+      * `expr::local_block`
+      * `expr::return_result`
+      * `expr::ternary`
   * `decl::base`
     * `decl::base_value`
       * `decl::field`
@@ -555,15 +565,6 @@ In general, `expr` wrappers exist for "advanced" operations, like function calls
     * `decl::function`
     * `decl::label`
     * `decl::type_def`
-  * `expr::base`
-    * `expr::assign`
-    * `expr::call`
-    * `expr::declare`
-    * `expr::declare_label`
-    * `expr::go_to_label`
-    * `expr::local_block`
-    * `expr::return_result`
-    * `expr::ternary`
   * `type::base`
     * `type::array`
     * `type::container`
@@ -578,11 +579,12 @@ In general, `expr` wrappers exist for "advanced" operations, like function calls
       * `type::integer`
     * `type::pointer`
 
-### Other (non-pointer-like-wrapper) types
+### Other types
 
 * `::lu::singleton`
   * `builtin_types`
   * `events::on_type_finished`
+* `attribute_list`
 * `chain`
 
 ## Lifetime

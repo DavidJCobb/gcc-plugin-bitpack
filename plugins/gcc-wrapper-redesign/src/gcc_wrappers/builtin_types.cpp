@@ -13,31 +13,31 @@ namespace gcc_wrappers {
       ),
       basic_char(type::base::wrap(char_type_node)),
       basic_int (type::integral::wrap(integer_type_node)),
-      basic_void(type::base::from_untyped(void_type_node)),
+      basic_void(type::base::wrap(void_type_node)),
       //
-      int8  (type::integral::from_untyped(int8_type_node)),
-      int16 (type::integral::from_untyped(int16_type_node)),
-      int32 (type::integral::from_untyped(int32_type_node)),
-      int64 (type::integral::from_untyped(int64_type_node)),
-      uint8 (type::integral::from_untyped(uint8_type_node)),
-      uint16(type::integral::from_untyped(c_uint16_type_node)),
-      uint32(type::integral::from_untyped(c_uint32_type_node)),
-      uint64(type::integral::from_untyped(c_uint64_type_node)),
+      int8  (type::integral::wrap(int8_type_node)),
+      int16 (type::integral::wrap(int16_type_node)),
+      int32 (type::integral::wrap(int32_type_node)),
+      int64 (type::integral::wrap(int64_type_node)),
+      uint8 (type::integral::wrap(uint8_type_node)),
+      uint16(type::integral::wrap(c_uint16_type_node)),
+      uint32(type::integral::wrap(c_uint32_type_node)),
+      uint64(type::integral::wrap(c_uint64_type_node)),
       
-      intmax (type::integral::from_untyped(intmax_type_node)),
-      uintmax(type::integral::from_untyped(uintmax_type_node)),
+      intmax (type::integral::wrap(intmax_type_node)),
+      uintmax(type::integral::wrap(uintmax_type_node)),
       
-      const_char_ptr(type::pointer::from_untyped(const_string_type_node)),
-      char_ptr      (type::pointer::from_untyped(string_type_node)),
+      const_char_ptr(type::pointer::wrap(const_string_type_node)),
+      char_ptr      (type::pointer::wrap(string_type_node)),
       
-      const_void_ptr(type::pointer::from_untyped(const_ptr_type_node)),
-      void_ptr      (type::pointer::from_untyped(ptr_type_node)),
+      const_void_ptr(type::pointer::wrap(const_ptr_type_node)),
+      void_ptr      (type::pointer::wrap(ptr_type_node)),
       
-      intptr (type::integral::from_untyped(intptr_type_node)),
-      uintptr(type::integral::from_untyped(uintptr_type_node)),
-      ptrdiff(type::integral::from_untyped(ptrdiff_type_node)),
-      size   (type::integral::from_untyped(size_type_node)),
-      ssize  (type::integral::from_untyped(signed_size_type_node))
+      intptr (type::integral::wrap(intptr_type_node)),
+      uintptr(type::integral::wrap(uintptr_type_node)),
+      ptrdiff(type::integral::wrap(ptrdiff_type_node)),
+      size   (type::integral::wrap(size_type_node)),
+      ssize  (type::integral::wrap(signed_size_type_node))
    {}
    
    type::integral builtin_types::smallest_integral_for(size_t bitcount, bool is_signed) const {

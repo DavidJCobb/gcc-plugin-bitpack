@@ -1,9 +1,9 @@
 #include "gcc_wrappers/type/integral.h"
 #include "gcc_wrappers/constant/integer.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(integral)
+   GCC_NODE_WRAPPER_BOILERPLATE(integral)
    
    size_t integral::bitcount() const {
       return TYPE_PRECISION(this->_node);

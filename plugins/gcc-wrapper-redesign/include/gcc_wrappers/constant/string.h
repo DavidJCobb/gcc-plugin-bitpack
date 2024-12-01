@@ -3,7 +3,7 @@
 #include "lu/strings/zview.h"
 #include "gcc_wrappers/constant/base.h"
 #include "gcc_wrappers/type/base.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::constant {
    class string : public base {
@@ -11,7 +11,7 @@ namespace gcc_wrappers::constant {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == STRING_CST;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(string_constant)
+         GCC_NODE_WRAPPER_BOILERPLATE(string_constant)
          
       public:
          string(const std::string&);
@@ -36,7 +36,7 @@ namespace gcc_wrappers::constant {
          // in that case that the built-in type nodes are actually ready).
          ::gcc_wrappers::value to_string_literal(type::base character_type);
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(string);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(string);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

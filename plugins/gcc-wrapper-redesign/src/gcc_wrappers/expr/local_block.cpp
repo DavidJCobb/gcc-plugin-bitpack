@@ -1,8 +1,8 @@
 #include "gcc_wrappers/expr/local_block.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::expr {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(local_block)
+   GCC_NODE_WRAPPER_BOILERPLATE(local_block)
    
    local_block::local_block() {
       this->_node = build3(
@@ -16,7 +16,7 @@ namespace gcc_wrappers::expr {
    local_block::local_block(type::base desired) {
       this->_node = build3(
          BIND_EXPR,
-         desired.as_raw(), // return type
+         desired.unwrap(), // return type
          NULL,                 // vars (accessible via BIND_EXPR_VARS(expr))
          alloc_stmt_list(),    // STATEMENT_LIST node
          NULL_TREE             // BLOCK node
@@ -27,16 +27,16 @@ namespace gcc_wrappers::expr {
          BIND_EXPR,
          void_type_node,          // return type
          NULL,                    // vars (accessible via BIND_EXPR_VARS(expr))
-         statements.as_raw(), // STATEMENT_LIST node
+         statements.unwrap(), // STATEMENT_LIST node
          NULL_TREE                // BLOCK node
       );
    }
    local_block::local_block(type::base desired, statement_list&& statements) {
       this->_node = build3(
          BIND_EXPR,
-         desired.as_raw(),    // return type
+         desired.unwrap(),    // return type
          NULL,                // vars (accessible via BIND_EXPR_VARS(expr))
-         statements.as_raw(), // STATEMENT_LIST node
+         statements.unwrap(), // STATEMENT_LIST node
          NULL_TREE            // BLOCK node
       );
    }

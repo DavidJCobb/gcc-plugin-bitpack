@@ -1,7 +1,7 @@
 #include "gcc_wrappers/flow/simple_for_loop.h"
+#include "gcc_wrappers/constant/integer.h"
 #include "gcc_wrappers/expr/assign.h"
 #include "gcc_wrappers/expr/go_to_label.h"
-#include "gcc_wrappers/expr/integer_constant.h"
 #include "gcc_wrappers/expr/label.h"
 #include "gcc_wrappers/expr/ternary.h"
 
@@ -37,30 +37,30 @@ namespace gcc_wrappers::flow {
       
       this->counter.make_used();
       statements.append(this->counter.make_declare_expr());
-      this->counter.set_initial_value(expr::integer_constant(counter_type, this->counter_bounds.start));
+      this->counter.set_initial_value(constant::integer(counter_type, this->counter_bounds.start));
       
       decl::label l_body;
       
       statements.append(expr::go_to_label(this->label_condition));
-      statements.append(expr::label(l_body));
+      statements.append(expr::declare_label(l_body));
       statements.append(std::move(loop_body));
-      statements.append(expr::label(this->label_continue));
+      statements.append(expr::declare_label(this->label_continue));
       statements.append(
          this->counter.as_value().increment_pre(
-            expr::integer_constant(counter_type, this->counter_bounds.increment)
+            constant::integer(counter_type, this->counter_bounds.increment)
          ).as_expr<expr::base>()
       );
-      statements.append(expr::label(this->label_condition));
+      statements.append(expr::declare_label(this->label_condition));
       statements.append(
          expr::ternary(
-            type::base::from_untyped(void_type_node),
+            type::base::wrap(void_type_node),
             this->counter.as_value().cmp_is_less_or_equal(
-               expr::integer_constant(counter_type, this->counter_bounds.last)
+               constant::integer(counter_type, this->counter_bounds.last)
             ),
             expr::go_to_label(l_body),
             expr::go_to_label(this->label_break)
          )
       );
-      statements.append(expr::label(this->label_break));
+      statements.append(expr::declare_label(this->label_break));
    }
 }

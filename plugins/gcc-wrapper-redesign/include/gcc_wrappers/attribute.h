@@ -2,7 +2,12 @@
 #include <string_view>
 #include "lu/strings/zview.h"
 #include "gcc_wrappers/node.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
+
+namespace gcc_wrappers {
+   class identifier;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(identifier);
+}
 
 namespace gcc_wrappers {
    // Wraps a key/value pair in an attribute list. The key is the 
@@ -10,7 +15,7 @@ namespace gcc_wrappers {
    // passed, if any.
    class attribute : public node {
       public:
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(attribute)
+         GCC_NODE_WRAPPER_BOILERPLATE(attribute)
          
          class arguments_wrapper {
             friend attribute;
@@ -53,10 +58,14 @@ namespace gcc_wrappers {
          };
       
       public:
+         attribute(identifier, list args);
          attribute(lu::strings::zview name, list args);
       
          std::string_view name() const;
          std::string_view namespace_name() const; // i.e. `"foo"` for `[[foo::bar]]`
+         
+         optional_identifier name_node() const;
+         optional_identifier namespace_name_node() const;
          
          bool is_cpp11() const; // i.e. `[[foo::bar]]`
          
@@ -65,7 +74,7 @@ namespace gcc_wrappers {
          arguments_wrapper arguments();
          const arguments_wrapper arguments() const;
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(attribute);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(attribute);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

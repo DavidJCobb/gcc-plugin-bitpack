@@ -1,8 +1,8 @@
 #include "gcc_wrappers/type/floating_point.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(floating_point)
+   GCC_NODE_WRAPPER_BOILERPLATE(floating_point)
    
    size_t floating_point::bitcount() const {
       return TYPE_PRECISION(this->_node);

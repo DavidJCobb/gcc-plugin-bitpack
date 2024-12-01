@@ -7,7 +7,7 @@ namespace gcc_wrappers {
    // chain::iterator
    //
    
-   chain::iterator::iterator(node_ptr n) : _node(n) {}
+   chain::iterator::iterator(optional_node n) : _node(n) {}
    
    node chain::iterator::operator*() {
       return *this->_node;
@@ -39,7 +39,7 @@ namespace gcc_wrappers {
    //
    
    chain::chain(node n) : _node(n) {}
-   chain::chain(node_ptr n) : _node(n) {}
+   chain::chain(optional_node n) : _node(n) {}
    
    chain::iterator chain::begin() {
       return iterator(this->_node);
@@ -74,7 +74,7 @@ namespace gcc_wrappers {
    }
    
    bool chain::contains(node t) const {
-      return chain_member(t.as_raw(), this->_node.unwrap());
+      return chain_member(t.unwrap(), this->_node.unwrap());
    }
    
    //

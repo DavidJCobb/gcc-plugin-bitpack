@@ -1,9 +1,9 @@
 #include "gcc_wrappers/decl/label.h"
 #include <c-family/c-common.h> // build_unary_op
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::decl {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(label)
+   GCC_NODE_WRAPPER_BOILERPLATE(label)
    
    label::label(location_t source_location) {
       this->_node = build_decl(

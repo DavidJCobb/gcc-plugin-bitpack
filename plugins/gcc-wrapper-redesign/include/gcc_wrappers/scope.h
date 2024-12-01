@@ -1,7 +1,7 @@
 #pragma once
 #include "gcc_wrappers/node.h"
-#include "gcc_wrappers/node_pointer_template.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/optional.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace decl {
@@ -17,12 +17,12 @@ namespace gcc_wrappers {
 
 namespace gcc_wrappers {
    class scope;
-   DECLARE_GCC_NODE_POINTER_WRAPPER(scope);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(scope);
    
    class scope : public node {
       public:
          static bool raw_node_is(tree t);
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(scope)
+         GCC_NODE_WRAPPER_BOILERPLATE(scope)
          
       public:
          scope_ptr containing_scope();
@@ -43,4 +43,4 @@ namespace gcc_wrappers {
    };
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

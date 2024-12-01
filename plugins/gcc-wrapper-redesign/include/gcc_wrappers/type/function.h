@@ -1,7 +1,7 @@
 #pragma once
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/list.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::type {
    class function : public base {
@@ -9,7 +9,7 @@ namespace gcc_wrappers::type {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == FUNCTION_TYPE;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(function)
+         GCC_NODE_WRAPPER_BOILERPLATE(function)
          
       public:
          template<typename... Args> requires (std::is_base_of_v<base, Args> && ...)
@@ -25,7 +25,7 @@ namespace gcc_wrappers::type {
          
          // Returns a list_node of raw arguments; the values are the argument types.
          // If this is not a varargs function, then the last element is the void type.
-         list arguments() const;
+         optional_list_node arguments() const;
          
          // We index arguments from zero. GCC likes to index them from one, at 
          // least in some places.
@@ -47,8 +47,8 @@ namespace gcc_wrappers::type {
          template<typename Functor>
          void for_each_argument_type(Functor&& functor) const;
    };
-   using function_ptr = node_pointer_template<function>;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(function);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"
 #include "gcc_wrappers/type/function.inl"

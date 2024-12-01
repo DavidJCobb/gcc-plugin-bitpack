@@ -31,7 +31,7 @@
 namespace gcc_wrappers::decl {
    WRAPPED_TREE_NODE_BOILERPLATE(field)
    
-   type::container field::member_of() const {
+   type::optional_container field::member_of() const {
       auto scope = this->context();
       if (!scope)
          //
@@ -39,19 +39,19 @@ namespace gcc_wrappers::decl {
          // built by the compiler internals.
          //
          return {};
-      if (scope.is_type()) {
-         auto type = scope.as_type();
-         if (type.is_record() || type.is_union())
-            return type::container::from_untyped(type.as_untyped());
+      if (scope->is_type()) {
+         auto type = scope->as_type();
+         if (type.is_container())
+            return type.as_container();
       }
       return {};
    }
    type::base field::value_type() const {
       auto node = DECL_BIT_FIELD_TYPE(this->_node);
       if (node != NULL_TREE) {
-         return type::base::from_untyped(node);
+         return type::base::wrap(node);
       }
-      return type::base::from_untyped(TREE_TYPE(this->_node));
+      return type::base::wrap(TREE_TYPE(this->_node));
    }
    
    size_t field::offset_in_bits() const {
@@ -71,18 +71,16 @@ namespace gcc_wrappers::decl {
          assert(TREE_CODE(size_node) == INTEGER_CST);
          return TREE_INT_CST_LOW(size_node);
       }
-      auto type = this->value_type();
-      assert(!type.empty());
-      return type.size_in_bits();
+      return this->value_type().size_in_bits();
    }
    
    bool field::is_bitfield() const {
       return DECL_BIT_FIELD(this->_node);
    }
-   type::base_ptr field::bitfield_type() const {
+   type::optional_base field::bitfield_type() const {
       if (!is_bitfield())
          return {};
-      return type::base_ptr(TREE_TYPE(this->_node));
+      return TREE_TYPE(this->_node);
    }
 
    bool field::is_non_addressable() const {
@@ -95,29 +93,29 @@ namespace gcc_wrappers::decl {
    std::string field::pretty_print() const {
       std::string out;
       
-      auto container = this->member_of();
-      while (!container.empty() && container.name().empty()) {
+      type::optional_container container = this->member_of();
+      while (container && container->name().empty()) {
          //
          // Contained in an anonymous struct?
          //
-         auto type_decl = container.declaration();
+         auto type_decl = container->declaration();
          container = {};
          if (!type_decl)
             break;
          auto context = type_decl.context();
          if (!context)
             break;
-         switch (context.code()) {
+         switch (context->code()) {
             case RECORD_TYPE:
             case UNION_TYPE:
-               container = decltype(container)::from_untyped(context.as_untyped());
+               container = context->as_type().as_container();
                break;
             default:
                break;
          }
       }
-      if (!container.empty()) {
-         out = container.pretty_print() + "::";
+      if (container) {
+         out = container->pretty_print() + "::";
       }
       out += this->name();
       
@@ -125,7 +123,7 @@ namespace gcc_wrappers::decl {
    }
    
    bool field::is_class_vtbl_pointer() const {
-      return !empty() && DECL_VIRTUAL_P(this->_node);
+      return DECL_VIRTUAL_P(this->_node);
    }
 }
 

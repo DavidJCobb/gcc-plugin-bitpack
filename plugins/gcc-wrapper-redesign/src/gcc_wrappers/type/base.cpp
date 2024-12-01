@@ -23,10 +23,10 @@ extern int comptypes(tree, tree);
 #include "gcc_wrappers/type/record.h"
 #include "gcc_wrappers/type/untagged_union.h"
 
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 
 namespace gcc_wrappers::type {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(base)
+   GCC_NODE_WRAPPER_BOILERPLATE(base)
    
    bool base::operator==(const base other) const {
       if (this->_node == other._node)
@@ -57,9 +57,11 @@ namespace gcc_wrappers::type {
       // Try printing function types and function pointer types.
       //
       {
-         bool         is_const_pointer    = false;
-         bool         is_function_pointer = false;
-         function_ptr ft;
+         bool is_const_pointer    = false;
+         bool is_function_pointer = false;
+         
+         optional_function ft;
+         
          if (is_function()) {
             ft = this->as_function();
          } else if (is_pointer()) {
@@ -200,7 +202,7 @@ namespace gcc_wrappers::type {
       return base::wrap(TYPE_MAIN_VARIANT(this->_node));
    }
    
-   decl::type_def_ptr base::declaration() const {
+   decl::optional_type_def base::declaration() const {
       auto dn = TYPE_NAME(this->_node);
       if (dn != NULL_TREE) {
          if (TREE_CODE(dn) != TYPE_DECL)
@@ -213,9 +215,9 @@ namespace gcc_wrappers::type {
       if (this->is_same(other))
          return true;
       
-      base_ptr current_ptr = this->_node;
+      optional_base current = this->_node;
       do {
-         auto decl = current.declaration();
+         auto decl = current->declaration();
          if (!decl)
             return false;
          auto synonym = decl->is_synonym_of();
@@ -223,8 +225,8 @@ namespace gcc_wrappers::type {
             return false;
          if (synonym->is_same(other))
             return true;
-         current_ptr = synonym;
-      } while (current_ptr != nullptr);
+         current = synonym;
+      } while (current);
       
       return false;
    }

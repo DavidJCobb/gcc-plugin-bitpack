@@ -1,10 +1,10 @@
 #include "gcc_wrappers/constant/floating_point.h"
 #include "gcc_wrappers/constant/integer.h"
-#include "gcc_wrappers/_node_ref_boilerplate-impl.define.h"
+#include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <real.h> // comparisons
 
 namespace gcc_wrappers::constant {
-   GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(floating_point)
+   GCC_NODE_WRAPPER_BOILERPLATE(floating_point)
    
    HOST_WIDE_INT floating_point::_to_host_wide_int() const {
       return real_to_integer(TREE_REAL_CST_PTR(this->_node));

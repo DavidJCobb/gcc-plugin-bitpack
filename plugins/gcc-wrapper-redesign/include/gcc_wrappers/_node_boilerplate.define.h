@@ -1,5 +1,5 @@
-#undef  GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE
-#define GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(type_name) \
+#undef  GCC_NODE_WRAPPER_BOILERPLATE
+#define GCC_NODE_WRAPPER_BOILERPLATE(type_name) \
    public: \
       static type_name wrap(tree); \
       \
@@ -22,6 +22,6 @@
          return Subclass{}; \
       }
 
-#undef  DECLARE_GCC_NODE_POINTER_WRAPPER
-#define DECLARE_GCC_NODE_POINTER_WRAPPER(reference_wrapper_type_name) \
-   using reference_wrapper_type_name##_ptr = node_pointer_template< reference_wrapper_type_name >;
+#undef  DECLARE_GCC_OPTIONAL_NODE_WRAPPER
+#define DECLARE_GCC_OPTIONAL_NODE_WRAPPER(wrapper_name) \
+   using optional_##wrapper_name = optional< wrapper_name >;

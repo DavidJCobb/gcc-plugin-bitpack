@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/expr/base.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace decl {
@@ -17,7 +17,7 @@ namespace gcc_wrappers::expr {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == MODIFY_EXPR;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(return_result)
+         GCC_NODE_WRAPPER_BOILERPLATE(return_result)
       
       public:
          return_result(const decl::result&);
@@ -27,6 +27,6 @@ namespace gcc_wrappers::expr {
          
          // TODO: allow INIT_EXPR
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(return_result);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(return_result);
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

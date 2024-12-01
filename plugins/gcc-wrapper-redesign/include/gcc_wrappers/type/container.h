@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/type/base.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers {
    namespace decl {
@@ -22,10 +22,10 @@ namespace gcc_wrappers::type {
             }
             return false;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(container)
+         GCC_NODE_WRAPPER_BOILERPLATE(container)
          
       public:
-         chain_node member_chain() const; // returns TREE_FIELDS(_node)
+         chain member_chain() const; // returns TREE_FIELDS(_node)
          
          // Loop over each FIELD_DECL in this object. This will only 
          // catch direct members and not, say, the contents of an 
@@ -41,8 +41,8 @@ namespace gcc_wrappers::type {
          template<typename Functor>
          void for_each_static_data_member(Functor&& functor) const;
    };
-   using container_ptr = node_pointer_template<container>;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(container);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"
 #include "gcc_wrappers/type/container.inl"

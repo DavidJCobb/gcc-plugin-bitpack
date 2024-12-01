@@ -3,7 +3,7 @@
 #include "gcc_wrappers/expr/base.h"
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/type/function.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::expr {
    class call : public base {
@@ -11,7 +11,7 @@ namespace gcc_wrappers::expr {
          static bool raw_node_is(tree t) {
             return TREE_CODE(t) == CALL_EXPR;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(call)
+         GCC_NODE_WRAPPER_BOILERPLATE(call)
       
       public:
          template<typename... Args> requires (std::is_base_of_v<value, Args> && ...)
@@ -37,12 +37,12 @@ namespace gcc_wrappers::expr {
          }
          
          // estimate; may fail
-         decl::function callee() const; // get_callee_fndecl
+         decl::optional_function callee() const; // get_callee_fndecl
          
          size_t argument_count() const;
          value nth_argument(size_t) const; // asserts in-bounds
    };
-   DECLARE_GCC_NODE_POINTER_WRAPPER(call);
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(call);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"

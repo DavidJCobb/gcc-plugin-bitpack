@@ -1,6 +1,6 @@
 #pragma once
 #include "gcc_wrappers/type/numeric.h"
-#include "gcc_wrappers/_node_ref_boilerplate.define.h"
+#include "gcc_wrappers/_node_boilerplate.define.h"
 
 namespace gcc_wrappers::constant {
    class integer;
@@ -20,7 +20,7 @@ namespace gcc_wrappers::type {
             }
             return false;
          }
-         GCC_NODE_REFERENCE_WRAPPER_BOILERPLATE(integral)
+         GCC_NODE_WRAPPER_BOILERPLATE(integral)
          
       public:
          size_t bitcount() const; // TYPE_PRECISION
@@ -36,7 +36,7 @@ namespace gcc_wrappers::type {
          
          bool can_hold_value(const constant::integer) const;
    };
-   using integral_ptr = node_pointer_template<integral>;
+   DECLARE_GCC_OPTIONAL_NODE_WRAPPER(integral);
 }
 
-#include "gcc_wrappers/_node_ref_boilerplate.undef.h"
+#include "gcc_wrappers/_node_boilerplate.undef.h"
