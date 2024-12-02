@@ -524,6 +524,89 @@ There are three basic categories for these wrappers.
   * The `chain` wrapper is a view because tree nodes of (more or less) any type can also be chains or links therein; "chain-ness" is orthogonal to the node type and doesn't fit within the `node` wrapper type hierarchy.
   * The `attribute_list` wrapper is a view because access to attributes is more ergonomic this way. I reserve the right to wrap the attribute-owning `DECL` or `TYPE` directly in the future, but for now, `attribute_list` wraps the list head, and having to distinguish between `attribute_list` and `optional_attribute_list` is clumsy given the interface that we offer for attribute lists.
 
+## Interface
+
+### General wrappers
+
+In most cases, the only way to construct a general wrapper is to either `wrap` a `tree` that you know is non-null, or dereference an optional wrapper.
+
+Some specific general wrapper types have constructors that allow you to explicitly create and wrap a new `tree` of the given type. For example, `expr::assign` has a constructor that takes two `value` arguments, creating and wrapping a brand new `MODIFY_EXPR` with those arguments as operands.
+
+General wrappers and optional wrappers both perform type-checking when created from a raw `tree`. If you try to construct these wrappers from a `tree` of an inappropriate type, then execution will halt with an internal compiler error and (when possible) stack trace, and we will try to print information about the `tree` that caused the fault.
+
+#### Methods
+
+<dl>
+   <dt><code>static bool <var>T</var>::raw_node_is(tree)</code></dt>
+      <dd>
+         <p>For a given wrapper type <code><var>T</var></code>, this checks whether the passed-in <code>tree</code> is of a type that <code><var>T</var></code> can wrap. Note that this function expects its argument to be non-null and may crash if given <code>NULL_TREE</code>. All type checking related to wrappers runs through these functions.</p>
+         <p>Some wrappers (such as <code>attribute</code> as of this writing) don't define this function, generally because the <code>tree</code>s they're meant to wrap don't have a unique <code>TREE_CODE</code>s.</p>
+      </dd>
+   <dt><code>static <var>T</var> <var>T</var>::wrap(tree)</code></dt>
+      <dd>
+         <p>For a given wrapper type <code><var>T</var></code>, attempts to wrap the passed-in <code>tree</code>. If the passed-in tree is <code>NULL_TREE</code>, or if <code><var>T</var>::raw_node_is(tree)</code> is defined and the passed-in <code>tree</code> fails that check, then this fails, halting execution with an internal compiler error and stack trace.</p>
+      </dd>
+   <dt><code>tree node::code() const</code></dt>
+      <dd>
+         <p>Returns the <code>tree_code</code> of the wrapper's wrapped <code>tree</code>, as if you had used <code>TREE_CODE(wrapped)</code>.</p>
+      </dd>
+   <dt><code>std::string_view node::code() const</code></dt>
+      <dd>
+         <p>Returns a human-readable string from GCC's codebase describing the wrapped <code>tree</code>'s code.</p>
+      </dd>
+   <dt><code>tree node::unwrap()</code></dt>
+      <dd>
+         <p>Returns the wrapper's wrapped <code>tree</code>.</p>
+      </dd>
+   <dt><code>bool <var>T</var>::is&lt;<var>Casted</var>&gt;() const</code></dt>
+      <dd>
+         <p>Downcast helper function: For a given wrapper type <code><var>T</var></code>, checks whether the wrapped node is of a type that <code><var>Casted</var></code> can also wrap. The <code><var>Casted</var></code> type must be a subclass of <code><var>T</var></code>.</p>
+         <p>This member function is only available if <code><var>Casted</var>::raw_node_is</code> is defined.</p>
+      </dd>
+   <dt><code><var>Casted</var> <var>T</var>::as&lt;<var>Casted</var>&gt;()</code></dt>
+      <dd>
+         <p>Downcast helper function: For a given wrapper type <code><var>T</var></code>, attempts to cast the wrapper to type <code><var>Casted</var></code>, asserting that the wrapped node is of the correct type. The <code><var>Casted</var></code> type must be a subclass of <code><var>T</var></code>.</p>
+         <p>This member function is only available if <code><var>Casted</var>::raw_node_is</code> is defined.</p>
+      </dd>
+</dl>
+
+### Optional wrappers
+
+#### Constructors
+
+An optional wrapper of type <code>optional_<var>T</var></code> can be constructed from:
+
+* A bare `const_tree` or `tree`.
+  * This constructor asserts that the bare tree is `NULL_TREE` or a tree of the appropriate type for <code><var>T</var></code>.
+* A general wrapper of type <code><var>T</var></code> or any subclass thereof.
+* Another optional wrapper of the same type.
+* An optional wrapper of type <code>optional_<var>U</var></code>, where <code><var>U</var></code> is a subclass of <code><var>T</var></code>.
+
+#### Methods
+
+<dl>
+   <dt><code>bool optional_<var>T</var>::empty() const</code></dt>
+      <dd>
+         <p>Returns <code>true</code> if the wrapped node is <code>NULL_TREE</code>, or <code>false</code> otherwise.</p>
+      </dd>
+   <dt><code>optional_<var>T</var>::operator bool() const</code></dt>
+      <dd>
+         <p>Returns <code>true</code> the wrapper has a wrapped node, or <code>false</code> if it's <code>empty()</code>.</p>
+      </dd>
+   <dt><code>tree optional_<var>T</var>.unwrap()</code></dt>
+      <dd>
+         <p>Returns the wrapped <code>tree</code>, which may be <code>NULL_TREE</code>.</p>
+      </dd>
+   <dt><code><var>T</var> optional_<var>T</var>::operator*()</code></dt>
+      <dd>
+         <p>Similar to <code>std::optional&lt;T&gt;::operator*()</code>: asserts that the optional wrapper is not empty, and then dereferences it, returning a general wrapper.</p>
+      </dd>
+   <dt><code><var>T</var>* optional_<var>T</var>::operator-&gt;()</code></dt>
+      <dd>
+         <p>Similar to <code>std::optional&lt;T&gt;::operator-&gt;()</code>: asserts that the optional wrapper is not empty, and then dereferences it, allowing you to invoke functions on the general wrapper.</p>
+      </dd>
+</dl>
+
 ## Class hierarchy
 
 Most of the namespaces are fairly simple: `constant` holds classes that wrap `*_CST` nodes; `decl` holds classes that wrap `*_DECL` nodes; `expr` holds classes that wrap `*_EXPR` nodes; and `type` holds classes that wrap `*_TYPE` nodes.
@@ -670,6 +753,14 @@ void gt_pch_nx(my_struct* instance, gt_pointer_operator op, void* cookie) {
 You'll note that you can only mark garbage-collectible fields, or forward an operation to run on garbage-collectible fields; there doesn't appear to be any way to store or restore your object's state here. This can be seen on GCC internals as well. For example, their `vec` template is `GTY((user))` since it's a template, and the only thing its GGC functions do is recurse on the vector elements; nothing is done to store the vector's length. It's obvious, then, how GGC marks collectible objects, and how it does pointer fix-ups; but it's not clear how it actually stores object data. Perhaps savestates can only record the contents of collectible objects, such that a singleton would be wiped clean unless it's under GGC's control? (But `vec` doesn't *seem* to be allocated through `ggc_alloc` and friends? And don't some `tree` structures store `vec`s?)
 
 There also exists a `ggc_register_root_tab` function that is noted as being "useful for some plugins." No clue when or how to use it.
+
+## Defects
+
+* Currently, `node::unwrap` has a `const` overload that returns a `const_tree`. However, this feels a bit like a footgun. You can't actually do very much with a `const_tree` because the vast majority of GCC functionality requires non-const access to `tree`s, whether to store them or for some other reason. This makes sense: constructing, say, a `CALL_EXPR` may not modify the call argument nodes, but those nodes have to be stored as non-const so they can potentially be modified later.
+  
+  Broadly, const-correct use of the wrappers is helpful for letting a plug-in express *its own* intent to modify a `tree`. When one wrapper acts on another (e.g. an `expr::call` constructor taking wrapped arguments), taking const wrappers as parameters could help signal our [lack of] intent to modify a given wrapper as part of the operation being performed. However, these things mix poorly with how rarely GCC uses `const_tree`. In practice, we have to either take non-const wrappers, or frequently cast away `const`ness every time we unwrap one.
+  
+  Perhaps it'd be better to have `node::unwrap() const` just return a non-const `tree`.
 
 ## Potential future plans
 
