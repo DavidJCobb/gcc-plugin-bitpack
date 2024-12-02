@@ -25,11 +25,17 @@ namespace gcc_wrappers::type {
          
          // Returns a list_node of raw arguments; the values are the argument types.
          // If this is not a varargs function, then the last element is the void type.
+         //
+         // The pair keys are the arguments' default values (in C++, if provided), 
+         // and the pair values are the argument types. A default value may be an 
+         // `error_mark_node`, in the event of syntax errors and similar.
          optional_list_node arguments() const;
          
          // We index arguments from zero. GCC likes to index them from one, at 
          // least in some places.
          base nth_argument_type(size_t n) const;
+         
+         optional_node nth_argument_default_value(size_t n) const;
          
          bool is_varargs() const;
          

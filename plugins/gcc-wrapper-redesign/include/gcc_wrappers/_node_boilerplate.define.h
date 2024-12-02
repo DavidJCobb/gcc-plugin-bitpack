@@ -16,13 +16,13 @@
 #define _GCC_NODE_WRAPPER_BOILERPLATE_AS(type_name) \
    template<typename Subclass> requires impl::can_is_as<type_name, Subclass> \
    Subclass as() { \
-      assert(is<Subclass>()); \
+      impl::wrap_fail_on_wrong_type<Subclass>(this->_node); \
       return Subclass::wrap(this->_node); \
    } \
    \
    template<typename Subclass> requires impl::can_is_as<type_name, Subclass> \
    const Subclass as() const { \
-      assert(is<Subclass>()); \
+      impl::wrap_fail_on_wrong_type<Subclass>(this->_node); \
       return Subclass::wrap(this->_node); \
    }
 

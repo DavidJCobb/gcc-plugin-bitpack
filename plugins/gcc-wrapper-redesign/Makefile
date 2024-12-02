@@ -5,6 +5,7 @@ INCDIR=include
 include Makefile.gcc-wrappers
 SOURCES=\
         $(GCC_WRAPPERS_SOURCES) \
+        src/gcc_helpers/c/at_file_scope.cpp \
         src/lu/strings/builder.cpp \
         src/lu/stringf.cpp \
         src/pragma_handlers/debug_dump_function.cpp \

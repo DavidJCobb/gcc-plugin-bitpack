@@ -29,9 +29,6 @@ namespace gcc_wrappers::decl {
          type::base value_type() const;
          
          value as_value();
-      
-         optional_value initial_value() const;
-         void set_initial_value(optional_value);
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(base_value);
 }

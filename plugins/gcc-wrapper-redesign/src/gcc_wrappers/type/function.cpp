@@ -22,6 +22,25 @@ namespace gcc_wrappers::type {
       return base::wrap(function_args_iter_cond(&it));
    }
    
+   optional_node function::nth_argument_default_value(size_t n) const {
+      function_args_iterator it;
+      function_args_iter_init(&it, this->_node);
+      for(size_t i = 0; i < n; ++i) {
+         function_args_iter_next(&it);
+      }
+      assert(it.next != NULL_TREE);
+      auto arg_val = TREE_PURPOSE(it.next);
+      if (arg_val == error_mark_node) {
+         //
+         // Set as the default value in case of syntax errors, e.g. user code 
+         // like `void foo(int a, int b = 3, int c)`. The default value of `c` 
+         // would be set to the error mark node.
+         //
+         arg_val = NULL_TREE;
+      }
+      return arg_val;
+   }
+   
    bool function::is_varargs() const {
       #if GCCPLUGIN_VERSION_MAJOR >= 13
          //

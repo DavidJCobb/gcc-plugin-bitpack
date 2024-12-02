@@ -11,6 +11,7 @@
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/type/enumeration.h"
 #include "gcc_wrappers/type/integral.h"
@@ -123,9 +124,7 @@ namespace pragma_handlers {
             auto prior = decl.is_synonym_of();
             auto after = decl.declared();
             if (prior && after) {
-               std::cerr << "Newly-declared name: " << after->pretty_print() << '\n';
                std::cerr << "Is a new synonym of: " << prior->pretty_print() << '\n';
-               
                also_dump = after;
             } else {
                std::cerr << "Unable to get complete information. The typedef may still be in the middle of being parsed.\n";
@@ -178,9 +177,12 @@ namespace pragma_handlers {
             auto type = decl.value_type();
             std::cerr << "Value type: " << type.pretty_print() << '\n';
             
-            auto init = decl.initial_value();
-            if (init) {
-               std::cerr << "The declared entity has an initial value.\n";
+            if (gw::decl::variable::raw_node_is(raw)) {
+               auto decl = gw::decl::variable::wrap(raw);
+               auto init = decl.initial_value();
+               if (init) {
+                  std::cerr << "The declared entity has an initial value.\n";
+               }
             }
          }
       }

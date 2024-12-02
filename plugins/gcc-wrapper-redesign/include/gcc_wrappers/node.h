@@ -18,10 +18,16 @@ namespace gcc_wrappers {
       template<typename Super, typename Sub>
       concept can_is_as = std::is_base_of_v<Super, Sub> && !std::is_same_v<Super, Sub> && has_typecheck<Sub>;
       
+      void wrap_fail_on_null(tree);
+      
+      [[noreturn]] void _wrap_report_wrong_type(tree);
+      //
       template<typename Wrapper>
-      void do_typecheck(tree t) {
+      void wrap_fail_on_wrong_type(tree t) {
          if constexpr (has_typecheck<Wrapper>) {
-            assert(Wrapper::raw_node_is(t));
+            if (!Wrapper::raw_node_is(t)) {
+               _wrap_report_wrong_type(t);
+            }
          }
       }
    }

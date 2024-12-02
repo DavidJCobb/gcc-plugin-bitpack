@@ -30,11 +30,4 @@ namespace gcc_wrappers::decl {
    type::base base_value::value_type() const {
       return type::base::wrap(TREE_TYPE(this->_node));
    }
-   
-   optional_value base_value::initial_value() const {
-      return DECL_INITIAL(this->_node);
-   }
-   void base_value::set_initial_value(optional_value v) {
-      DECL_INITIAL(this->_node) = v.unwrap();
-   }
 }

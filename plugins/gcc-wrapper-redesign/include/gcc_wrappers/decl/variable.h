@@ -29,6 +29,9 @@ namespace gcc_wrappers::decl {
             type::base& value_type,
             location_t  source_location = UNKNOWN_LOCATION
          );
+      
+         optional_value initial_value() const;
+         void set_initial_value(optional_value);
          
          expr::declare make_declare_expr();
          

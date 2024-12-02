@@ -88,11 +88,6 @@ namespace pragma_handlers {
                std::cerr << "       - Type (via function type): ";
                std::cerr << type.nth_argument_type(i).pretty_print();
                std::cerr << '\n';
-               
-               auto initial = pd.initial_value();
-               if (initial) {
-                  std::cerr << "       - Has a default value\n";
-               }
             }
          }
          if (varargs) {

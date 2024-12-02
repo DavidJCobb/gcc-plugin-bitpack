@@ -36,6 +36,13 @@ namespace gcc_wrappers::decl {
       );
    }
    
+   optional_value variable::initial_value() const {
+      return DECL_INITIAL(this->_node);
+   }
+   void variable::set_initial_value(optional_value v) {
+      DECL_INITIAL(this->_node) = v.unwrap();
+   }
+   
    expr::declare variable::make_declare_expr() {
       return expr::declare(*this);
    }

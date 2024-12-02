@@ -16,7 +16,9 @@ namespace gcc_wrappers {
          return;
       }
       if constexpr (impl::has_typecheck<value_type>) {
-         assert(value_type::raw_node_is(raw));
+         if (raw != NULL_TREE) {
+            impl::wrap_fail_on_wrong_type<value_type>(raw);
+         }
       }
       this->_tree = raw;
    }
