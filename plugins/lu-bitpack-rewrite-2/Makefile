@@ -5,10 +5,38 @@ INCDIR=include
 include Makefile.gcc-wrappers
 SOURCES=\
         $(GCC_WRAPPERS_SOURCES) \
+        src/attribute_handlers/helpers/bp_attr_context.cpp \
+        src/attribute_handlers/helpers/type_transitively_has_attribute.cpp \
+        src/attribute_handlers/bitpack_as_opaque_buffer.cpp \
+        src/attribute_handlers/bitpack_bitcount.cpp \
+        src/attribute_handlers/bitpack_default_value.cpp \
+        src/attribute_handlers/bitpack_range.cpp \
+        src/attribute_handlers/bitpack_stat_category.cpp \
+        src/attribute_handlers/bitpack_string.cpp \
+        src/attribute_handlers/bitpack_tagged_id.cpp \
+        src/attribute_handlers/bitpack_transforms.cpp \
+        src/attribute_handlers/bitpack_union_external_tag.cpp \
+        src/attribute_handlers/bitpack_union_internal_tag.cpp \
+        src/attribute_handlers/generic_bitpacking_data_option.cpp \
+        src/attribute_handlers/generic_type_or_decl.cpp \
+        src/attribute_handlers/test.cpp \
+        src/attribute_handlers/no_op.cpp \
+        src/bitpacking/attribute_attempted_on.cpp \
+        src/bitpacking/data_options/typed.cpp \
+        src/bitpacking/data_options.cpp \
+        src/bitpacking/get_union_bitpacking_info.cpp \
         src/bitpacking/global_options.cpp \
+        src/bitpacking/mark_for_invalid_attributes.cpp \
         src/bitpacking/requested_global_options.cpp \
+        src/bitpacking/transform_function_validation_helpers.cpp \
+        src/bitpacking/verify_bitpack_attributes_on_type_finished.cpp \
+        src/bitpacking/verify_union_external_tag.cpp \
+        src/bitpacking/verify_union_internal_tag.cpp \
+        src/bitpacking/verify_union_members.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
         src/lu/strings/builder.cpp \
+        src/lu/strings/handle_kv_string.cpp \
+        src/lu/strings/trim.cpp \
         src/lu/stringf.cpp \
         src/pragma_handlers/debug_dump_function.cpp \
         src/pragma_handlers/debug_dump_identifier.cpp \

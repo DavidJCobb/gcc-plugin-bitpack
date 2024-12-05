@@ -47,7 +47,7 @@ namespace bitpacking {
          struct {
             gcc_wrappers::type::optional_record  bitstream_state;
             gcc_wrappers::type::optional_pointer bitstream_state_ptr;
-            gcc_wrappers::type::optional_base    boolean;
+            gcc_wrappers::type::optional_base    boolean; // for old C codebases
             gcc_wrappers::type::optional_base    buffer_byte;
             gcc_wrappers::type::optional_pointer buffer_byte_ptr;
          } types;

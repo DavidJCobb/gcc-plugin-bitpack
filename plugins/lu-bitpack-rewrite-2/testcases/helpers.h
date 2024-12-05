@@ -4,6 +4,7 @@
 #define LU_BP_AS_OPAQUE_BUFFER __attribute__((lu_bitpack_as_opaque_buffer))
 #define LU_BP_BITCOUNT(n)      __attribute__((lu_bitpack_bitcount(n)))
 #define LU_BP_DEFAULT(x)       __attribute__((lu_bitpack_default_value(x)))
+#define LU_BP_MINMAX(min, max) __attribute__((lu_bitpack_range(min, max)))
 #define LU_BP_OMIT             __attribute__((lu_bitpack_omit))
 #define LU_BP_STRING           __attribute__((lu_bitpack_string))
 #define LU_BP_STRING_NT        LU_BP_STRING

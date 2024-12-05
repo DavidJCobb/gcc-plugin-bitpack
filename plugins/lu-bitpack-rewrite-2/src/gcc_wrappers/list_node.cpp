@@ -26,6 +26,13 @@ namespace gcc_wrappers {
       return it;
    }
    
+   void list_node::iterator::replace_key(optional_node n) {
+      TREE_PURPOSE(this->_node.unwrap()) = n.unwrap();
+   }
+   void list_node::iterator::replace_value(optional_node n) {
+      TREE_VALUE(this->_node.unwrap()) = n.unwrap();
+   }
+   
    //
    // list_node
    //
@@ -34,8 +41,8 @@ namespace gcc_wrappers {
       return TREE_CODE(t) == TREE_LIST;
    }
    
-   list_node::list_node() {
-      this->_node = tree_cons(NULL_TREE, NULL_TREE, NULL_TREE);
+   list_node::list_node(optional_node k, optional_node v) {
+      this->_node = tree_cons(k.unwrap(), v.unwrap(), NULL_TREE);
    }
    
    list_node::iterator list_node::begin() {

@@ -24,10 +24,15 @@ namespace gcc_wrappers {
                iterator  operator++(int) const;
                
                bool operator==(const iterator&) const = default;
+               
+               void replace_key(optional_node);
+               void replace_value(optional_node);
          };
          
       public:
-         list_node(); // construct a pair node with a null key and value
+         // An ugly wart of this API is that creating a list also creates a list 
+         // head, i.e. you can't have an "empty list."
+         list_node(optional_node key, optional_node value);
          
          iterator begin();
          iterator end();

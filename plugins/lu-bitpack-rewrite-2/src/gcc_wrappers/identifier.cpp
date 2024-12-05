@@ -13,7 +13,7 @@ namespace gcc_wrappers {
       this->_node = get_identifier(name.c_str());
    }
    
-   std::string_view identifier::name() const {
-      return std::string_view(IDENTIFIER_POINTER(this->_node));
+   lu::strings::zview identifier::name() const {
+      return lu::strings::zview(IDENTIFIER_POINTER(this->_node));
    }
 }

@@ -14,7 +14,7 @@ namespace gcc_wrappers {
       public:
          identifier(lu::strings::zview);
          
-         std::string_view name() const;
+         lu::strings::zview name() const;
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(identifier);
 }

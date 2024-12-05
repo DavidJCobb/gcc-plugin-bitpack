@@ -8,19 +8,17 @@
 C++:
 
 * GCC wrapper rewrite
-  * Rename `node::as_raw` to `node::unwrap` and update the already-ported code to match.
-  * `list` shouldn't be a view-like wrapper. Make it a reference-like wrapper.
-  * Consider alternate names for reference-like, pointer-like, and view-like wrappers.
-    * Valued, nullable, and view? Naming convention could be `node` versus `node_nb`, and getting rid of pointers-as-allegories means we can get rid of `operator->` and the casting shenanigans it requires.
-  * Set up a small plug-in that allows us to just dump info about various identifiers using the wrappers. Treat it as a unit test. Look, also, into writing helper functions for things that are currently done in `lu-bitpack-rewrite`'s plug-in-specific codegen (e.g. printing the signature of a `FUNCTION_DECL`, as is done in `generate_functions.cpp` when we report problems with finding builtins).
-  * Once we've proofed the basic wrapper functionality, start work on porting `lu-bitpack-rewrite` to `lu-bitpack-rewrite-2`. Try to do so in a modular way: focus on the attribute handlers and the code to load global settings; then the rest of codegen. We should try to avoid getting ourselves in a situation where we have to port a couple dozen files before we can build again, even if that means straight-up *rebuilding* the codegen and settings and whatnot instead of merely porting them.
+  * `verify_bitpacking_attributes_on_type_finished`: It *seems* like "on type finished" isn't firing for union types nested inside of a struct type (i.e. `struct A { union { ... } foo; }` doesn't fire for the type of `foo`)? Does GCC only fire this listener for top-level types?! (Or *did* it back in v11.4.0?)
+    * The `attributes-union` testcase is failing to catch several bad internally tagged unions when they exist as struct members, but is catching them when they're separately-defined top-level types. We need to fix this, obviously.
+  * Testcases needed:
+    * Opaque buffer attribute
+      * In particular, unions that are only marked as opaque buffers and not as tagged unions
+    * Transform attributes
+    * Transitive typedef shenanigans
+  * Port the `codegen` stuff.
+    * We've redesigned how `data_options` work. In particular, we no longer have the semi-redundant `member_kind` enum, but instead rely on the type of the computed options `variant`. We have `is` and `as` accessors for this; use them.
+  * Port the `xmlgen` stuff.
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
-* Look into renaming `lu::strings::printf_string` to something else, since it uses `printf`-style syntax but doesn't actually print anything. I don't want to burn the name "format" since that would be better-suited to something that polyfills `std::format`, should I ever bother to do that. Perhaps `lu::stringf`?
-* Work on rewriting the GCC wrappers to distinguish between pointer-style wrappers and reference-style wrappers. Do that separately and in its own folder; then gradually bring pieces of the plug-in over to rewrite.
-* Delete `lu-plugin-bitpack` and all other outdated copies of the plug-in; have just the main plug-in.
-* Investigate removing `bitpacking::member_kind::transformed`. We now treat transformation as an operation to be applied "around" values (akin to for loops), rather than as something to be applied per value.
-  * It's set on a `decl_descriptor` if the computed options are transform options, but I'm not sure it's checked anywhere. We'd have to check for what code reads the member-kind generally, in case any value we might want to use instead (e.g. `none`) might alter behavior.
-  * Maybe we want to replace this with something like `value_kind`, or do a better job of integrating it with X-options so that the options `variant` it's associated with just... also acts as the tag.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.
   * <dfn>Single-stage functions</dfn> are only invoked on fully-constructed objects (i.e. an object that has been read from the bitstream in full), as is typical in programming generally. To ensure this, we'd define a `static` instance of each individual transformed object that gets split across sectors, so that we can invoke the post-unpack function only after an instance is fully read (and without needing to invoke the pre-pack function as a per-sector pre-process step for reads).

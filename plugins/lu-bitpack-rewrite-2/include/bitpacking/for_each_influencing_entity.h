@@ -10,9 +10,9 @@
 #include "gcc_wrappers/type/array.h"
 
 namespace bitpacking {
-   template<typename Functor> requires std::is_invocable_v<Functor, node>
+   template<typename Functor> requires std::is_invocable_v<Functor, gcc_wrappers::node>
    bool for_each_influencing_entity(gcc_wrappers::type::base type, Functor&& functor) {
-      constexpr const bool can_abort = std::is_invocable_r_v<Functor, bool, node>;
+      constexpr const bool can_abort = std::is_invocable_r_v<Functor, bool, gcc_wrappers::node>;
       
       if (type.is_array()) {
          if (!for_each_influencing_entity(type.as_array().value_type(), functor))
@@ -40,7 +40,7 @@ namespace bitpacking {
       std::vector<gcc_wrappers::type::base> transitives;
       transitives.push_back(type);
       do {
-         auto tran = decl.is_synonym_of();
+         auto tran = decl->is_synonym_of();
          if (!tran)
             break;
          transitives.push_back(*tran);
@@ -68,13 +68,13 @@ namespace bitpacking {
    }
    
    template<typename Functor, typename NodeWrapper> requires (
-      std::is_invocable_v<Functor, node> &&
+      std::is_invocable_v<Functor, gcc_wrappers::node> &&
       std::is_same_v<NodeWrapper, gcc_wrappers::decl::field> ||
       std::is_same_v<NodeWrapper, gcc_wrappers::decl::param> ||
       std::is_same_v<NodeWrapper, gcc_wrappers::decl::variable>
    )
    void for_each_influencing_entity(NodeWrapper decl, Functor&& functor) {
-      if constexpr (std::is_invocable_r_v<Functor, bool, node>) {
+      if constexpr (std::is_invocable_r_v<Functor, bool, gcc_wrappers::node>) {
          if (!functor(decl))
             return;
       } else {
@@ -83,7 +83,7 @@ namespace bitpacking {
       for_each_influencing_entity(decl.value_type(), functor);
    }
    
-   template<typename Functor> requires std::is_invocable_v<Functor, node>
+   template<typename Functor> requires std::is_invocable_v<Functor, gcc_wrappers::node>
    void for_each_influencing_entity(gcc_wrappers::decl::type_def decl, Functor&& functor) {
       for_each_influencing_entity(*decl.declared(), functor);
    }
