@@ -121,6 +121,20 @@ namespace bitpacking {
                });
             }
          });
+         if (is_first) {
+            //
+            // We never saw a usable member.
+            //
+            if (!silent) {
+               auto name = type.name();
+               if (name.empty()) {
+                  error_at(type.source_location(), "%<lu_bitpack_union_internal_tag%>: the union does not have any non-omitted struct-type members and so cannot contain an internal tag");
+               } else {
+                  error_at(type.source_location(), "%<lu_bitpack_union_internal_tag%>: union type %<%s%> does not have any non-omitted struct-type members and so cannot contain an internal tag", name.data());
+               }
+            }
+            return false;
+         }
       }
       
       if (matched_members.empty()) {

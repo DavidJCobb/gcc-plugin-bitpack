@@ -65,7 +65,7 @@ namespace bitpacking {
             if (has_default && !has_tag_id) {
                valid = false;
                if (!silent) {
-                  error_at(decl.source_location(), "if a union member is omitted from bitpacking and has a default value via %<lu_bitpack_default_value%>, then it must also have a unique ID via %<lu_bitpack_union_member_id%>");
+                  error_at(decl.source_location(), "if a tagged union member is omitted from bitpacking and has a default value via %<lu_bitpack_default_value%>, then it must also have a unique ID via %<lu_bitpack_union_member_id%>");
                   inform(decl.source_location(), "either give this union member a unique ID (to indicate when we should even use the default value) or remove the default value (since it will never be used)");
                }
             }
@@ -74,7 +74,7 @@ namespace bitpacking {
          if (!has_tag_id) {
             valid = false;
             if (!silent) {
-               error_at(decl.source_location(), "union members must either be omitted from bitpacking or have a unique ID via %<lu_bitpack_union_member_id%>");
+               error_at(decl.source_location(), "tagged union members must either be omitted from bitpacking or have a unique ID via %<lu_bitpack_union_member_id%>");
             }
             return;
          }
@@ -88,7 +88,7 @@ namespace bitpacking {
                   valid = false;
                   seen  = true;
                   if (!silent) {
-                     error_at(decl.source_location(), "union member %<%s%> has the same unique ID as other members of the same union", decl.name().data());
+                     error_at(decl.source_location(), "tagged union member %<%s%> has the same unique ID as other members of the same tagged union", decl.name().data());
                      inform(
                         pair.second.source_location(),
                         "unique ID %r%" PRIdMAX "%R was first used here",

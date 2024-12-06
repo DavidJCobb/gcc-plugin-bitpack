@@ -14,7 +14,6 @@
 
 #define LU_BP_CATEGORY(name) __attribute__((lu_bitpack_stat_category(name)))
 
-// Not yet implemented.
 // Indicate the value that acts as a union's tag, when that value is not 
 // inside of [all of the members of] the union itself. The union must be 
 // located somewhere inside of a containing struct (named tag or typedef) 
@@ -22,12 +21,10 @@
 // member of said struct that appears before the union does.
 #define LU_BP_UNION_TAG(n) __attribute__((lu_bitpack_union_external_tag( #n )))
 
-// Not yet implemented.
 // Indicate which member-of-member of this union acts as its tag.
 // For example, `name` means that `__union.__any_member.name` is the tag.
 #define LU_BP_UNION_INTERNAL_TAG(n) __attribute__((lu_bitpack_union_internal_tag( #n )))
 
-// Not yet implemented.
 // Use on a union member to specify the tag value that indicates that that 
 // member is active. Must be an integral value.
 #define LU_BP_TAGGED_ID(n) __attribute__((lu_bitpack_union_member_id(n)))

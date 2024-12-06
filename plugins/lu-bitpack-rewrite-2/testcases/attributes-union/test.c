@@ -45,16 +45,16 @@ struct TestStruct {
    } a_data;
    
    LU_BP_UNION_INTERNAL_TAG(tag) union {
-      struct {
+      LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
       } x;
-      struct {
+      LU_BP_TAGGED_ID(1) struct {
          int header;
          int tag;
          int data;
       } y;
-      struct {
+      LU_BP_TAGGED_ID(2) struct {
          int  header;
          int  tag;
          char data;
@@ -64,10 +64,10 @@ struct TestStruct {
    // actually, maybe this SHOULD fail. C doesn't mandate 
    // that `int` be 32 bits, after all.
    LU_BP_UNION_INTERNAL_TAG(tag) union {
-      struct {
+      LU_BP_TAGGED_ID(0) struct {
          int tag;
       } x;
-      struct {
+      LU_BP_TAGGED_ID(1) struct {
          LU_BP_BITCOUNT(sizeof(int) * 8) int tag;
       } y;
    } different_options_but_equal_in_effect;
@@ -94,33 +94,33 @@ struct BadStruct {
    } internally_tagged_with_member_sans_id;
    
    LU_BP_UNION_INTERNAL_TAG(tag) union {
-      struct {
+      LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
       } x;
-      struct {
+      LU_BP_TAGGED_ID(1) struct {
          int tag;
          int header;
       } y;
    } internal_tag_out_of_order;
    
    LU_BP_UNION_INTERNAL_TAG(tag) union {
-      struct {
+      LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
       } x;
-      struct {
+      LU_BP_TAGGED_ID(1) struct {
          int  header;
          char tag;
       } y;
    } internal_tag_different_types;
    
    LU_BP_UNION_INTERNAL_TAG(tag) union {
-      struct {
+      LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
       } x;
-      struct {
+      LU_BP_TAGGED_ID(1) struct {
          int header;
          LU_BP_BITCOUNT(7) int tag;
       } y;

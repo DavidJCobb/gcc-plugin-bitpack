@@ -8,9 +8,9 @@ namespace gcc_wrappers::decl {
    
    /*static*/ bool base_value::raw_node_is(tree t) {
       switch (TREE_CODE(t)) {
-         case FUNCTION_DECL:
+         case FIELD_DECL:
+         case PARM_DECL:
          case RESULT_DECL:
-         case TYPE_DECL:
          case VAR_DECL:
             return true;
          default:

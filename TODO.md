@@ -8,8 +8,6 @@
 C++:
 
 * GCC wrapper rewrite
-  * `verify_bitpacking_attributes_on_type_finished`: It *seems* like "on type finished" isn't firing for union types nested inside of a struct type (i.e. `struct A { union { ... } foo; }` doesn't fire for the type of `foo`)? Does GCC only fire this listener for top-level types?! (Or *did* it back in v11.4.0?)
-    * The `attributes-union` testcase is failing to catch several bad internally tagged unions when they exist as struct members, but is catching them when they're separately-defined top-level types. We need to fix this, obviously.
   * Testcases needed:
     * Opaque buffer attribute
       * In particular, unions that are only marked as opaque buffers and not as tagged unions
