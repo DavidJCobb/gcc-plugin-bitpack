@@ -33,6 +33,11 @@ SOURCES=\
         src/bitpacking/verify_union_external_tag.cpp \
         src/bitpacking/verify_union_internal_tag.cpp \
         src/bitpacking/verify_union_members.cpp \
+        src/codegen/decl_descriptor.cpp \
+        src/codegen/decl_dictionary.cpp \
+        src/codegen/describe_and_check_decl_tree.cpp \
+        src/codegen/optional_value_pair.cpp \
+        src/codegen/value_path.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
         src/lu/strings/builder.cpp \
         src/lu/strings/handle_kv_string.cpp \
