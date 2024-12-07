@@ -49,6 +49,15 @@ namespace bitpacking::typed_data_options {
          
          constexpr bool operator==(const string&) const noexcept = default;
       };
+      struct structure {
+         //
+         // An entire struct, which we'll serialize with a function call (to functions 
+         // generated to handle this struct) if possible, or one member at a time if 
+         // we need to split the struct across sector boundaries.
+         //
+         
+         constexpr bool operator==(const structure&) const noexcept = default;
+      };
       struct tagged_union {
          std::string tag_identifier;
          bool        is_internal = false;
@@ -112,6 +121,7 @@ namespace bitpacking::typed_data_options {
       computed::integral,
       computed::pointer,
       computed::string,
+      computed::structure,
       computed::tagged_union,
       computed::transformed
    >;

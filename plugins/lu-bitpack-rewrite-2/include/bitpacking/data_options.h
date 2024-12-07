@@ -91,7 +91,7 @@ namespace bitpacking {
                   return false;
                }
                auto& var = std::get<typed_data_options::computed_variant>(this->typed);
-               return std::holds_alternative<T>(var) ? std::get<T>(var) : var.emplace<T>();
+               return std::holds_alternative<T>(var);
             }
          }
          

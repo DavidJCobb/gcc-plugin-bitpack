@@ -322,6 +322,8 @@ namespace bitpacking {
                   // basically).
                   //
                   dst_var.emplace<typed_data_options::computed::pointer>();
+               } else if (value_type->is_record()) {
+                  dst_var.emplace<typed_data_options::computed::structure>();
                } else {
                   //
                   // Unrecognized type.

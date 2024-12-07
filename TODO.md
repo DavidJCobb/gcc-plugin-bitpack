@@ -9,9 +9,6 @@ C++:
 
 * GCC wrapper rewrite
   * Testcases needed:
-    * Opaque buffer attribute
-      * In particular, unions that are only marked as opaque buffers and not as tagged unions
-    * Transform attributes
     * Transitive typedef shenanigans
   * Port the `codegen` stuff.
     * We've redesigned how `data_options` work. In particular, we no longer have the semi-redundant `member_kind` enum, but instead rely on the type of the computed options `variant`. We have `is` and `as` accessors for this; use them.

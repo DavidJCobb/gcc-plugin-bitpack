@@ -230,12 +230,18 @@ static void register_attributes(void* event_data, void* user_data) {
    register_attribute(&_attributes::bitpack_union_member_id);
 }
 
+#include "pragma_handlers/debug_dump_bp_data_options.h"
 #include "pragma_handlers/debug_dump_function.h"
 #include "pragma_handlers/debug_dump_identifier.h"
 #include "pragma_handlers/enable.h"
 #include "pragma_handlers/set_options.h"
 
 static void register_pragmas(void* event_data, void* user_data) {
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "debug_dump_bp_data_options",
+      &pragma_handlers::debug_dump_bp_data_options
+   );
    c_register_pragma_with_expansion(
       "lu_bitpack",
       "debug_dump_function",

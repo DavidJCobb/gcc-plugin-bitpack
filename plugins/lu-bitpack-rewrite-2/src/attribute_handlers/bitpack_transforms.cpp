@@ -15,6 +15,22 @@ namespace gw {
    using namespace gcc_wrappers;
 }
 
+static std::string _name_to_report(gw::type::base type) {
+   std::string out;
+   auto name = type.name();
+   if (type.declaration()) {
+      out = name;
+   } else {
+      if (type.is_record()) {
+         out += "struct ";
+      } else if (type.is_union()) {
+         out += "union ";
+      }
+      out += name;
+   }
+   return out;
+}
+
 namespace attribute_handlers {
    static void _reassemble_parameters(
       gw::constant::string      data,
@@ -96,14 +112,28 @@ namespace attribute_handlers {
       _get_func("pre-pack",    params.pre_pack,    pre_pack);
       _get_func("post-unpack", params.post_unpack, post_unpack);
       
+      gw::type::base target_type = context.type_of_target();
+      
       if (pre_pack && !bitpacking::can_be_pre_pack_function(*pre_pack)) {
          auto name = pre_pack->name().data();
-         context.report_error("specifies a pre-pack function %<%s%> with the wrong signature (should be %<void %s(const InSituType*, PackedType*)%>)", name, name);
+         auto type = target_type.name();
+         if (!type.empty()) {
+            auto for_sig = _name_to_report(target_type);
+            context.report_error("specifies a pre-pack function %<%s%> with the wrong signature (should be %<void %s(const %s*, PackedType*)%> given some type %<PackedType%>)", name, name, for_sig.c_str());
+         } else {
+            context.report_error("specifies a pre-pack function %<%s%> with the wrong signature (should be %<void %s(const T*, PackedType*)%> given some type %<%T%> and some type %<PackedType%>)", name, name);
+         }
          both_are_individually_correct = false;
       }
       if (post_unpack && !bitpacking::can_be_post_unpack_function(*post_unpack)) {
          auto name = pre_pack->name().data();
-         context.report_error("specifies a post-unpack function %<%s%> with the wrong signature (should be %<void %s(InSituType*, const PackedType*)%>)", name, name);
+         auto type = target_type.name();
+         if (!type.empty()) {
+            auto for_sig = _name_to_report(target_type);
+            context.report_error("specifies a post-unpack function %<%s%> with the wrong signature (should be %<void %s(%s*, const PackedType*)%> given some type %<PackedType%>)", name, name, for_sig.c_str());
+         } else {
+            context.report_error("specifies a post-unpack function %<%s%> with the wrong signature (should be %<void %s(T*, const PackedType*)%> given some type %<%T%> and some type %<PackedType%>)", name, name);
+         }
          both_are_individually_correct = false;
       }
       
@@ -122,10 +152,9 @@ namespace attribute_handlers {
          //
          auto in_situ = bitpacking::get_in_situ_type(*pre_pack, *post_unpack);
          if (in_situ) {
-            auto type = context.type_of_target();
-            if (in_situ->main_variant() != type.main_variant()) {
+            if (in_situ->main_variant() != target_type.main_variant()) {
                auto pp_a = in_situ->pretty_print();
-               auto pp_b = type.pretty_print();
+               auto pp_b = target_type.pretty_print();
                context.report_error("specifies functions that transform type %<%s%>, but would be applied to type %<%s%>", pp_a.c_str(), pp_b.c_str());
             }
          }

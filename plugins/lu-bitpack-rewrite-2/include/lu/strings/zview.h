@@ -1,4 +1,5 @@
 #pragma once
+#include <concepts>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -52,6 +53,12 @@ namespace lu::strings {
          constexpr bool operator==(const std::string_view sv) const noexcept {
             return ((std::string_view)*this) == sv;
          }
+         #if __cpp_lib_constexpr_string >= 201907L
+         constexpr
+         #endif
+         bool operator==(const std::string& s) const noexcept {
+            return ((std::string_view)*this) == s;
+         }
          
          constexpr const value_type& operator[](size_t n) const noexcept {
             return this->_data[n];
@@ -103,6 +110,18 @@ namespace lu::strings {
          constexpr size_type find_last_not_of(value_type, size_type pos = npos) const noexcept;
          constexpr size_type find_last_not_of(const_pointer set, size_type pos, size_type set_size) const noexcept;
    };
+} 
+
+// facilitate `std::cout << my_zview` and the like
+namespace std {
+   template<class CharT, class Traits>
+   class basic_ostream; // forward-declaration
+}
+inline std::basic_ostream<char, std::char_traits<char>>& operator<<(
+   std::basic_ostream<char, std::char_traits<char>>& stream,
+   lu::strings::zview str
+) {
+   return stream << (std::string_view)str;
 }
 
 #include "lu/strings/zview.inl"

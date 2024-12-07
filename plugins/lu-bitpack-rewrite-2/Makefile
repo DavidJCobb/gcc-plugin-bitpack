@@ -38,6 +38,7 @@ SOURCES=\
         src/lu/strings/handle_kv_string.cpp \
         src/lu/strings/trim.cpp \
         src/lu/stringf.cpp \
+        src/pragma_handlers/debug_dump_bp_data_options.cpp \
         src/pragma_handlers/debug_dump_function.cpp \
         src/pragma_handlers/debug_dump_identifier.cpp \
         src/pragma_handlers/enable.cpp \
