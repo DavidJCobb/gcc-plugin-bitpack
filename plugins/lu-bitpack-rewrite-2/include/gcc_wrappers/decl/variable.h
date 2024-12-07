@@ -21,13 +21,13 @@ namespace gcc_wrappers::decl {
       public:
          variable(
             lu::strings::zview identifier_name,
-            type::base&        value_type,
+            type::base         value_type,
             location_t         source_location = UNKNOWN_LOCATION
          );
          variable(
-            identifier  identifier_node,
-            type::base& value_type,
-            location_t  source_location = UNKNOWN_LOCATION
+            identifier identifier_node,
+            type::base value_type,
+            location_t source_location = UNKNOWN_LOCATION
          );
       
          optional_value initial_value() const;

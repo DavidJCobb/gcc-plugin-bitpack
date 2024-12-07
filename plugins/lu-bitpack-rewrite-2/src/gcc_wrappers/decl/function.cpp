@@ -58,7 +58,7 @@ namespace gcc_wrappers::decl {
       }
    }
    
-   function::function(lu::strings::zview name, type::function& function_type) {
+   function::function(lu::strings::zview name, type::function function_type) {
       //
       // Create the node with GCC's defaults (defined elsewhere, extern, 
       // artificial, nothrow).

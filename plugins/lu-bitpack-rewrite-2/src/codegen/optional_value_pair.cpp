@@ -19,6 +19,8 @@ namespace codegen {
       this->read = gw::decl::base_value::wrap((tree) pair.read->decl.unwrap()).as_value();
       this->save = gw::decl::base_value::wrap((tree) pair.save->decl.unwrap()).as_value();
    }
+   optional_value_pair::optional_value_pair(gw::value read, gw::value save) : read(read), save(save) {}
+   optional_value_pair::optional_value_pair(gw::optional_value read, gw::optional_value save) : read(read), save(save) {}
    
    optional_value_pair optional_value_pair::access_array_element(const optional_value_pair& i) const {
       assert(!!this->read);

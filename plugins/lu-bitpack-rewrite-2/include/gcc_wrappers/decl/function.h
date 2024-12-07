@@ -34,7 +34,7 @@ namespace gcc_wrappers::decl {
       public:
          function(
             lu::strings::zview identifier_name,
-            type::function&    function_type
+            type::function     function_type
          );
          
          type::function function_type() const;

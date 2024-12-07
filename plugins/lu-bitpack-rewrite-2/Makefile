@@ -35,6 +35,14 @@ SOURCES=\
         src/bitpacking/verify_union_members.cpp \
         src/codegen/debugging/print_sectored_rechunked_items.cpp \
         src/codegen/debugging/print_sectored_serialization_items.cpp \
+        src/codegen/instructions/utils/generation_context.cpp \
+        src/codegen/instructions/utils/tree_stringifier.cpp \
+        src/codegen/instructions/array_slice.cpp \
+        src/codegen/instructions/base.cpp \
+        src/codegen/instructions/padding.cpp \
+        src/codegen/instructions/single.cpp \
+        src/codegen/instructions/transform.cpp \
+        src/codegen/instructions/union_switch.cpp \
         src/codegen/serialization_item_list_ops/divide_items_by_sectors.cpp \
         src/codegen/serialization_item_list_ops/fold_sequential_array_elements.cpp \
         src/codegen/serialization_item_list_ops/force_expand_omitted_and_defaulted.cpp \
@@ -49,12 +57,16 @@ SOURCES=\
         src/codegen/rechunked/chunks/transform.cpp \
         src/codegen/rechunked/item.cpp \
         src/codegen/rechunked/item_to_string.cpp \
+        src/codegen/rechunked/items_to_instruction_tree.cpp \
         src/codegen/decl_descriptor.cpp \
         src/codegen/decl_dictionary.cpp \
         src/codegen/describe_and_check_decl_tree.cpp \
+        src/codegen/expr_pair.cpp \
+        src/codegen/func_pair.cpp \
         src/codegen/optional_value_pair.cpp \
         src/codegen/serialization_item.cpp \
         src/codegen/value_path.cpp \
+        src/codegen/whole_struct_function_dictionary.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
         src/lu/strings/builder.cpp \
         src/lu/strings/handle_kv_string.cpp \

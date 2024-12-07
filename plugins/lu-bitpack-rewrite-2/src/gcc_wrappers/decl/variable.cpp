@@ -12,7 +12,7 @@ namespace gcc_wrappers::decl {
    
    variable::variable(
       lu::strings::zview identifier_name,
-      type::base&        variable_type,
+      type::base         variable_type,
       location_t         source_location
    ) {
       auto identifier_node = identifier(identifier_name);
@@ -25,7 +25,7 @@ namespace gcc_wrappers::decl {
    }
    variable::variable(
       identifier  identifier_node,
-      type::base& variable_type,
+      type::base  variable_type,
       location_t  source_location
    ) {
       this->_node = build_decl(

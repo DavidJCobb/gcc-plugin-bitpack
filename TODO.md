@@ -10,8 +10,8 @@ C++:
 * GCC wrapper rewrite
   * Testcases needed:
     * Transitive typedef shenanigans
-  * Port the `codegen` stuff.
-    * We've redesigned how `data_options` work. In particular, we no longer have the semi-redundant `member_kind` enum, but instead rely on the type of the computed options `variant`. We have `is` and `as` accessors for this; use them.
+  * Port the remaining `codegen` stuff.
+  * Port the pragmas that actually trigger codegen, and test them. This should include the debug logging functionality.
   * Port the `xmlgen` stuff.
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.

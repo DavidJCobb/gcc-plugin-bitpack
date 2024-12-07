@@ -56,7 +56,7 @@ namespace gcc_wrappers {
          constexpr tree unwrap();
          
          template<typename Subclass> requires impl::can_is_as<node, Subclass>
-         bool is() {
+         bool is() const noexcept {
             return Subclass::raw_node_is(this->_node);
          }
          
