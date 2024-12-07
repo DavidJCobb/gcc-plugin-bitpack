@@ -22,7 +22,7 @@ namespace gcc_wrappers {
 }
 
 namespace bitpacking {
-   struct data_options {
+   class data_options {
       protected:
          bool _loaded = false;
          bool _failed = false;
