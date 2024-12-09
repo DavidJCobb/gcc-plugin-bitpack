@@ -9,17 +9,6 @@ C++:
 
 * GCC wrapper rewrite
   * Testcases needed:
-    * Codegen: opaque buffers
-    * Codegen: strings
-    * Codegen: transforms
-      * Basic
-      * Nested
-      * Transitive
-    * Codegen: unions
-      * External
-      * Internal (on type defined outside of struct)
-      * Internal (bespoke, inside of struct)
-      * Nested
     * Codegen: all together
     * Transitive typedef shenanigans, relating to data options
   * Port the `xmlgen` stuff.
