@@ -265,6 +265,7 @@ namespace bitpacking {
          }
       } else if (auto* casted = std::get_if<typed_data_options::requested::string>(&loaded)) {
          auto& dst = dst_var.emplace<typed_data_options::computed::string>();
+         dst.nonstring = this->has_attr_nonstring;
          if (!dst.load(node, *casted, this->config.report_errors)) {
             this->_failed = true;
          }

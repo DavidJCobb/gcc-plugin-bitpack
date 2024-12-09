@@ -51,7 +51,7 @@ extern void generated_save(u8* dst, int sector_id);
    save_name = generated_save,         \
    data      = sTestStruct             \
 )
-#pragma lu_bitpack debug_dump_function generated_read
+//#pragma lu_bitpack debug_dump_function generated_read
 
 #include <string.h> // memset
 

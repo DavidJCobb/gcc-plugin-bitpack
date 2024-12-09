@@ -41,6 +41,7 @@ namespace codegen {
          
          bool can_expand() const;
          
+         bool is_opaque_buffer() const;
          bool is_padding() const;
          bool is_union() const;
       

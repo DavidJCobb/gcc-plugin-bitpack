@@ -436,6 +436,16 @@ namespace codegen {
       return out;
    }
    
+   bool serialization_item::is_opaque_buffer() const {
+      if (this->segments.empty())
+         return false;
+      auto& segm = this->segments.back();
+      if (!segm.is_basic())
+         return false;
+      auto& desc    = *segm.as_basic().desc;
+      auto& options = desc.options;
+      return options.is<bitpacking::typed_data_options::computed::buffer>();
+   }
    bool serialization_item::is_padding() const {
       if (this->segments.empty())
          return false;
@@ -448,6 +458,15 @@ namespace codegen {
       if (!segm.is_basic())
          return false;
       auto& desc = *segm.as_basic().desc;
+      {
+         auto& options = desc.options;
+         if (options.is<bitpacking::typed_data_options::computed::buffer>())
+            //
+            // If a union is marked as an opaque buffer, don't actually 
+            // consider it a union; it will not be serialized as one.
+            //
+            return false;
+      }
       auto  type = *desc.types.serialized;
       if (!type.is_union())
          return false;

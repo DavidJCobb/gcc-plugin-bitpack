@@ -13,6 +13,8 @@ namespace codegen::serialization_item_list_ops {
             auto& item = list[i];
             if (item.is_padding())
                continue;
+            if (item.is_opaque_buffer())
+               continue;
             
             assert(!item.segments.empty());
             assert(item.segments.back().is_basic());
