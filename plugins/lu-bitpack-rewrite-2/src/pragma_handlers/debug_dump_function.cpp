@@ -47,7 +47,7 @@ namespace pragma_handlers {
       std::cerr << "Dumping information for function...\n";
       std::cerr << " - Unqualified name: " << decl.name() << '\n';
       std::cerr << " - Type/signature: " << type.pretty_print() << '\n';
-      {
+      if (decl.has_body()) {
          auto retn = decl.result_variable();
          //
          // `retn` is basically an implicit variable, and assigning to it 
@@ -96,7 +96,10 @@ namespace pragma_handlers {
       }
       
       debug_tree(decl.unwrap());
-      std::cerr << " - Dumping function body...\n";
-      debug_tree(DECL_SAVED_TREE(decl.unwrap()));
+      if (decl.has_body()) {
+         std::cerr << " - Dumping function body...\n";
+         debug_tree(DECL_SAVED_TREE(decl.unwrap()));
+      }
+      std::cerr << " - Done.\n\n";
    }
 }

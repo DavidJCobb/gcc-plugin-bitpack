@@ -201,6 +201,11 @@ namespace codegen::instructions {
          gw::decl::optional_function save_func;
          {
             auto vt_canonical = type.canonical();
+            //
+            // Because we add a `min` to the value before serializing, 
+            // we should basically never use the signed functions.
+            //
+            /*//
             if (vt_canonical == ty.uint8 || vt_canonical == ty.basic_char) {
                read_func = global.functions.read.u8;
                save_func = global.functions.save.u8;
@@ -219,6 +224,17 @@ namespace codegen::instructions {
             } else if (vt_canonical == ty.int32) {
                read_func = global.functions.read.s32;
                save_func = global.functions.save.s32;
+            }
+            //*/
+            if (vt_canonical == ty.uint8 || vt_canonical == ty.int8 || vt_canonical == ty.basic_char) {
+               read_func = global.functions.read.u8;
+               save_func = global.functions.save.u8;
+            } else if (vt_canonical == ty.uint16 || vt_canonical == ty.int16) {
+               read_func = global.functions.read.u16;
+               save_func = global.functions.save.u16;
+            } else if (vt_canonical == ty.uint32 || vt_canonical == ty.int32) {
+               read_func = global.functions.read.u32;
+               save_func = global.functions.save.u32;
             }
          }
          assert(!!read_func);

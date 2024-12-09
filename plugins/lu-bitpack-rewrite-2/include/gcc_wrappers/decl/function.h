@@ -39,6 +39,10 @@ namespace gcc_wrappers::decl {
          
          type::function function_type() const;
          param nth_parameter(size_t) const;
+         
+         // assert(this->has_body());
+         // If the function is only declared, not defined, then it 
+         // should not have a result variable yet.
          result result_variable() const;
          
          bool is_versioned() const; // DECL_FUNCTION_VERSIONED

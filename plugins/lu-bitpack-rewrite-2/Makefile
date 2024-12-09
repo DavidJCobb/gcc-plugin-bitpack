@@ -58,16 +58,23 @@ SOURCES=\
         src/codegen/rechunked/item.cpp \
         src/codegen/rechunked/item_to_string.cpp \
         src/codegen/rechunked/items_to_instruction_tree.cpp \
+        src/codegen/stats/c_type.cpp \
+        src/codegen/stats/category.cpp \
+        src/codegen/stats/sector.cpp \
+        src/codegen/stats/serializable.cpp \
         src/codegen/decl_descriptor.cpp \
         src/codegen/decl_dictionary.cpp \
         src/codegen/describe_and_check_decl_tree.cpp \
         src/codegen/expr_pair.cpp \
         src/codegen/func_pair.cpp \
+        src/codegen/generation_request.cpp \
+        src/codegen/generation_result.cpp \
         src/codegen/optional_value_pair.cpp \
         src/codegen/serialization_item.cpp \
         src/codegen/value_path.cpp \
         src/codegen/whole_struct_function_dictionary.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
+        src/gcc_helpers/stringify_function_signature.cpp \
         src/lu/strings/builder.cpp \
         src/lu/strings/handle_kv_string.cpp \
         src/lu/strings/trim.cpp \
@@ -76,7 +83,13 @@ SOURCES=\
         src/pragma_handlers/debug_dump_function.cpp \
         src/pragma_handlers/debug_dump_identifier.cpp \
         src/pragma_handlers/enable.cpp \
+        src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/set_options.cpp \
+        src/xmlgen/is_valid_name.cpp \
+        src/xmlgen/string_as_cdata.cpp \
+        src/xmlgen/write_string_as_attribute_value.cpp \
+        src/xmlgen/write_string_as_text_content.cpp \
+        src/xmlgen/xml_element.cpp \
         src/basic_global_state.cpp \
         src/debugprint.cpp \
         src/pragma_parse_exception.cpp \

@@ -90,7 +90,7 @@ namespace gcc_wrappers::type {
                   return false;
             }
          }
-         if (i + 1 < ArgCount) {
+         if (i + 1 < ArgCount) { // +1 to account for the `void` sentinel
             //
             // Too few arguments seen.
             //

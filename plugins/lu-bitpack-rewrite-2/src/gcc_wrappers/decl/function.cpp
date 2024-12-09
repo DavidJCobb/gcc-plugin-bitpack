@@ -86,7 +86,9 @@ namespace gcc_wrappers::decl {
          return param::wrap(decl);
       throw std::out_of_range("out-of-bounds function_decl parameter access");
    }
+   
    result function::result_variable() const {
+      assert(this->has_body());
       return result::wrap(DECL_RESULT(this->_node));
    }
 

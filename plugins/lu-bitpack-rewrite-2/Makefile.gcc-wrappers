@@ -23,6 +23,7 @@ GCC_WRAPPERS_SOURCES=\
         src/gcc_wrappers/expr/return_result.cpp \
         src/gcc_wrappers/expr/ternary.cpp \
         src/gcc_wrappers/flow/simple_for_loop.cpp \
+        src/gcc_wrappers/flow/simple_if_else_set.cpp \
         src/gcc_wrappers/type/helpers/lookup_by_name.cpp \
         src/gcc_wrappers/type/base.cpp \
         src/gcc_wrappers/type/array.cpp \
