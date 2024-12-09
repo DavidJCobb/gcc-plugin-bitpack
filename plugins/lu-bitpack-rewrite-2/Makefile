@@ -71,6 +71,7 @@ SOURCES=\
         src/codegen/generation_result.cpp \
         src/codegen/optional_value_pair.cpp \
         src/codegen/serialization_item.cpp \
+        src/codegen/stats_gatherer.cpp \
         src/codegen/value_path.cpp \
         src/codegen/whole_struct_function_dictionary.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
@@ -86,6 +87,7 @@ SOURCES=\
         src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/set_options.cpp \
         src/xmlgen/is_valid_name.cpp \
+        src/xmlgen/report_generator.cpp \
         src/xmlgen/string_as_cdata.cpp \
         src/xmlgen/write_string_as_attribute_value.cpp \
         src/xmlgen/write_string_as_text_content.cpp \

@@ -6,9 +6,9 @@ namespace codegen::stats {
    bool serializable::empty() const {
       if (this->counts.total > 0)
          return false;
-      if (this->bitcounts.total_packed.has_value())
+      if (this->bitcounts.total_packed > 0)
          return false;
-      if (this->bitcounts.total_unpacked.has_value())
+      if (this->bitcounts.total_unpacked > 0)
          return false;
       if (!this->counts.by_sector.empty())
          return false;
@@ -22,20 +22,14 @@ namespace codegen::stats {
       auto& node     = *node_ptr;
       node.node_name = "stats";
       
-      if (this->bitcounts.total_unpacked.has_value() || this->bitcounts.total_packed.has_value()) {
+      {
          auto  child_ptr = std::make_unique<xml_element>();
          auto& child     = *child_ptr;
          child.node_name = "bitcounts";
          node.append_child(std::move(child_ptr));
-         
-         if (auto& opt = this->bitcounts.total_unpacked; opt.has_value()) {
-            child.set_attribute_i("total-unpacked", *opt);
-         }
-         if (auto& opt = this->bitcounts.total_packed; opt.has_value()) {
-            child.set_attribute_i("total-packed", *opt);
-         }
+         child.set_attribute_i("total-unpacked", this->bitcounts.total_unpacked);
+         child.set_attribute_i("total-packed",   this->bitcounts.total_packed);
       }
-      
       if (this->counts.total > 0 || !this->counts.by_sector.empty() || !this->counts.by_top_level_identifier.empty()) {
          auto  child_ptr = std::make_unique<xml_element>();
          auto& child     = *child_ptr;
@@ -70,5 +64,34 @@ namespace codegen::stats {
       }
       
       return node_ptr;
+   }
+   
+   //
+   // Modifiers:
+   //
+   
+   void serializable::add_count_in_sector(size_t sector_index, size_t count) {
+      auto& list = this->counts.by_sector;
+      for(auto& info : list) {
+         if (info.sector_index == sector_index) {
+            info.count += count;
+            return;
+         }
+      }
+      auto& info = list.emplace_back();
+      info.sector_index = sector_index;
+      info.count        = count;
+   }
+   void serializable::add_count_in_top_level_identifier(std::string_view identifier, size_t count) {
+      auto& list = this->counts.by_top_level_identifier;
+      for(auto& info : list) {
+         if (info.identifier == identifier) {
+            info.count += count;
+            return;
+         }
+      }
+      auto& info = list.emplace_back();
+      info.identifier = identifier;
+      info.count      = count;
    }
 }

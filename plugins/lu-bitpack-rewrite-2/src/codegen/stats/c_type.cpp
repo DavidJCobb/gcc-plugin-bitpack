@@ -5,6 +5,8 @@ using xml_element = xmlgen::xml_element;
 
 namespace codegen::stats {
    c_type::c_type(gcc_wrappers::type::base type) : type(type) {
+      this->c_info.align_of = type.alignment_in_bytes();
+      this->c_info.size_of  = type.size_in_bytes();
    }
    
    std::unique_ptr<xml_element> c_type::to_xml() const {
@@ -29,7 +31,7 @@ namespace codegen::stats {
       if (out->node_name.empty())
          out->node_name = "unknown-type";
       
-      if (serializable::empty()) {
+      if (serializable::empty()) { // <stats>...</stats>
          out->append_child(serializable::to_xml());
       }
       

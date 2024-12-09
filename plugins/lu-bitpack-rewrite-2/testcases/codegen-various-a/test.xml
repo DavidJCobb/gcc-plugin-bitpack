@@ -1,0 +1,86 @@
+<data>
+   <config>
+      <option value="3" name="max-sector-count" />
+      <option value="16" name="max-sector-bytecount" />
+   </config>
+   <categories>
+      <category name="test-names">
+         <bitcounts total-packed="112" total-unpacked="112" />
+         <counts total="2">
+            <in-sector count="1" index="0" />
+            <in-sector count="1" index="1" />
+            <in-top-level-value count="2" name="sTestStruct" />
+         </counts>
+      </category>
+      <category name="player-name">
+         <bitcounts total-packed="168" total-unpacked="168" />
+         <counts total="3">
+            <in-sector count="1" index="0" />
+            <in-sector count="2" index="1" />
+            <in-top-level-value count="3" name="sTestStruct" />
+         </counts>
+      </category>
+      <category name="327">
+         <bitcounts total-packed="3" total-unpacked="32" />
+         <counts total="1">
+            <in-sector count="1" index="0" />
+            <in-top-level-value count="1" name="sTestStruct" />
+         </counts>
+      </category>
+      <category name="second-cat">
+         <bitcounts total-packed="3" total-unpacked="32" />
+         <counts total="1">
+            <in-sector count="1" index="0" />
+            <in-top-level-value count="1" name="sTestStruct" />
+         </counts>
+      </category>
+   </categories>
+   <c-types>
+      <struct c-sizeof="3" c-alignment="1" tag="Color">
+         <instructions>
+            <integer min="0" bitcount="8" type="u8" value="r" />
+            <integer min="0" bitcount="8" type="u8" value="g" />
+            <integer min="0" bitcount="8" type="u8" value="b" />
+         </instructions>
+      </struct>
+      <struct c-sizeof="40" c-alignment="4" tag="TestStruct" />
+   </c-types>
+   <sectors>
+      <sector>
+         <stats>
+            <bitcounts total-packed="98" />
+         </stats>
+         <instructions>
+            <struct type="Color" value="sTestStruct.color" />
+            <integer min="0" bitcount="3" type="u8" value="sTestStruct.three_bit" />
+            <integer min="0" bitcount="5" type="u5" value="sTestStruct.five_bit" />
+            <integer min="0" bitcount="7" type="u8" value="sTestStruct.seven_bit" />
+            <integer max="7" min="3" bitcount="3" type="int" value="sTestStruct.three_to_seven" />
+            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.names[0]" />
+         </instructions>
+      </sector>
+      <sector>
+         <stats>
+            <bitcounts total-packed="128" />
+         </stats>
+         <instructions>
+            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.names[1]" />
+            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.enemy_name" />
+            <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_1D[0]" />
+            <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_2D[0][0]" />
+         </instructions>
+      </sector>
+      <sector>
+         <stats>
+            <bitcounts total-packed="31" />
+         </stats>
+         <instructions>
+            <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_3D[0][0][0]" />
+            <loop counter-var="__a" count="3" start="0" array="sTestStruct.array">
+               <integer min="0" bitcount="5" type="u5" value="sTestStruct.array[__a]" />
+            </loop>
+            <integer min="0" bitcount="8" type="bool8" value="sTestStruct.boolean" />
+         </instructions>
+      </sector>
+   </sectors>
+</data>

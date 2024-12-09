@@ -8,11 +8,23 @@
 C++:
 
 * GCC wrapper rewrite
+  * Bug: integrals that use the designated boolean type (`bool8` in our testcase) are not serialized as booleans. This will likely be an issue with computing `data_options` for boolean values.
   * Testcases needed:
     * Codegen: all together
-  * Port the `xmlgen` stuff.
-    * `codegen::stats_gatherer`, accounting for the half-started refactor of stats. I want to have them be gathered in the same format that `xmlgen` will use, rather than gathering them in one format and having to convert over to another.
-    * `xmlgen::report_generator`
+    * XML output
+      * Booleans
+      * Structs named via a typedef alone
+      * Structs named via both a tag and a typedef
+      * Opaque buffers
+      * Transforms
+        * Basic
+        * Nested
+        * Transitive
+      * Tagged unions
+        * External
+        * Internal, defined in struct
+        * Internal, defined and named separately
+  * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.

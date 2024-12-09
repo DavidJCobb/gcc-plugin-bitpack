@@ -8,9 +8,10 @@ namespace codegen::stats {
    class c_type : public serializable {
       public:
          c_type(gcc_wrappers::type::base);
+         c_type(const c_type&) = default;
       
       public:
-         const gcc_wrappers::type::base type;
+         gcc_wrappers::type::base type;
          struct {
             size_t align_of = 0;
             size_t size_of  = 0;

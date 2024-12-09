@@ -60,7 +60,7 @@ extern void generated_save(u8* dst, int sector_id);
 void print_test_struct() {
    printf("sTestStruct == {\n");
    printf("   .player_name == %s\n", sTestStruct.player_name);
-   printf("   .enemy_name  == %7s\n", sTestStruct.enemy_name);
+   printf("   .enemy_name  == %.7s\n", sTestStruct.enemy_name);
    printf("}\n");
 }
 

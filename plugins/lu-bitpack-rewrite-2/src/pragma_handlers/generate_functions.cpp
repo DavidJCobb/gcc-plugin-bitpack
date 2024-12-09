@@ -40,11 +40,9 @@ namespace gw {
 }
 
 // for generating XML output:
-/*//
 #include "codegen/stats_gatherer.h"
 #include "xmlgen/report_generator.h"
 #include <fstream>
-//*/
 
 namespace pragma_handlers {
    // Returns true if valid; false if error.
@@ -300,18 +298,17 @@ namespace pragma_handlers {
          return;
       
       inform(UNKNOWN_LOCATION, "generated the serialization functions");
-      /*//
       if (!gs.xml_output_path.empty()) {
          const auto& path = gs.xml_output_path;
          if (path.ends_with(".xml")) {
-            codegen::stats_gatherer  stats;
+            codegen::stats_gatherer stats;
             stats.gather_from_sectors(all_sectors_si);
-            for(auto& group : request.identifier_groups) {
+            /*for(auto& group : request.identifier_groups) {
                for(auto& entry : group) {
                   auto decl = gw::decl::variable::wrap(lookup_name(entry.id.unwrap()));
                   stats.gather_from_top_level(decl);
                }
-            }
+            }*/
             
             xmlgen::report_generator xml_gen;
             xml_gen.process(result.whole_struct);
@@ -324,6 +321,5 @@ namespace pragma_handlers {
             stream << xml_gen.bake();
          }
       }
-      //*/
    }
 }

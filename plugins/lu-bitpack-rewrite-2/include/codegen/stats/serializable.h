@@ -19,8 +19,8 @@ namespace codegen::stats {
       
       public:
          struct {
-            std::optional<size_t> total_packed;
-            std::optional<size_t> total_unpacked;
+            size_t total_packed   = 0;
+            size_t total_unpacked = 0;
          } bitcounts;
          struct {
             size_t total = 0;
@@ -31,5 +31,9 @@ namespace codegen::stats {
       public:
          bool empty() const;
          std::unique_ptr<xmlgen::xml_element> to_xml() const;
+         
+      public:
+         void add_count_in_sector(size_t sector_index, size_t count);
+         void add_count_in_top_level_identifier(std::string_view identifier, size_t count);
    };
 }
