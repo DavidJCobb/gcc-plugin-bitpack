@@ -10,8 +10,9 @@ C++:
 * GCC wrapper rewrite
   * Testcases needed:
     * Codegen: all together
-    * Transitive typedef shenanigans, relating to data options
   * Port the `xmlgen` stuff.
+    * `codegen::stats_gatherer`, accounting for the half-started refactor of stats. I want to have them be gathered in the same format that `xmlgen` will use, rather than gathering them in one format and having to convert over to another.
+    * `xmlgen::report_generator`
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.

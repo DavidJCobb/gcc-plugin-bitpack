@@ -216,6 +216,11 @@ namespace pragma_handlers {
             }
             
             all_sectors_si = codegen::serialization_item_list_ops::divide_items_by_sectors(sector_size_in_bits, items);
+            //
+            // Verify that we fit under the sector count limit; if we don't, 
+            // report the problem to the user, show any pending debug output, 
+            // and then abort.
+            //
             if (all_sectors_si.size() > gs.global_options.sectors.max_count) {
                if (request.settings.enable_debug_output) {
                   codegen::debugging::print_sectored_serialization_items(all_sectors_si);

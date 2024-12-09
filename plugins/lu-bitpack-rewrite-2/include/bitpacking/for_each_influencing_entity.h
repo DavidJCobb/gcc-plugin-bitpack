@@ -74,13 +74,13 @@ namespace bitpacking {
       std::is_same_v<NodeWrapper, gcc_wrappers::decl::variable>
    )
    void for_each_influencing_entity(NodeWrapper decl, Functor&& functor) {
+      for_each_influencing_entity(decl.value_type(), functor);
       if constexpr (std::is_invocable_r_v<Functor, bool, gcc_wrappers::node>) {
          if (!functor(decl))
             return;
       } else {
          functor(decl);
       }
-      for_each_influencing_entity(decl.value_type(), functor);
    }
    
    template<typename Functor> requires std::is_invocable_v<Functor, gcc_wrappers::node>
