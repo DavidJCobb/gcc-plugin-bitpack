@@ -52,18 +52,19 @@ namespace codegen {
       }
       
       if (this->options.is<typed_options::transformed>()) {
-         this->types.serialized = this->options.as<typed_options::transformed>().transformed_type;
-         this->types.transformations.push_back(*this->types.serialized);
+         auto next = *this->options.as<typed_options::transformed>().transformed_type;
+         this->types.transformations.push_back(next);
          
          auto& dictionary = decl_dictionary::get_fast();
          
-         gw::type::optional_base type = this->types.serialized;
+         gw::type::optional_base type = next;
          do {
             type = dictionary.type_transforms_into(*type);
             if (type) {
                this->types.transformations.push_back(*type);
             }
          } while (type);
+         this->types.serialized = this->types.transformations.back();
       }
    }
 

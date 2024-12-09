@@ -189,7 +189,7 @@ namespace codegen::instructions {
       // Append pre-pack calls.
       for(size_t i = 0; i < steps.size(); ++i) {
          auto& step = steps[i];
-         if (read_needs_pre_pack && i > 0) {
+         if (read_needs_pre_pack) {
             gw::value from = (i == 0) ?
                *this->to_be_transformed_value.as_value_pair().read
             :

@@ -215,9 +215,53 @@ namespace pragma_handlers {
                data.desc = &desc;
             }
             
-            auto sectors = codegen::serialization_item_list_ops::divide_items_by_sectors(sector_size_in_bits, items);
-            for(auto& sector : sectors)
-               all_sectors_si.push_back(std::move(sector));
+            all_sectors_si = codegen::serialization_item_list_ops::divide_items_by_sectors(sector_size_in_bits, items);
+            if (all_sectors_si.size() > gs.global_options.sectors.max_count) {
+               if (request.settings.enable_debug_output) {
+                  codegen::debugging::print_sectored_serialization_items(all_sectors_si);
+               }
+               error(
+                  "%<#pragma lu_bitpack generate_functions%>: code generation was limited to %u sectors, but the data requires %u sectors",
+                  (int)gs.global_options.sectors.max_count,
+                  (int)all_sectors_si.size()
+               );
+               
+               if (gs.global_options.sectors.max_count > 0) {
+                  //
+                  // Try to report the last value that fit.
+                  //
+                  auto last_sector_index = gs.global_options.sectors.max_count - 1;
+                  
+                  const codegen::serialization_item* last_non_padding = nullptr;
+                  auto& sector = all_sectors_si[last_sector_index];
+                  for(auto it = sector.rbegin(); it != sector.rend(); ++it) {
+                     auto& item = *it;
+                     if (item.is_padding())
+                        continue;
+                     last_non_padding = &item;
+                     break;
+                  }
+                  if (last_non_padding) {
+                     std::string value;
+                     for(auto& segm : last_non_padding->segments) {
+                        auto& data = segm.as_basic();
+                        if (!value.empty())
+                           value += '.';
+                        value += data.desc->decl.name();
+                        for(auto& aai : data.array_accesses) {
+                           if (aai.count == 1)
+                              value += lu::stringf("[%u]", aai.start);
+                           else
+                              value += lu::stringf("[%u:%u]", aai.start, aai.start + aai.count);
+                        }
+                     }
+                     inform(UNKNOWN_LOCATION, "the last value that fit into sector %u was %qs", (int)last_sector_index, value.c_str());
+                  } else {
+                     inform(UNKNOWN_LOCATION, "sector %u is filled entirely with padding, used to even out the size of tagged unions%' members", (int)last_sector_index);
+                  }
+               }
+               return;
+            }
          }
       }
       if (request.settings.enable_debug_output) {
