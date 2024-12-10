@@ -43,7 +43,7 @@
             <integer min="0" bitcount="8" type="u8" value="b" />
          </instructions>
       </struct>
-      <struct c-sizeof="116" c-alignment="4" tag="TestStruct" />
+      <struct c-sizeof="128" c-alignment="4" tag="TestStruct" />
    </c-types>
    <sectors>
       <sector>
@@ -107,6 +107,10 @@
                <default-value-string>Rosa</default-value-string>
             </omitted>
             <omitted type="char[12]" value="sTestStruct.xml_tricky_test">
+               <default-value-string>&lt;"xml"&gt;
+&lt;&gt;</default-value-string>
+            </omitted>
+            <omitted type="char[12]" value="sTestStruct.xml_tricky_test_2">
                <default-value-string>&lt;"xml"&gt;
 &lt;&gt;</default-value-string>
             </omitted>

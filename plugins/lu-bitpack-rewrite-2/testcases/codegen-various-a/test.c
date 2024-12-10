@@ -89,6 +89,9 @@ struct TestStruct {
    } default_names;
    
    LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") LU_BP_STRING char xml_tricky_test[12];
+   
+   // Testcase: default value is string; value is not marked as a string.
+   LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") char xml_tricky_test_2[12];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);
@@ -137,6 +140,7 @@ void print_test_struct() {
    printf("      \"%.7s\",\n", sTestStruct.default_names.unova_b);
    printf("   },\n");
    printf("   .xml_tricky_test = \"%.12s\",\n", sTestStruct.xml_tricky_test);
+   printf("   .xml_tricky_test_2 = \"%.12s\",\n", sTestStruct.xml_tricky_test_2);
    printf("}\n");
 }
 
@@ -168,6 +172,7 @@ int main() {
    sTestStruct.decimals[2] = 100.0;
    memset(&sTestStruct.default_names, 0, sizeof(sTestStruct.default_names));
    memset(sTestStruct.xml_tricky_test, 0, sizeof(sTestStruct.xml_tricky_test));
+   memset(sTestStruct.xml_tricky_test_2, 0, sizeof(sTestStruct.xml_tricky_test_2));
    
    const char* divider = "====================================================\n";
    

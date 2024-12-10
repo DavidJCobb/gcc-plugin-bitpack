@@ -8,8 +8,6 @@
 C++:
 
 * GCC wrapper rewrite
-  * BUG: Codegen fails on an assertion, for a `char` array that has a string-type default value but isn't marked as a string (e.g. because it's marked as omitted).
-    * The `codegen-various-a` testcase currently avoids this crash by specifying the `xml_tricky_test` test field as `LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") LU_BP_STRING`. If we remove `LU_BP_STRING`, we'll start getting these crashes (so that, or creating a duplicate field with that attribute removed, is how we'll test the problem).
   * Testcases needed:
     * XML output
       * Structs named via a typedef alone

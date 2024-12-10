@@ -3,6 +3,7 @@
 #include <memory> // GCC headers fuck up string-related STL identifiers that <memory> depends on
 #include "codegen/decl_descriptor.h"
 #include "codegen/decl_dictionary.h"
+#include "gcc_wrappers/constant/string.h"
 #include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/container.h"
 namespace gw {
@@ -14,7 +15,21 @@ namespace typed_options {
 
 namespace codegen {
    void decl_descriptor::_compute_types() {
-      if (this->options.is<typed_options::string>()) {
+      bool is_string = options.is<typed_options::string>();
+      if (!is_string && this->options.is_omitted && this->options.default_value) {
+         //
+         // If an array is omitted AND its default value is a string, then 
+         // treat the array as a string. This will ensure that we provide 
+         // the correct types to `codegen::instructions::single` so that 
+         // it doesn't choke when trying to generate code to write the 
+         // default value in.
+         //
+         auto dv = *this->options.default_value;
+         if (dv.is<gw::constant::string>()) {
+            is_string = true;
+         }
+      }
+      if (is_string) {
          assert(this->types.basic_type.is_array());
          //
          // For strings, we strip all array ranks except for the innermost one, 
