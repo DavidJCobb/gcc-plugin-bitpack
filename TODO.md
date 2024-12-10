@@ -8,14 +8,12 @@
 C++:
 
 * GCC wrapper rewrite
-  * Bug: integrals that use the designated boolean type (`bool8` in our testcase) are not serialized as booleans. This will likely be an issue with computing `data_options` for boolean values.
+  * BUG: Codegen fails on an assertion, for a `char` array that has a string-type default value but isn't marked as a string (e.g. because it's marked as omitted).
+    * The `codegen-various-a` testcase currently avoids this crash by specifying the `xml_tricky_test` test field as `LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") LU_BP_STRING`. If we remove `LU_BP_STRING`, we'll start getting these crashes (so that, or creating a duplicate field with that attribute removed, is how we'll test the problem).
   * Testcases needed:
-    * Codegen: all together
     * XML output
-      * Booleans
       * Structs named via a typedef alone
       * Structs named via both a tag and a typedef
-      * Opaque buffers
       * Transforms
         * Basic
         * Nested

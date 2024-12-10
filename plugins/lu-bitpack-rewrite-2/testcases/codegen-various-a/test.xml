@@ -43,7 +43,7 @@
             <integer min="0" bitcount="8" type="u8" value="b" />
          </instructions>
       </struct>
-      <struct c-sizeof="40" c-alignment="4" tag="TestStruct" />
+      <struct c-sizeof="116" c-alignment="4" tag="TestStruct" />
    </c-types>
    <sectors>
       <sector>
@@ -65,21 +65,51 @@
          </stats>
          <instructions>
             <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.names[1]" />
-            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.enemy_name" />
+            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.enemy_name">
+               <default-value-string>Silver</default-value-string>
+            </string>
             <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_1D[0]" />
             <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_2D[0][0]" />
          </instructions>
       </sector>
       <sector>
          <stats>
-            <bitcounts total-packed="31" />
+            <bitcounts total-packed="599" />
          </stats>
          <instructions>
             <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_3D[0][0][0]" />
             <loop counter-var="__a" count="3" start="0" array="sTestStruct.array">
                <integer min="0" bitcount="5" type="u5" value="sTestStruct.array[__a]" />
             </loop>
-            <integer min="0" bitcount="8" type="bool8" value="sTestStruct.boolean" />
+            <boolean type="bool8" value="sTestStruct.boolean" />
+            <loop counter-var="__b" count="3" start="0" array="sTestStruct.decimals">
+               <buffer bytecount="4" type="float" value="sTestStruct.decimals[__b]" />
+            </loop>
+            <omitted type="u8[7]" value="sTestStruct.default_names.hoenn">
+               <default-value-string>May</default-value-string>
+            </omitted>
+            <omitted type="u8[7]" value="sTestStruct.default_names.sinnoh">
+               <default-value-string>Dawn</default-value-string>
+            </omitted>
+            <omitted type="u8[7]" value="sTestStruct.default_names.johto_modern">
+               <default-value-string>Lyra</default-value-string>
+            </omitted>
+            <omitted type="u8[7]" value="sTestStruct.default_names.unova_a">
+               <default-value-string>Hilda</default-value-string>
+            </omitted>
+            <omitted type="u8[7]" value="sTestStruct.default_names.kalos">
+               <default-value-string>Serena</default-value-string>
+            </omitted>
+            <omitted type="u8[7]" value="sTestStruct.default_names.paldea">
+               <default-value-string>Juliana</default-value-string>
+            </omitted>
+            <omitted type="u8[7]" value="sTestStruct.default_names.unova_b">
+               <default-value-string>Rosa</default-value-string>
+            </omitted>
+            <omitted type="char[12]" value="sTestStruct.xml_tricky_test">
+               <default-value-string>&lt;"xml"&gt;
+&lt;&gt;</default-value-string>
+            </omitted>
          </instructions>
       </sector>
    </sectors>

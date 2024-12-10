@@ -65,7 +65,7 @@ struct TestStruct {
    LU_BP_CATEGORY("test-names") player_name names[2];
    
    // Vary the test: make `player-name` and `test-names` stats vary from each other.
-   player_name enemy_name;
+   LU_BP_DEFAULT("Silver") player_name enemy_name;
    
    u8 single_element_array_1D[1];
    u8 single_element_array_2D[1][1];
@@ -74,6 +74,21 @@ struct TestStruct {
    u5 array[3];
    
    bool8 boolean;
+   
+   LU_BP_AS_OPAQUE_BUFFER float decimals[3];
+   
+   struct {
+      LU_BP_OMIT LU_BP_DEFAULT("May")     player_name hoenn;
+      LU_BP_OMIT LU_BP_DEFAULT("Dawn")    player_name sinnoh;
+      LU_BP_OMIT LU_BP_DEFAULT("Lyra")    player_name johto_modern;
+      LU_BP_OMIT LU_BP_DEFAULT("Hilda")   player_name unova_a;
+      LU_BP_OMIT LU_BP_DEFAULT("Serena")  player_name kalos;
+      LU_BP_OMIT LU_BP_DEFAULT("Juliana") player_name paldea;
+      // Test to verify that the previous name doesn't overflow:
+      LU_BP_OMIT LU_BP_DEFAULT("Rosa")    player_name unova_b;
+   } default_names;
+   
+   LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") LU_BP_STRING char xml_tricky_test[12];
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);
@@ -108,6 +123,20 @@ void print_test_struct() {
       printf("      %u,\n", sTestStruct.array[i]);
    printf("   },\n");
    printf("   .boolean == %u,\n", sTestStruct.boolean);
+   printf("   .decimals == {\n");
+   for(int i = 0; i < 3; ++i)
+      printf("      %f,\n", sTestStruct.decimals[i]);
+   printf("   },\n");
+   printf("   .default_names == {\n");
+   printf("      \"%.7s\",\n", sTestStruct.default_names.hoenn);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.sinnoh);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.johto_modern);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.unova_a);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.kalos);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.paldea);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.unova_b);
+   printf("   },\n");
+   printf("   .xml_tricky_test = \"%.12s\",\n", sTestStruct.xml_tricky_test);
    printf("}\n");
 }
 
@@ -134,6 +163,11 @@ int main() {
    sTestStruct.array[1] = 17;
    sTestStruct.array[2] = 18;
    sTestStruct.boolean = 1;
+   sTestStruct.decimals[0] = 1.0;
+   sTestStruct.decimals[1] = 2.5;
+   sTestStruct.decimals[2] = 100.0;
+   memset(&sTestStruct.default_names, 0, sizeof(sTestStruct.default_names));
+   memset(sTestStruct.xml_tricky_test, 0, sizeof(sTestStruct.xml_tricky_test));
    
    const char* divider = "====================================================\n";
    

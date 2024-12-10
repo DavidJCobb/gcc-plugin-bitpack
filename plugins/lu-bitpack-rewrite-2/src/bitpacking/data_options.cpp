@@ -344,7 +344,7 @@ namespace bitpacking {
       //
       if (!this->_failed) {
          if (auto* casted = std::get_if<typed_data_options::computed::integral>(&dst_var)) {
-            if (casted->bitcount == 1 && casted->min == 0) {
+            if (casted->min == 0) {
                //
                // This integral value looks like a boolean.
                //
