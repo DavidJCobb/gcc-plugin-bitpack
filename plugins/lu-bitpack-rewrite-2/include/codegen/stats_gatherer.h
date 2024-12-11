@@ -44,7 +44,5 @@ namespace codegen {
          
       public:
          void gather_from_sectors(const std::vector<std::vector<serialization_item>>& items_by_sector);
-         
-         void gather_from_top_level(gcc_wrappers::decl::variable);
    };
 }

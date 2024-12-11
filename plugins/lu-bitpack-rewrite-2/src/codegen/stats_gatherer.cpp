@@ -1,5 +1,5 @@
 #include "codegen/stats_gatherer.h"
-#include "codegen/serialization_item_list_ops/get_offsets_and_sizes.h"
+#include "codegen/serialization_item_list_ops/get_total_serialized_size.h"
 #include "codegen/decl_descriptor.h"
 #include "codegen/decl_dictionary.h"
 #include "gcc_wrappers/type/container.h"
@@ -85,11 +85,9 @@ namespace codegen {
    
    void stats_gatherer::gather_from_sectors(const std::vector<std::vector<serialization_item>>& items_by_sector) {
       for(const auto& sector : items_by_sector) {
-         auto  info = serialization_item_list_ops::get_offsets_and_sizes(sector);
+         auto  size = serialization_item_list_ops::get_total_serialized_size(sector);
          auto& dst  = this->sectors.emplace_back();
-         if (!info.empty()) {
-            dst.total_packed_size = info.back().first + info.back().second;
-         }
+         dst.total_packed_size = size;
       }
       
       //
@@ -174,44 +172,5 @@ namespace codegen {
             this->_gather_leaf(context, *desc);
          }
       }
-   }
-   
-   void stats_gatherer::gather_from_top_level(gw::decl::variable decl) {
-      /*//
-      const auto decl_name = std::string(decl.name());
-      auto walk = [this, &decl_name](gw::decl::variable inside) {
-         auto _impl = [this, &decl_name](
-            gw::decl::variable     inside,
-            const decl_descriptor& desc,
-            size_t                 in_array_count,
-            auto&                  recurse
-         ) -> void {
-            size_t count = in_array_count;
-            for(auto extent : desc.array.extents)
-               count *= extent;
-            
-            auto type = *desc.types.serialized;
-            for(const auto& name : desc.options.stat_categories) {
-               auto& info = this->categories[std::string(name)];
-               //info.add_count_in_top_level_identifier(decl_name, count);
-            }
-            
-            if (type.is_container()) {
-               if (!type.name().empty()) {
-                  auto& info = this->types[type];
-                  //info.add_count_in_top_level_identifier(decl_name, count);
-               }
-               for(const auto* m : desc.members_of_serialized()) {
-                  (recurse)(inside, *m, count, recurse);
-               }
-            }
-         };
-         
-         auto& dict = decl_dictionary::get();
-         auto& desc = dict.describe(inside);
-         _impl(inside, desc, 1, _impl);
-      };
-      walk(decl);
-      //*/
    }
 }

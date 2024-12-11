@@ -1,18 +1,14 @@
 #include "codegen/serialization_item_list_ops/get_total_serialized_size.h"
-#include <algorithm> // std::copy, std::min
-#include <cassert>
-#include "codegen/decl_descriptor.h"
+#include <algorithm> // std::min
 
-namespace codegen::serialization_item_list_ops {
-   using segment_condition = serialization_items::condition_type;
-   
+namespace {
+   using segment_condition = codegen::serialization_items::condition_type;
+
    struct branch_state {
       segment_condition condition;
       size_t offset = 0;
       
-      branch_state() {}
-      
-      void insert(const serialization_item& item) {
+      void insert(const codegen::serialization_item& item) {
          this->offset += item.size_in_bits();
       }
       
@@ -21,7 +17,9 @@ namespace codegen::serialization_item_list_ops {
          this->offset = o.offset;
       }
    };
-   
+}
+
+namespace codegen::serialization_item_list_ops {
    extern size_t get_total_serialized_size(const std::vector<serialization_item>& items) {
       branch_state root;
       std::vector<branch_state> branches;
@@ -104,7 +102,7 @@ namespace codegen::serialization_item_list_ops {
          // End of condition-handling logic.
          //
          
-         auto& current_branch = branches.empty() ? root : branches.back();
+         branch_state& current_branch = branches.empty() ? root : branches.back();
          current_branch.insert(item);
       }
       if (!branches.empty()) {

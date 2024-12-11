@@ -1,17 +1,15 @@
 #include "codegen/serialization_item_list_ops/get_offsets_and_sizes.h"
-#include <algorithm> // std::copy, std::min
-#include <cassert>
-#include "codegen/decl_descriptor.h"
+#include <algorithm> // std::min
 
-namespace codegen::serialization_item_list_ops {
+namespace {
    using offset_size_pair = std::pair<size_t, size_t>;
-   
-   using segment_condition = serialization_items::condition_type;
-   
+
+   using segment_condition = codegen::serialization_items::condition_type;
+
    struct overall_state {
       std::vector<offset_size_pair> data;
    };
-   
+
    struct branch_state {
       overall_state*    overall;
       segment_condition condition;
@@ -20,7 +18,7 @@ namespace codegen::serialization_item_list_ops {
       branch_state() {} // needed for std::vector
       branch_state(overall_state& o) : overall(&o) {}
       
-      void insert(const serialization_item& item) {
+      void insert(const codegen::serialization_item& item) {
          size_t size = item.size_in_bits();
          overall->data.push_back({ this->offset, size });
          this->offset += size;
@@ -31,7 +29,9 @@ namespace codegen::serialization_item_list_ops {
          this->offset = o.offset;
       }
    };
-   
+}
+
+namespace codegen::serialization_item_list_ops {
    extern std::vector<offset_size_pair> get_offsets_and_sizes(const std::vector<serialization_item>& items) {
       overall_state overall;
       //

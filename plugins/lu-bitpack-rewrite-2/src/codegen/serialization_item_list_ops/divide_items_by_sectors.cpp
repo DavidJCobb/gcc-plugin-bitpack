@@ -7,58 +7,60 @@
 #include "codegen/serialization_item_list_ops/force_expand_unions_and_anonymous.h"
 #include "codegen/serialization_item_list_ops/force_expand_omitted_and_defaulted.h"
 
-using sector_type = std::vector<codegen::serialization_item>;
-using sector_list = std::vector<sector_type>;
+namespace {
+   using sector_type = std::vector<codegen::serialization_item>;
+   using sector_list = std::vector<sector_type>;
 
-using segment_condition = codegen::serialization_items::condition_type;
+   using segment_condition = codegen::serialization_items::condition_type;
 
-struct overall_state {
-   size_t      bits_per_sector = 0;
-   sector_list sectors;
-};
+   struct overall_state {
+      size_t      bits_per_sector = 0;
+      sector_list sectors;
+   };
 
-//
-// Leftover from when we tried to implement sector splitting of unions. 
-// Retained in case we think of a workable solution in the future. (See 
-// Markdown-format documentation for problems.) Same basic design as 
-// with `serialization_item_list_ops::get_offsets_and_sizes`.
-//
-struct branch_state {
-   overall_state*    overall;
-   segment_condition condition;
-   size_t bits_remaining = 0;
-   size_t current_sector = 0;
-   
-   branch_state() {} // needed for std::vector
-   branch_state(overall_state& o) : overall(&o), bits_remaining(o.bits_per_sector) {}
-   
-   void insert(const codegen::serialization_item& item) {
-      if (overall->sectors.size() <= this->current_sector)
-         overall->sectors.resize(this->current_sector + 1);
-      overall->sectors[this->current_sector].push_back(item);
+   //
+   // Leftover from when we tried to implement sector splitting of unions. 
+   // Retained in case we think of a workable solution in the future. (See 
+   // Markdown-format documentation for problems.) Same basic design as 
+   // with `serialization_item_list_ops::get_offsets_and_sizes`.
+   //
+   struct branch_state {
+      overall_state*    overall;
+      segment_condition condition;
+      size_t bits_remaining = 0;
+      size_t current_sector = 0;
       
-      if (!item.is_omitted)
-         this->bits_remaining -= item.size_in_bits();
-   }
-   void next() {
-      ++this->current_sector;
-      this->bits_remaining = overall->bits_per_sector;
-   }
-   
-   constexpr bool is_at_or_ahead_of(const branch_state& o) const noexcept {
-      if (this->current_sector > o.current_sector)
-         return true;
-      if (this->current_sector < o.current_sector)
-         return false;
-      return this->bits_remaining <= o.bits_remaining;
-   }
-   
-   void catch_up_to(const branch_state& o) {
-      assert(o.is_at_or_ahead_of(*this));
-      this->bits_remaining = o.bits_remaining;
-      this->current_sector = o.current_sector;
-   }
-};
+      branch_state() {} // needed for std::vector
+      branch_state(overall_state& o) : overall(&o), bits_remaining(o.bits_per_sector) {}
+      
+      void insert(const codegen::serialization_item& item) {
+         if (overall->sectors.size() <= this->current_sector)
+            overall->sectors.resize(this->current_sector + 1);
+         overall->sectors[this->current_sector].push_back(item);
+         
+         if (!item.is_omitted)
+            this->bits_remaining -= item.size_in_bits();
+      }
+      void next() {
+         ++this->current_sector;
+         this->bits_remaining = overall->bits_per_sector;
+      }
+      
+      constexpr bool is_at_or_ahead_of(const branch_state& o) const noexcept {
+         if (this->current_sector > o.current_sector)
+            return true;
+         if (this->current_sector < o.current_sector)
+            return false;
+         return this->bits_remaining <= o.bits_remaining;
+      }
+      
+      void catch_up_to(const branch_state& o) {
+         assert(o.is_at_or_ahead_of(*this));
+         this->bits_remaining = o.bits_remaining;
+         this->current_sector = o.current_sector;
+      }
+   };
+}
 
 namespace codegen::serialization_item_list_ops {
    extern std::vector<std::vector<serialization_item>> divide_items_by_sectors(
