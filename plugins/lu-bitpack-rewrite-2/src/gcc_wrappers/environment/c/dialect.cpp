@@ -10,8 +10,15 @@ namespace gcc_wrappers::environment::c {
          return dialect::c89_amendment_1;
       if (!flag_isoc11)
          return dialect::c99;
-      if (!flag_isoc23)
+      if (
+         #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 1
+            !flag_isoc23
+         #else
+            !flag_isoc2x
+         #endif
+      ) {
          return dialect::c11;
+      }
       return dialect::c23;
    }
 }

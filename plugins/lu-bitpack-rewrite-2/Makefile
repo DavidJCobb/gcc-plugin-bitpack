@@ -48,6 +48,7 @@ SOURCES=\
         src/codegen/serialization_item_list_ops/force_expand_omitted_and_defaulted.cpp \
         src/codegen/serialization_item_list_ops/force_expand_unions_and_anonymous.cpp \
         src/codegen/serialization_item_list_ops/get_offsets_and_sizes.cpp \
+        src/codegen/serialization_item_list_ops/get_total_serialized_size.cpp \
         src/codegen/serialization_items/basic_segment.cpp \
         src/codegen/serialization_items/condition.cpp \
         src/codegen/rechunked/chunks/array_slice.cpp \

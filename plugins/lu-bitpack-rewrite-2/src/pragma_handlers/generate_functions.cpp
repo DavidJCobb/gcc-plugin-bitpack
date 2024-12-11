@@ -20,6 +20,7 @@
 #include "codegen/debugging/print_sectored_rechunked_items.h"
 #include "codegen/instructions/base.h"
 #include "codegen/serialization_item_list_ops/divide_items_by_sectors.h"
+#include "codegen/serialization_item_list_ops/get_total_serialized_size.h"
 #include "codegen/rechunked/item.h"
 #include "codegen/rechunked/items_to_instruction_tree.h"
 #include "codegen/decl_descriptor.h"
@@ -29,9 +30,12 @@
 
 #include "gcc_helpers/c/at_file_scope.h"
 #include "gcc_helpers/stringify_function_signature.h"
+#include "gcc_wrappers/constant/integer.h"
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/environment/c/constexpr_supported.h"
+#include "gcc_wrappers/environment/c/dialect.h"
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/type/function.h"
 #include "gcc_wrappers/builtin_types.h"
@@ -298,6 +302,44 @@ namespace pragma_handlers {
          return;
       
       inform(UNKNOWN_LOCATION, "generated the serialization functions");
+      {  // Define file-scoped variables.
+         size_t count    = gs.global_options.sectors.max_count;
+         size_t max_size = gs.global_options.sectors.bytes_per;
+         if (count == 1 && max_size == std::numeric_limits<size_t>::max()) {
+            max_size = 0;
+            if (!all_sectors_si.empty()) {
+               max_size = codegen::serialization_item_list_ops::get_total_serialized_size(all_sectors_si[0]);
+            }
+         }
+         
+         const auto& ty = gw::builtin_types::get_fast();
+         {  // __lu_bitpack_sector_count
+            gw::decl::variable var("__lu_bitpack_sector_count", ty.size);
+            var.make_artificial();
+            var.set_initial_value(gw::constant::integer(ty.size, count));
+            var.make_file_scope_static();
+            var.set_is_defined_elsewhere(false);
+            if constexpr (gw::environment::c::constexpr_supported) {
+               if (gw::environment::c::current_dialect() >= gw::environment::c::dialect::c23) {
+                  var.make_declared_constexpr();
+               }
+            }
+         }
+         {  // __lu_bitpack_max_sector_size
+            gw::decl::variable var("__lu_bitpack_max_sector_size", ty.size);
+            var.make_artificial();
+            var.set_initial_value(gw::constant::integer(ty.size, max_size));
+            var.make_file_scope_static();
+            var.set_is_defined_elsewhere(false);
+            if constexpr (gw::environment::c::constexpr_supported) {
+               if (gw::environment::c::current_dialect() >= gw::environment::c::dialect::c23) {
+                  var.make_declared_constexpr();
+               }
+            }
+         }
+         inform(UNKNOWN_LOCATION, "generated built-in variables (%<__lu_bitpack_sector_count%> and friends)");
+      }
+      
       if (!gs.xml_output_path.empty()) {
          const auto& path = gs.xml_output_path;
          if (path.ends_with(".xml")) {

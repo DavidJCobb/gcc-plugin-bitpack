@@ -1,0 +1,28 @@
+<data>
+   <config>
+      <option value="2" name="max-sector-count" />
+      <option value="16" name="max-sector-bytecount" />
+   </config>
+   <c-types>
+      <struct c-sizeof="16" c-alignment="4" tag="TestStruct">
+         <instructions>
+            <integer min="0" bitcount="3" type="int" value="a" />
+            <integer max="220" min="0" bitcount="8" type="int" value="b" />
+            <integer min="0" bitcount="32" type="int" value="c" />
+            <loop counter-var="__a" count="3" start="0" array="d">
+               <integer min="0" bitcount="7" type="u8" value="d[__a]" />
+            </loop>
+         </instructions>
+      </struct>
+   </c-types>
+   <sectors>
+      <sector>
+         <stats>
+            <bitcounts total-packed="64" />
+         </stats>
+         <instructions>
+            <struct type="TestStruct" value="sTestStruct" />
+         </instructions>
+      </sector>
+   </sectors>
+</data>
