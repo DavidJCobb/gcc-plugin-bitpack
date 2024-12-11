@@ -2,14 +2,11 @@
 #include <cassert>
 #include "gcc_wrappers/identifier.h"
 #include "gcc_wrappers/_node_boilerplate-impl.define.h"
-#include <c-tree.h> // C_DECL_DECLARED_CONSTEXPR
+#include <c-tree.h> // C_DECL_DECLARED_CONSTEXPR, c_bind
 #include <toplev.h> // rest_of_decl_compilation
 #include "gcc_headers/plugin-version.h"
 #include "gcc_wrappers/environment/c/constexpr_supported.h"
 #include "gcc_wrappers/environment/c/dialect.h"
-
-// Defined in GCC source, `c/c-tree.h`; not included in the plug-in headers.
-extern void c_bind(location_t, tree, bool);
 
 namespace gcc_wrappers::decl {
    GCC_NODE_WRAPPER_BOILERPLATE(variable)
