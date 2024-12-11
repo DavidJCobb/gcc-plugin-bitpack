@@ -1,4 +1,6 @@
 GCC_WRAPPERS_SOURCES=\
+        src/gcc_wrappers/environment/c/dialect.cpp \
+        src/gcc_wrappers/environment/c_family/language.cpp \
         src/gcc_wrappers/events/on_type_finished.cpp \
         src/gcc_wrappers/constant/base.cpp \
         src/gcc_wrappers/constant/floating_point.cpp \

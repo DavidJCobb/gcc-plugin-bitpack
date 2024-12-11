@@ -1,13 +1,13 @@
 #include "gcc_wrappers/type/base.h"
 #include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/identifier.h"
 #include <cassert>
 #include <charconv> // std::to_string, for pretty-printing array extents
 #include <c-family/c-common.h> // c_build_qualified_type, c_type_promotes_to
 
-// Defined in GCC source, `c-tree.h`; not included in the plug-in headers, bafflingly.
-// Do not confuse this with the C++ `comptypes`, which has a different signature and 
-// is unavailable when compiling C.
-extern int comptypes(tree, tree);
+// GCC flattens most directories when it installs plug-in headers. In GCC source 
+// code, this is `c/c-tree.h` but for plug-ins, it's just `c-tree.h`.
+#include <c-tree.h> // comptypes
 
 #include "gcc_headers/plugin-version.h"
 
@@ -37,18 +37,30 @@ namespace gcc_wrappers::type {
    }
    
    std::string base::name() const {
-      tree name_tree = TYPE_NAME(this->_node);
-      if (!name_tree) {
+      optional_node name = TYPE_NAME(this->_node);
+      if (!name)
          return {}; // unnamed struct
+      if (name->is<identifier>()) {
+         return std::string(name->as<identifier>().name());
       }
-      if (TREE_CODE(name_tree) == IDENTIFIER_NODE)
-         return IDENTIFIER_POINTER(name_tree);
-      if (TREE_CODE(name_tree) == TYPE_DECL && DECL_NAME(name_tree))
-         return IDENTIFIER_POINTER(DECL_NAME(name_tree));
+      if (name->is<decl::type_def>()) {
+         //
+         // `this` is a synonym type created by the `typedef` keyword.
+         //
+         return std::string(name->as<decl::type_def>().name());
+      }
       //
       // Name irretrievable?
       //
       return {};
+   }
+   std::string base::tag_name() const {
+      if (!this->is_enum() && !this->is_record() && !this->is_union())
+         return {};
+      optional_node name = TYPE_NAME(this->_node);
+      if (!name || !name->is<identifier>())
+         return {};
+      return std::string(name->as<identifier>().name());
    }
    std::string base::pretty_print() const {
       std::string out;
@@ -206,12 +218,10 @@ namespace gcc_wrappers::type {
    }
    
    decl::optional_type_def base::declaration() const {
-      auto dn = TYPE_NAME(this->_node);
-      if (dn != NULL_TREE) {
-         if (TREE_CODE(dn) != TYPE_DECL)
-            dn = NULL_TREE;
-      }
-      return dn;
+      optional_node name = TYPE_NAME(this->_node);
+      if (name && name->is<decl::type_def>())
+         return name->as<decl::type_def>();
+      return {};
    }
    
    bool base::is_type_or_transitive_typedef_thereof(base other) const {

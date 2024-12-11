@@ -18,7 +18,7 @@ namespace codegen::stats {
             out->node_name = "union";
          }
          
-         auto name = this->type.name();
+         auto name = this->type.tag_name();
          if (!name.empty())
             out->set_attribute("tag", name);
          

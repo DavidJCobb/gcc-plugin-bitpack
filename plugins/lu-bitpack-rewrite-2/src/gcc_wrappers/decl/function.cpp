@@ -10,10 +10,7 @@
 #include <toplev.h>
 #include <c-family/c-common.h> // lookup_name, pushdecl, etc.
 #include <cgraph.h>
-
-// These are in `c/c-tree.h`, which isn't included among the plug-in headers.
-extern void c_bind(location_t, tree, bool);
-extern tree pushdecl(tree);
+#include <c-tree.h> // c_bind, pushdecl
 
 // function
 namespace gcc_wrappers::decl {

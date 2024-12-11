@@ -3,7 +3,7 @@
 #include "bitstreams.h"
 #include "helpers.h"
 
-#define SECTOR_COUNT 3
+#define SECTOR_COUNT 4
 #define SECTOR_SIZE 16
 
 #pragma lu_bitpack enable
@@ -49,6 +49,13 @@ LU_BP_BITCOUNT(5) typedef u8 u5;
 // Test stat-tracking categories and bitpacking options on typedefs.
 LU_BP_CATEGORY("player-name") LU_BP_STRING_UT typedef u8 player_name [7];
 
+typedef struct {
+   u8 data;
+} NamedByTypedefOnly;
+typedef struct NamedByTag {
+   u8 data;
+} NamedByTypedef;
+
 struct TestStruct {
    struct Color color;
    
@@ -92,6 +99,10 @@ struct TestStruct {
    
    // Testcase: default value is string; value is not marked as a string.
    LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") char xml_tricky_test_2[12];
+   
+   NamedByTypedefOnly named_by_typedef_only;
+   struct NamedByTag  using_tag_name;
+   NamedByTypedef     using_typedef_name;
 } sTestStruct;
 
 extern void generated_read(const u8* src, int sector_id);

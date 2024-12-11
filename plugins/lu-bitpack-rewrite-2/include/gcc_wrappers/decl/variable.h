@@ -44,6 +44,19 @@ namespace gcc_wrappers::decl {
          void make_externally_accessible();
          void set_is_externally_accessible(bool);
          
+         // The getter should always be safe.
+         //
+         // The setter makes this assertion unconditionally:
+         //    assert(gcc_wrappers::environment::c::constexpr_supported);
+         //
+         // The setter makes this assertion if you try to mark the 
+         // variable as declared-constexpr, but not if you try to 
+         // clear that flag:
+         //    assert(gcc_wrappers::environment::c::current_dialect() >= ...::c23);
+         bool is_declared_constexpr() const;
+         void make_declared_constexpr();
+         void set_is_declared_constexpr(bool);
+         
          void make_file_scope_static();
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(variable);

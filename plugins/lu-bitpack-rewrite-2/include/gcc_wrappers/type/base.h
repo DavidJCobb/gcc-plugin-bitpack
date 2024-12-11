@@ -47,6 +47,7 @@ namespace gcc_wrappers::type {
          }
          
          std::string name() const;
+         std::string tag_name() const;
          std::string pretty_print() const;
             
          // The source location of the TYPE_DECL which declared this type, if any.

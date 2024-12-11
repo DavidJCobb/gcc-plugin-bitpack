@@ -8,9 +8,21 @@ Goals:
 * Stricter static typing
 * Improved ergonomics
 * Improved version independence using compile-time version checks
-* Abstracted access to important GCC functions that are exported but not included in the plug-in headers (e.g. stuff from `c/c-tree.h` like the C-language `comptypes`, where plug-ins are given the C/C++ and the C++-exclusive headers but not the C-exclusive headers)
 
 This wrapper has some dependencies on my personal "helper" library (the `lu` folder).
+
+## Defects
+
+* I've only developed this plug-in for use when compiling C code with GCC. Several accessors don't support C++, and you should expect run-time link errors when trying to load it while compiling C++ code.
+  * Potential remedy: preprocessor flags, to build the plug-in for use in GCC-for-C or GCC-for-C++.
+  * Potential remedy: use [`dlsym(RTLD_DEFAULT, "mangled_name_here")`](https://pubs.opengroup.org/onlinepubs/009696899/functions/dlsym.html) to access internal GCC functions that are only present for one language or another. Cast the returned pointer to the appropriate function type. This is basically the Linux equivalent to `GetProcAddress(GetModuleHandleA(NULL), "mangled_name_here")`. We can cache returned functions in a singleton to avoid having to grab them more than once, and potentially optimize further by having the singleton pre-grab everything on startup so we don't have to null-check every time we want to call one of these.
+  * Notes:
+    * `gcc_wrappers::environment::c_family::current_language()` and friends exist to wrap language checks, and could be used for... whatever we decide to do about this someday.
+  * Places that I know need explicit support for C++:
+    * Anywhere we call `comptypes`, i.e. `gw::type::base::operator==`
+    * Probably the code to finalize a `gw::decl::function` when setting its root block
+    * `gw::scope` would need to be updated to support scopes unique to C++
+    * `gw::decl::variable::is_declared_constexpr` and friends, which need to use `DECL_DECLARED_CONSTEXPR_P` for C++
 
 ## Usage example
 
@@ -51,7 +63,7 @@ exit:
 }
 ```
 
-The code to generate that function looks like this. (We actually end up generating a redundant anonymous block enclosing the `for` loop, but that would be more convenient to work with were we generating a more complex function.)
+The code to generate that function looks like this. (We actually end up generating a redundant anonymous block enclosing the `for` loop, which can be more convenient to work with when generating more complex functions.)
 
 ```c++
 namespace gw {
@@ -488,8 +500,8 @@ tree make_function(tree type) {
    //
    // `c_bind` is meant for declarations, not definitions, AFAICT anyway. It 
    // therefore does some things that we maybe don't want, like changing the 
-   // function's "extern" status. It also isn't even exposed in the plug-in 
-   // headers, so you'll need to forward-declare it yourself.
+   // function's "extern" status.
+   //
    auto was_extern = DECL_EXTERNAL(this->_node);
    c_bind(DECL_SOURCE_LOCATION(this->_node), this->_node, true); // c/c-tree.h
    DECL_EXTERNAL(this->_node) = was_extern;
@@ -584,6 +596,10 @@ In general, `expr` wrappers exist for "advanced" operations, like function calls
 * `::lu::singleton`
   * `builtin_types`
   * `events::on_type_finished`
+* `environment::c::dialect`
+* `environment::c_family::language`
+* `flow::simple_for_loop`
+* `flow::simple_if_else_set`
 * `attribute_list`
 * `chain`
 
