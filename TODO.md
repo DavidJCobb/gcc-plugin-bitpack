@@ -8,8 +8,8 @@
 C++:
 
 * GCC wrapper rewrite
-  * BUG: Given `typedef struct T {} U`, if both `T` and `U` appear in the to-be-serialized data, we emit separate `<struct>` elements for each of them in the XML output. This is because they are, technically, separate `..._TYPE` nodes.
-    * I think that to remedy this, we'd have to store the `main_variant()` of each struct type when generating XML output. There are other concerns to be had, though, such as the possibility that we're redundantly generating whole-struct functions for each used name rather than just one function that applies to the underlying name, and the fact that our current XML output doesn't account for the case of multiple `typedef`s referring to the same type (we emit the `typedef` name, if present, as an XML attribute, so there can only be one; we'd need to switch to child nodes to remedy that).
+  * NOTE: Given `typedef struct T {} U`, if both `T` and `U` appear in the to-be-serialized data, we emit separate `<struct>` elements for each of them in the XML output. This is because they are, technically, separate `..._TYPE` nodes.
+    * I think this is a necessary evil. Typedefs can be annotated with bitpacking options separately from the original type, which can affect how they or their contents are bitpacked and therefore necessitate different bitpacking functions. In any case, this whole situation is a minor edge-case. We should probably document it somewhere (and document this paragraph i.e. the reason not to do anything about it) but otherwise leave it be.
   * Testcases needed:
     * XML output
       * Structs named via a typedef alone
