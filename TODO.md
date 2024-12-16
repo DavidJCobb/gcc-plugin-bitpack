@@ -15,15 +15,6 @@ C++:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
-    * XML output
-      * Transforms
-        * Basic
-        * Nested
-        * Transitive
-      * Tagged unions
-        * External
-        * Internal, defined in struct
-        * Internal, defined and named separately
   * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * As a band-aid to the next item, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.

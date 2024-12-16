@@ -1,0 +1,70 @@
+<data>
+   <config>
+      <option value="3" name="max-sector-count" />
+      <option value="7" name="max-sector-bytecount" />
+   </config>
+   <c-types>
+      <struct c-sizeof="1" c-alignment="1" tag="PackedBespoke">
+         <stats>
+            <bitcounts total-packed="0" total-unpacked="0" />
+         </stats>
+         <instructions>
+            <integer min="0" bitcount="3" type="u8" value="a" />
+         </instructions>
+      </struct>
+      <struct c-sizeof="4" c-alignment="4" tag="PackedColor">
+         <stats>
+            <bitcounts total-packed="0" total-unpacked="0" />
+         </stats>
+         <instructions>
+            <integer min="0" bitcount="24" type="unsigned int" value="tuple" />
+         </instructions>
+      </struct>
+      <struct c-sizeof="8" c-alignment="4" tag="NestedOuter" />
+      <struct c-sizeof="4" c-alignment="4" tag="Bespoke" />
+      <struct c-sizeof="3" c-alignment="1" tag="Color">
+         <transform-options unpack-function="UnpackColor" pack-function="PackColor" transformed-type="PackedColor" />
+      </struct>
+      <struct c-sizeof="4" c-alignment="2" tag="TransitiveA">
+         <transform-options unpack-function="UnpackTransitiveA" pack-function="PackTransitiveA" transformed-type="TransitiveB" />
+      </struct>
+      <struct c-sizeof="20" c-alignment="4" tag="TestStruct" />
+   </c-types>
+   <sectors>
+      <sector>
+         <stats>
+            <bitcounts total-packed="43" />
+         </stats>
+         <instructions>
+            <transform transformed-value="__transformed_var_0" transformed-type="PackedColor" value="sTestStruct.a">
+               <struct type="PackedColor" value="__transformed_var_0" />
+            </transform>
+            <transform transformed-value="__transformed_var_1" transformed-type="PackedBespoke" value="sTestStruct.b">
+               <struct type="PackedBespoke" value="__transformed_var_1" />
+            </transform>
+            <transform transform-through="TransitiveB" transformed-value="__transformed_var_2" transformed-type="TransitiveC" value="sTestStruct.c">
+               <integer min="0" bitcount="16" type="u16" value="__transformed_var_2.y" />
+            </transform>
+         </instructions>
+      </sector>
+      <sector>
+         <stats>
+            <bitcounts total-packed="48" />
+         </stats>
+         <instructions>
+            <transform transform-through="TransitiveB" transformed-value="__transformed_var_0" transformed-type="TransitiveC" value="sTestStruct.c">
+               <integer min="0" bitcount="16" type="u16" value="__transformed_var_0.x" />
+            </transform>
+            <integer min="0" bitcount="32" type="int" value="sTestStruct.d.a" />
+         </instructions>
+      </sector>
+      <sector>
+         <stats>
+            <bitcounts total-packed="32" />
+         </stats>
+         <instructions>
+            <integer min="0" bitcount="32" type="int" value="sTestStruct.d.b" />
+         </instructions>
+      </sector>
+   </sectors>
+</data>

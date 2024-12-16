@@ -195,6 +195,10 @@ namespace pragma_handlers {
       
       auto& decl_dictionary = codegen::decl_dictionary::get();
       
+      //
+      // Generate serialization items for all to-be-serialized values, and 
+      // split items into and across sectors as appropriate.
+      //
       std::vector<std::vector<codegen::serialization_item>> all_sectors_si;
       {
          size_t sector_size_in_bits = gs.global_options.sectors.bytes_per * 8;
@@ -274,6 +278,9 @@ namespace pragma_handlers {
       if (request.settings.enable_debug_output) {
          codegen::debugging::print_sectored_serialization_items(all_sectors_si);
       }
+      //
+      // Convert serialization items to rechunked items.
+      //
       std::vector<std::vector<codegen::rechunked::item>> all_sectors_ri;
       for(const auto& sector : all_sectors_si) {
          auto& dst = all_sectors_ri.emplace_back();
@@ -340,17 +347,14 @@ namespace pragma_handlers {
          inform(UNKNOWN_LOCATION, "generated built-in variables (%<__lu_bitpack_sector_count%> and friends)");
       }
       
+      //
+      // Produce XML output, if possible.
+      //
       if (!gs.xml_output_path.empty()) {
          const auto& path = gs.xml_output_path;
          if (path.ends_with(".xml")) {
             codegen::stats_gatherer stats;
             stats.gather_from_sectors(all_sectors_si);
-            /*for(auto& group : request.identifier_groups) {
-               for(auto& entry : group) {
-                  auto decl = gw::decl::variable::wrap(lookup_name(entry.id.unwrap()));
-                  stats.gather_from_top_level(decl);
-               }
-            }*/
             
             xmlgen::report_generator xml_gen;
             xml_gen.process(result.whole_struct);
