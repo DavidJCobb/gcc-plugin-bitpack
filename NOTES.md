@@ -11,16 +11,40 @@ I'm currently targeting GCC 11.4, so [this reference of C++ standards support by
 
 ```sh
 #
-# make a folder to download GCC to
+# Make our initial folders. Goal:
+#
+#  - gcc
+#     - dl
+#        - gcc-11.4.0
+#        - gcc-11.5.0
+#        - ...
+#     - build
+#        - 11.4.0
+#        - 11.5.0
+#        - ...
+#     - install
+#        - 11.4.0
+#        - 11.5.0
+#        - ...
 #
 cd $HOME
-mkdir gcc-dl
-cd gcc-dl
+mkdir gcc
+cd gcc
+mkdir dl
+mkdir build
+
+#
+# Let's start installing a single version of GCC.
+#
+cd dl
 
 #
 # Download and unpack GCC source. Unpacking may take a while. The terminal will 
 # accept input but otherwise be unresponsive during this time, so just wait for 
 # it to show a prompt again.
+#
+# This will unpack the tarball (archive) to a new folder named after the archive, 
+# so we'll end up with $HOME/gcc/dl/gcc-11.4.0/.
 #
 wget http://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.gz
 tar xf gcc-11.4.0.tar.gz
@@ -33,24 +57,26 @@ cd gcc-11.4.0
 ./contrib/download_prerequisites
 
 cd .. # exit GCC version-specific folder
-cd .. # exit gcc-dl
+cd .. # exit dl folder
 
 #
-# Create a new environment variable for our install directory, so we can reference 
-# it in our plug-in makefiles.
+# Make the folder we're installing to.
 #
-export LU_GCC_INSTALLDIR=$HOME/gcc/gcc-install
+cd install
+mkdir 11.4.0
+cd ..
 
+cd build
 #
 # Create what the GCC documentation calls the "objdir." We'll be building GCC from 
 # this directory. Note that when building different versions, parameters, etc., 
 # you'll need to run `make distclean` before a bare `make`.
 #
 # It's very important that the "objdir" be outside of the "srcdir," which for us 
-# was /gcc-dl/whatever/.
+# was /dl/whatever/.
 #
-mkdir gcc-build
-cd gcc-build
+mkdir 11.4.0
+cd 11.4.0
 
 #
 # Configure the to-be-build GCC:
@@ -62,10 +88,10 @@ cd gcc-build
 # This also creates the relevant makefile(s?) for GCC in the current working directory, 
 # which is why we can just run `make` straightaway afterward.
 #
-../gcc-dl/gcc-11.4.0/configure --prefix=$LU_GCC_INSTALLDIR --enable-languages=c,c++ --disable-multilib
+../../dl/gcc-11.4.0/configure --prefix=$HOME/gcc/install/11.4.0/ --enable-languages=c,c++ --disable-multilib
 
 #
-# Build it! (Expect this to be slow, e.g. 20min.)
+# Build it! (Expect this to be slow, e.g. 45min.)
 #
 make -j$(nproc)
 
@@ -81,14 +107,14 @@ make install
 # location. You'll see the computed value of the LU_GCC_INSTALLDIR environment variable 
 # in the path it echoes.
 #
-${LU_GCC_INSTALLDIR}/bin/gcc -print-file-name=plugin
+$HOME/gcc/install/11.4.0/bin/gcc -print-file-name=plugin
 ```
 
 ### GMP
 
 If you build GCC using `download_prerequisites` to get the prerequisites, then you'll end up with an "in-tree" copy of GMP &mdash; that is: GMP is stored within the GCC source folder rather than installed system-level. This is good if you plan on experimenting with multiple GCC versions, as it means that each one is built with the specific version of GMP that it needs.
 
-There is, ah, one problem, though. You have to tell the makefile where to find the in-tree copy of GMP. It'll be in a subfolder of the GCC "objdir," i.e. `$(HOME)/gcc-build/gmp` with our above setup.
+There is, ah, one problem, though. You have to tell the makefile where to find the in-tree copy of GMP. It'll be in a subfolder of the GCC "objdir," e.g. `$(HOME)/build/11.4.0/gmp` with our above setup.
 
 ## Potential warnings and errors
 

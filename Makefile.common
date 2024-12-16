@@ -1,7 +1,11 @@
 # Common makefile to be included from all other makefiles
 
-INSTALLDIR=$(HOME)/gcc/gcc-install
-GMPDIR=$(HOME)/gcc-build/gmp
+ifndef GCCVER
+override GCCVER = 11.4.0
+endif
+
+INSTALLDIR=$(HOME)/gcc/install/$(GCCVER)
+GMPDIR=$(HOME)/gcc/build/$(GCCVER)/gmp
 
 CC=$(INSTALLDIR)/bin/gcc
 CXX=$(INSTALLDIR)/bin/g++
@@ -15,14 +19,14 @@ LDFLAGS=
 LDADD=
 
 END=
-OBJECTS=$(patsubst src/%.cpp,build/%.o,$(SOURCES))
+OBJECTS=$(patsubst src/%.cpp,build/$(GCCVER)/%.o,$(SOURCES))
 
 all: $(PLUGIN)
 
 $(PLUGIN): $(OBJECTS)
 	$(CXX) $(LDFLAGS) -o $@ -shared $+ $(LDADD)
 
-build/%.o: src/%.cpp
+build/$(GCCVER)/%.o: src/%.cpp
 	$(shell mkdir -p $(dir $@))
 	$(CXX) -c -o $@ $(CXXFLAGS) $<
 
