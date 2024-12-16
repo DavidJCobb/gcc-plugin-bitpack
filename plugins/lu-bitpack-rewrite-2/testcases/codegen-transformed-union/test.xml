@@ -1,0 +1,44 @@
+<data>
+   <config>
+      <option value="3" name="max-sector-count" />
+      <option value="12" name="max-sector-bytecount" />
+   </config>
+   <c-types>
+      <struct c-sizeof="8" c-alignment="4" tag="PackedUnionA">
+         <stats>
+            <bitcounts total-packed="0" total-unpacked="0" />
+         </stats>
+         <instructions>
+            <integer min="0" bitcount="32" type="int" value="tag" />
+            <integer min="0" bitcount="32" type="int" value="data" />
+         </instructions>
+      </struct>
+      <union c-sizeof="8" c-alignment="4" tag="UnionA">
+         <transform-options unpack-function="UnpackUnionA" pack-function="PackUnionA" transformed-type="PackedUnionA" />
+      </union>
+      <struct c-sizeof="20" c-alignment="4" tag="TestStruct" />
+   </c-types>
+   <sectors>
+      <sector>
+         <stats>
+            <bitcounts total-packed="96" />
+         </stats>
+         <instructions>
+            <transform transformed-value="__transformed_var_0" transformed-type="PackedUnionA" value="sTestStruct.a">
+               <struct type="PackedUnionA" value="__transformed_var_0" />
+            </transform>
+            <integer min="0" bitcount="32" type="int" value="sTestStruct.force_expand_sTestStruct[0]" />
+         </instructions>
+      </sector>
+      <sector>
+         <stats>
+            <bitcounts total-packed="64" />
+         </stats>
+         <instructions>
+            <loop counter-var="__a" count="2" start="1" array="sTestStruct.force_expand_sTestStruct">
+               <integer min="0" bitcount="32" type="int" value="sTestStruct.force_expand_sTestStruct[__a]" />
+            </loop>
+         </instructions>
+      </sector>
+   </sectors>
+</data>

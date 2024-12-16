@@ -376,10 +376,14 @@ namespace bitpacking {
       auto& outer  = std::get<typed_data_options::requested_variant>(this->typed);
       auto* casted = std::get_if<typed_data_options::requested::tagged_union>(&outer);
       if (!casted) {
-         if (union_type && !std::holds_alternative<typed_data_options::requested::buffer>(outer)) {
+         if (
+            union_type &&
+            !std::holds_alternative<typed_data_options::requested::buffer>(outer) &&
+            !std::holds_alternative<typed_data_options::requested::transformed>(outer)
+         ) {
             //
             // Can't bitpack a union if we don't understand how it's tagged 
-            // (and if it's not an opaque buffer).
+            // (and if it's not an opaque buffer or transformed).
             //
             this->_failed = true;
          }

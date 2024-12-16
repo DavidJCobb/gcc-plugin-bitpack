@@ -8,12 +8,14 @@
 C++:
 
 * GCC wrapper rewrite
+  * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
   * NOTE: Given `typedef struct T {} U`, if both `T` and `U` appear in the to-be-serialized data, we emit separate `<struct>` elements for each of them in the XML output. This is because they are, technically, separate `..._TYPE` nodes.
     * I think this is a necessary evil. Typedefs can be annotated with bitpacking options separately from the original type, which can affect how they or their contents are bitpacked and therefore necessitate different bitpacking functions. In any case, this whole situation is a minor edge-case. We should probably document it somewhere (and document this paragraph i.e. the reason not to do anything about it) but otherwise leave it be.
   * Testcases needed:
+    * Transforms
+      * From non-union to internally tagged union
+      * From union to internally tagged union
     * XML output
-      * Structs named via a typedef alone
-      * Structs named via both a tag and a typedef
       * Transforms
         * Basic
         * Nested
@@ -24,6 +26,7 @@ C++:
         * Internal, defined and named separately
   * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
 * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
+* As a band-aid to the next item, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.
   * <dfn>Single-stage functions</dfn> are only invoked on fully-constructed objects (i.e. an object that has been read from the bitstream in full), as is typical in programming generally. To ensure this, we'd define a `static` instance of each individual transformed object that gets split across sectors, so that we can invoke the post-unpack function only after an instance is fully read (and without needing to invoke the pre-pack function as a per-sector pre-process step for reads).
