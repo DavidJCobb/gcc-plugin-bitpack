@@ -1,6 +1,7 @@
 #include "gcc_wrappers/environment/c/dialect.h"
 #include <gcc-plugin.h>
 #include <c-family/c-common.h>
+#include "gcc_headers/plugin-version.h"
 
 namespace gcc_wrappers::environment::c {
    extern dialect current_dialect() {
