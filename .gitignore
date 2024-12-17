@@ -2,12 +2,5 @@
 /plugins/*/build
 /plugins/*/*.so
 /plugins/*/testcases/*.o
-
-# match testcase output programs, which lack file extensions
-# do this by matching everything, then unmatching subfolders and anything with an extension
-/plugins/*/testcases/*/*
-!/plugins/*/testcases/*/**/
-!/plugins/*/testcases/*/*.*
-
-# exclusions within the testcase folders must then come after
+/plugins/*/testcases/*/test # testcase output programs
 /plugins/*/testcases/*/*.o
