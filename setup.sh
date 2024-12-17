@@ -37,6 +37,9 @@ usage() {
    echo " -f, --fast                      fast build (w/o localization, bootstrapping, etc.)"
    echo " --erase-prerequisites           clean prerequisites first (e.g. to fix corrupt downloads)"
    echo " --just-fix-gmp                  get GMP in the build directory and do nothing else"
+   echo " --threads <positive-integer>    override thread count (default is nproc i.e. all cores)"
+   echo "                                 (useful for building multiple GCCs at a time, since not "
+   echo "                                 all build steps seem to parallelize well)"
    exit 1;
 }
 
@@ -44,6 +47,20 @@ version=
 fast=0
 erase_prerequisites=0
 just_fix_gmp=0
+threads=$(nproc)
+
+is_integer() {
+   local regex='^-?[0-9]+$'
+   #
+   # NOTE: inlining the regex into the comparison below, even with single-quotes, 
+   #       changes the semantics and breaks the expression.
+   #
+   if [[ $1 =~ $regex ]]; then
+      return 0
+   fi
+   return 1
+}
+
 extract_args() {
    #
    # Check for GNU's variant on getopt, which properly supports long option 
@@ -78,7 +95,7 @@ extract_args() {
       # for the lack of separators and the fact that all names are only 
       # one character long.
       #
-      parsed="$(getopt -a -l 'version:,fast,erase-prerequisites,just-fix-gmp' -o 'v:f' -- $@)"
+      parsed="$(getopt -a -l 'version:,fast,erase-prerequisites,just-fix-gmp,threads:' -o 'v:f' -- $@)"
       if [ $? != "0" ]; then
          echo "bad"
          usage
@@ -103,6 +120,20 @@ extract_args() {
             "--just-fix-gmp")
                just_fix_gmp=1
                shift
+               ;;
+            "--threads")
+               threads=$2
+               shift 2 # consume the key and the value
+               
+               if ! is_integer "$threads"; then
+                  echo "number of threads, if specified, must be a positive integer (saw ${threads} which is not an integer)"
+                  usage
+               fi
+               if (( $threads <= 0 )); then
+                  echo "number of threads, if specified, must be a positive integer (saw ${threads} which is zero or negative)"
+                  usage
+               fi
+               
                ;;
             # Boilerplate:
             --) # leftover: the argument separator we gave to `getopt`
@@ -130,7 +161,7 @@ pv_available=$(command -v pv > /dev/null; echo $?)
 setup_gcc_needed_programs() {
    local bzip2_available=$(command -v bzip2 > /dev/null; echo $?)
    local make_available==$(command -v make > /dev/null; echo $?)
-   if [[ $bzip2_available != 0 || $make_available != 0 ]]; then
+   if [[ $bzip2_available != 0 ]] || [[ $make_available != 0 ]]; then
       local dependencies_list=()
       if [[ $bzip2_available != 0 ]]; then
          dependencies_list+=bzip
@@ -213,7 +244,6 @@ report_step() {
    text="${text//<\/h>/$formatting_for_step}"
    
    printf "${formatting_for_step}%s\x1b[0m\n" "${text}";
-   printf "\n";
 }
 report_error() {
    printf "\n";
@@ -389,7 +419,7 @@ pull_gmp_into_build_dir() {
    mkdir -p $BASEDIR/build/$version/gmp
    cd $BASEDIR/build/$version/gmp
    $GMPDIR/configure --prefix=$BASEDIR/build/$version/gmp
-   make
+   make -j$threads
    #make install # Don't need the rest of GMP; we just want the headers.
 }
 
@@ -411,7 +441,7 @@ build_and_install_gcc() {
    #
    # Run the makefiles to build GCC.
    #
-   make -j$(nproc)
+   make -j$threads
    if [ $? != 0 ]; then
       report_error_and_exit "Build failed. Aborting installation process."
    fi
@@ -420,10 +450,32 @@ build_and_install_gcc() {
    report_step "Installing GCC version ${version} to <h>$HOME/gcc/install/${version}/</h>..."
    echo ""
 
+   #
+   # DO NOT parallelize `make install`; it doesn't appear to be designed for 
+   # that, and failures have been reported, e.g.
+   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=42980
+   #
    make install
    if [ $? != 0 ]; then
       report_error_and_exit "Installation failed. Aborting installation process."
    fi
+   
+   # Returns a bash bool (zero is true, nonzero is false)
+   directory_actually_exists_make_goddamned_sure() {
+      if [ -d "$1" ]; then
+         #
+         # -d has in my experience been unreliable and reported false-positives 
+         # w.r.t. directories existing. Let's `cd` into the directory and make 
+         # sure it actually exists.
+         #
+         local prior=$PWD
+         cd "$1"
+         local result=$?
+         cd $prior
+         return $result
+      fi
+      return 1
+   }
    
    if [[ $fast == 1 ]]; then
       #
@@ -437,26 +489,25 @@ build_and_install_gcc() {
       # to build GMP ourselves. We don't need to fully install it; we just need 
       # its headers.
       #
+      # TODO: GCC 13.1.0 puts GMP in that folder. Is its absence limited to 
+      #       older GCC versions?
+      #
       cd "${BASEDIR}/build/${version}"
-      if [ -d "gmp" ]; then
-         #
-         # For whatever reason, this check doesn't actually work, like, ever, 
-         # because bash scripting isn't actually determinstic and it should 
-         # be sent back to Hell where it belongs. The most we can do is tell 
-         # the user to fix things manually.
-         #
-         report_step "GMP headers appear to already be present in <h>$HOME/gcc/build/${version}/gmp</h>\; this is unexpected, so please double-check that they're actually there."
+      if directory_actually_exists_make_goddamned_sure "${BASEDIR}/build/${version}/gmp"; then
+         report_step "GMP headers appear to already be present in <h>$HOME/gcc/build/${version}/gmp</h>/. This is unexpected, so please double-check that they're actually there."
          echo "If the headers aren't there, run this script with --just-fix-gmp."
          echo ""
       else
          pull_gmp_into_build_dir;
       fi
       #
-      # As far as I know, this is the only dependency we have to do this for.
+      # As far as I know, this is the only dependency we have to d o this for.
+      # (The space in that word is intentional. Somehow, Bash sometimes still 
+      # parses keywords inside of these line comments. Incredible.)
       #
    fi
 }
-if [[ $just_fix_gmp == 0 ]]; then
+if $just_fix_gmp; then
    build_and_install_gcc;
 fi
 

@@ -221,3 +221,8 @@ Notepad++.exe \\wsl$\Ubuntu-18.04\home\user\foo.txt
 Windows Explorer will also show a "Linux" category at the bottom of its sidebar while WSL is running, allowing fast and easy access to Linux-side files without having to `cd` back to `$HOME` in the Linux shell. Neat!
 
 Note that on WSL1, Linux-side access to the Windows filesystem is fast, but the Linux filesystem is slow; whereas on WSL2, Linux-side access to the Windows filesystem is slow, but the Linux filesystem is fast ([source](https://news.ycombinator.com/item?id=28321568)).
+
+
+### WSL
+
+Default WSL Ubuntu is 22.02 LTS. GCC 13+ requires newer versions of the OS; you can `wsl --install -d Ubuntu-24.04` to get 24.04 LTS, and then run it via `wsl -d Ubuntu-24.04`.

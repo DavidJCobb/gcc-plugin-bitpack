@@ -94,6 +94,19 @@ struct Inventory {
 (Yes, the example above could be accomplished using the `lu_bitpack_range(min, max)` attribute, but only because I made the item categories contiguous for clarity. In a real-world scenario, global item IDs may not be sorted by category: weapons and armor may be interleaved together, and in that case, you'd need a more complex mapping between global and category-local IDs.)
 
 
+## Building
+
+The makefiles assume that you've downloaded and installed GCC in `$HOME/gcc/build/11.4.0` or the equivalent folder for other GCC versions, and that `$HOME/gcc/build/11.4.0/gmp` contains built GMP sources. The `setup.sh` bash script will install GCC and ensure that GMP is set up appropriately (versions of GCC prior to 13.1.0 only place GMP in the GCC objdir if you do a slow bootstrapping build; the bash script detects GMP's absence in that scenario and builds it to that spot for you).
+
+From within the plug-in source directory: running testcases:
+
+```
+make GCCVER=13.1.0 testname=codegen-various-a testcase
+```
+
+Substitute `GCCVER` for the version of GCC to build for, and `codegen-various-a` for a folder name in the `testcases` subfolder.
+
+
 ## Usage
 
 ### Attributes
