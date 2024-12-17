@@ -1,6 +1,7 @@
 #include "xmlgen/xml_element.h"
 #include <cassert>
 #include <inttypes.h>
+#include <utility> // std::as_const
 #include "lu/stringf.h"
 #include "xmlgen/is_valid_name.h"
 #include "xmlgen/write_string_as_attribute_value.h"
