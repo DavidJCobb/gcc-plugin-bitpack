@@ -304,12 +304,12 @@ namespace gcc_wrappers {
          
          [[maybe_unused]] bool variably_modified = false;
          #ifdef C_TYPE_VARIABLY_MODIFIED
-            variably_modified = C_TYPE_VARIABLY_MODIFIED(value_type.to_untyped());
+            variably_modified = C_TYPE_VARIABLY_MODIFIED(value_type.unwrap());
          #endif
          
          auto pointer_type = value_type.add_pointer();
          #ifdef C_TYPE_VARIABLY_MODIFIED
-            C_TYPE_VARIABLY_MODIFIED(pointer_type) = variably_modified;
+            C_TYPE_VARIABLY_MODIFIED(pointer_type.unwrap()) = variably_modified;
          #endif
          
          if (INDIRECT_REF_P(this->_node)) {
