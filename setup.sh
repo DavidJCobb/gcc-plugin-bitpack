@@ -1,6 +1,10 @@
 #!/bin/bash
 
 BASEDIR=$HOME/gcc
+mkdir -p $BASEDIR
+mkdir -p $BASEDIR/dl
+mkdir -p $BASEDIR/build
+mkdir -p $BASEDIR/install
 #
 # The srcdir is $BASEDIR/dl/gcc-$version and the objdir is $BASEDIR/build/$version.
 #
@@ -119,8 +123,56 @@ if [ -z "${version}" ] ; then
    usage
 fi
 
+bzip2_available=$(command -v bzip2 > /dev/null; echo $?)
 m4_available=$(command -v m4 > /dev/null; echo $?)
 pv_available=$(command -v pv > /dev/null; echo $?)
+
+setup_gcc_needed_programs() {
+   local bzip2_available=$(command -v bzip2 > /dev/null; echo $?)
+   local make_available==$(command -v make > /dev/null; echo $?)
+   if [[ $bzip2_available != 0 || $make_available != 0 ]]; then
+      local dependencies_list=()
+      if [[ $bzip2_available != 0 ]]; then
+         dependencies_list+=bzip
+      fi
+      
+      set_window_title "Attempting to install needed programs for GCC..."
+      report_step "Attempting to install needed programs for GCC..."
+      echo ""
+      
+      # Update the list of available packages to install. Doesn't 
+      # actually install updates; just updates our list of the 
+      # available updates. Required, or installing `build-essential` 
+      # will fail on a fresh Ubuntu 24.04.1 LTS.
+      #
+      # Fun fact: `apt update` and `apt-get update` aren't the same.
+      sudo apt update
+      sudo apt-get update --fix-missing
+      
+      sudo apt-get install -y $dependencies_list --fix-missing
+      if [ $? != 0 ]; then
+         report_error_and_exit "Failed to set up needed programs."
+      fi
+      
+      if [[ $make_available != 0 ]]; then
+         sudo apt-get install -y build-essential --fix-missing
+         if [ $? != 0 ]; then
+            report_error_and_exit "Failed to set up needed build-essential tools."
+         fi
+      fi
+   fi
+}
+setup_m4() {
+   if [ $m4_available != 0 ]; then
+      set_window_title "Attempting to install M4 (required for GMP build)..."
+      report_step "Attempting to install M4 (required for GMP build)..."
+      echo ""
+      sudo apt-get install -y m4
+      if [ $? != 0 ]; then
+         report_error_and_exit "Failed to set up M4."
+      fi
+   fi
+}
 
 if [ $fast == 1 ]; then
    #
@@ -302,6 +354,7 @@ deal_with_prereqs() {
    report_step "Downloading prerequisites (in-tree) for GCC ${version}..."
    echo ""
    #
+   setup_gcc_needed_programs
    ./contrib/download_prerequisites
    if (( $? != 0 )); then
       report_error_and_exit "Failed to download prerequisites. Aborting installation process. Recommend retrying with --erase-prerequisites to clear any corrupt downloads."
@@ -310,18 +363,6 @@ deal_with_prereqs() {
 if [ $just_fix_gmp == 0 ]; then
    deal_with_prereqs;
 fi
-
-setup_m4() {
-   if [ $m4_available != 0 ]; then
-      set_window_title "Attempting to install M4 (required for GMP build)..."
-      report_step "Attempting to install M4 (required for GMP build)..."
-      echo ""
-      sudo apt-get install -y m4
-      if [ $? != 0 ]; then
-         report_error_and_exit "Failed to set up M4."
-      fi
-   fi
-}
 
 pull_gmp_into_build_dir() {
    #
@@ -397,7 +438,7 @@ build_and_install_gcc() {
       # its headers.
       #
       cd "${BASEDIR}/build/${version}"
-      if [ -d gmp ]; then
+      if [ -d "gmp" ]; then
          #
          # For whatever reason, this check doesn't actually work, like, ever, 
          # because bash scripting isn't actually determinstic and it should 
