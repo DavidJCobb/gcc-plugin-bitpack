@@ -2,5 +2,5 @@
 /plugins/*/build
 /plugins/*/*.so
 /plugins/*/testcases/*.o
-/plugins/*/testcases/*/test # testcase output programs
+/plugins/*/testcases/*/test
 /plugins/*/testcases/*/*.o
