@@ -49,12 +49,12 @@ namespace gcc_wrappers {
          this->_node,      // object to access on
          field_identifier, // member to access, as an IDENTIFIER_NODE
          UNKNOWN_LOCATION  // source location: field identifier
-         #if GCCPLUGIN_VERSION_MAJOR >= 9 && GCCPLUGIN_VERSION_MINOR >= 5
+         #if GCCPLUGIN_VERSION_MAJOR >= 13 && GCCPLUGIN_VERSION_MINOR >= 1
             // GCC PR91134
             // https://github.com/gcc-mirror/gcc/commit/7a3ee77a2e33b8b8ad31aea27996ebe92a5c8d83
             ,
             UNKNOWN_LOCATION // source location: arrow operator, if present
-            #if GCCPLUGIN_VERSION_MAJOR >= 13 && GCCPLUGIN_VERSION_MINOR >= 3
+            #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 0
                // https://github.com/gcc-mirror/gcc/commit/bb49b6e4f55891d0d8b596845118f40df6ae72a5
                ,
                true // default; todo: use false for offsetof, etc.?
