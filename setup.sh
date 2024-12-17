@@ -151,8 +151,7 @@ report_step() {
    printf "${formatting_for_step}%s\x1b[0m\n" "${text}";
    printf "\n";
 }
-
-report_error_and_exit() {
+report_error() {
    printf "\n";
    
    local red="2;255;64;64"
@@ -167,6 +166,9 @@ report_error_and_exit() {
    
    printf "\x1b[38;${red}m%s\x1b[0m\n" "${text}";
    printf "\n";
+}
+report_error_and_exit() {
+   report_error "$1";
    exit 1;
 }
 
@@ -183,15 +185,14 @@ set_window_title() {
 }
 
 cd $BASEDIR/dl
-if [ -f "gcc-${version}.tar.gz" ]; then
-   report_step "You already have the archive for GCC ${version} downloaded to <h>$HOME/gcc/dl/gcc-${version}.tar.gz</h>; skipping download."
-else
+
+download_archive() {
    set_window_title "Downloading GCC ${version}..."
    report_step "Downloading GCC ${version} to <h>$HOME/gcc/dl/</h>..."
    echo "Downloading from: http://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.gz"
    echo "";
 
-   wget "http://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.gz" --no-clobber --continue
+   wget "http://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.gz" --continue
    result=$?
    if [ $result == 1 ]; then
       report_error_and_exit "Download failed. Aborting installation process."
@@ -206,32 +207,64 @@ else
    elif [ $result != 0 ]; then
       report_error_and_exit "Download failed. Aborting installation process."
    fi
+}
+unpack_archive() {
+   local extra_params=
+   if [ -z "$1" ]; then
+      extra_params="${extra_params} --skip-old-files"
+   fi
+
+   set_window_title "Unpacking GCC ${version}..."
+   report_step "Unpacking GCC ${version} to <h>$HOME/gcc/dl/gcc-${version}/</h>..."
+   echo ""
+   
+   result=0
+   if [[ $pv_available != 0 ]]; then
+      #
+      # The `pv` command is not installed. Extract files without a 
+      # progress indicator.
+      #
+      tar xf "gcc-${version}.tar.gz" $extra_params --checkpoint-action=ttyout='(%d seconds elapsed): %T%*\r'
+      result=$?
+   else
+      #
+      # If the `pv` command is available, then use it to show a 
+      # progress bar for the extraction. In this case, `pv` is 
+      # able to show progress because it's responsible for feeding 
+      # the input file into `tar`, and it knows how much it's fed.
+      #
+      pv "gcc-${version}.tar.gz" | tar x --skip-old-files
+      result=${PIPESTATUS[1]}
+   fi
+   return $result;
+}
+
+already_have_archive=0
+if [ -f "gcc-${version}.tar.gz" ]; then
+   report_step "You already have the archive for GCC ${version} downloaded to <h>$HOME/gcc/dl/gcc-${version}.tar.gz</h>; skipping download."
+   already_have_archive=1
+else
+   download_archive;
 fi
 
-set_window_title "Unpacking GCC ${version}..."
-report_step "Unpacking GCC ${version} to <h>$HOME/gcc/dl/gcc-${version}/</h>..."
-echo ""
-#
-result=0
-if [ ! $pv_available ]; then
-   #
-   # The `pv` command is not installed. Extract files without a 
-   # progress indicator.
-   #
-   tar xf "gcc-${version}.tar.gz" --skip-old-files --checkpoint-action=ttyout='(%d seconds elapsed): %T%*\r'
-   result=$?
-else
-   #
-   # If the `pv` command is available, then use it to show a 
-   # progress bar for the extraction. In this case, `pv` is 
-   # able to show progress because it's responsible for feeding 
-   # the input file into `tar`, and it knows how much it's fed.
-   #
-   pv "gcc-${version}.tar.gz" | tar x --skip-old-files
-   result=${PIPESTATUS[1]}
-fi
-if [ $result != 0 ]; then
-   report_error_and_exit "Unpacking failed. Aborting installation process."
+unpack_archive;
+if (( $? != 0 )); then
+   if (( $already_have_archive != 0 )); then
+      #
+      # The user already had the archive file, so we didn't bother 
+      # downloading it. If it was an interrupted download, though, 
+      # then that will have been a mistake.
+      #
+      report_error "Unpacking failed. Perhaps the download was interrupted? Re-downloading..."
+      
+      download_archive;
+      unpack_archive 'dont_skip_old_files';
+      if (( $? != 0 )); then
+         report_error_and_exit "Unpacking failed again. Aborting installation process."
+      fi
+   else
+      report_error_and_exit "Unpacking failed. Aborting installation process."
+   fi
 fi
 
 set_window_title "Downloading prerequisites (in-tree) for GCC ${version}..."
@@ -287,7 +320,7 @@ if [ $fast == 1 ]; then
    # First: We need M4, which doesn't come with WSL by default, to configure a 
    # GMP build.
    #
-   if [ ! $m4_available ]; then
+   if [ $m4_available != 0 ]; then
       set_window_title "Attempting to install M4 (required for GMP build)..."
       report_step "Attempting to install M4 (required for GMP build)..."
       echo ""

@@ -13,16 +13,7 @@ This wrapper has some dependencies on my personal "helper" library (the `lu` fol
 
 ## Defects
 
-* I've only developed this plug-in for use when compiling C code with GCC. Several accessors don't support C++, and you should expect run-time link errors when trying to load it while compiling C++ code.
-  * Potential remedy: preprocessor flags, to build the plug-in for use in GCC-for-C or GCC-for-C++.
-  * Potential remedy: use [`dlsym(RTLD_DEFAULT, "mangled_name_here")`](https://pubs.opengroup.org/onlinepubs/009696899/functions/dlsym.html) to access internal GCC functions that are only present for one language or another. Cast the returned pointer to the appropriate function type. This is basically the Linux equivalent to `GetProcAddress(GetModuleHandleA(NULL), "mangled_name_here")`. We can cache returned functions in a singleton to avoid having to grab them more than once, and potentially optimize further by having the singleton pre-grab everything on startup so we don't have to null-check every time we want to call one of these.
-  * Notes:
-    * `gcc_wrappers::environment::c_family::current_language()` and friends exist to wrap language checks, and could be used for... whatever we decide to do about this someday.
-  * Places that I know need explicit support for C++:
-    * Anywhere we call `comptypes`, i.e. `gw::type::base::operator==`
-    * Probably the code to finalize a `gw::decl::function` when setting its root block
-    * `gw::scope` would need to be updated to support scopes unique to C++
-    * `gw::decl::variable::is_declared_constexpr` and friends, which need to use `DECL_DECLARED_CONSTEXPR_P` for C++
+* I've only developed this plug-in for use when compiling C code with GCC. Several accessors don't support C++, and you should expect run-time link errors when trying to load it while compiling C++ code. See [FUTURE CPP SUPPORT.md](FUTURE%20CPP%20SUPPORT.md) for details.
 
 ## Usage example
 
