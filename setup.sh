@@ -107,6 +107,7 @@ if [ -z "${version}" ] ; then
    usage
 fi
 
+m4_available=$(command -v m4 > /dev/null)
 pv_available=$(command -v pv > /dev/null)
 
 if [ $fast == 1 ]; then
@@ -272,8 +273,7 @@ if [ $fast == 1 ]; then
    # First: We need M4, which doesn't come with WSL by default, to configure a 
    # GMP build.
    #
-   command -v m4
-   if [ $? != 0 ]; then
+   if [ ! $m4_available ]; then
       report_step "Attempting to install M4 (required for GMP build)..."
       echo ""
       sudo apt-get install -y m4
@@ -305,6 +305,9 @@ if [ $fast == 1 ]; then
       $GMPDIR/configure --prefix=$BASEDIR/build/$version/gmp
       make
       #make install # Don't need the rest of GMP; we just want the headers.
+   else
+      report_step "GMP headers appear to already be present in <h>$HOME/gcc/build/${version}/gmp</h>; this is unexpected, so please double-check that they're actually there."
+      echo ""
    fi
    #
    # As far as I know, this is the only dependency we have to do this for.
