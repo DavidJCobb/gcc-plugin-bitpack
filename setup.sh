@@ -107,8 +107,8 @@ if [ -z "${version}" ] ; then
    usage
 fi
 
-m4_available=$(command -v m4 > /dev/null)
-pv_available=$(command -v pv > /dev/null)
+m4_available=$(command -v m4 > /dev/null; echo $?)
+pv_available=$(command -v pv > /dev/null; echo $?)
 
 if [ $fast == 1 ]; then
    #
@@ -170,10 +170,23 @@ report_error_and_exit() {
    exit 1;
 }
 
+set_window_title() {
+   #
+   # Testing shows that this works when running Bash via WSL via Powershell 
+   # in Windows 10. No clue about other terminals, nor about how to check 
+   # whether this is supported.
+   #
+   # Window titles will be reset when control returns to the user (read: 
+   # when our script exits).
+   #
+   printf "\e]0;%s\e\x5C" "$1"
+}
+
 cd $BASEDIR/dl
 if [ -f "gcc-${version}.tar.gz" ]; then
    report_step "You already have the archive for GCC ${version} downloaded to <h>$HOME/gcc/dl/gcc-${version}.tar.gz</h>; skipping download."
 else
+   set_window_title "Downloading GCC ${version}..."
    report_step "Downloading GCC ${version} to <h>$HOME/gcc/dl/</h>..."
    echo "Downloading from: http://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.gz"
    echo "";
@@ -194,17 +207,17 @@ else
       report_error_and_exit "Download failed. Aborting installation process."
    fi
 fi
-#
-report_step "Unpacking GCC ${version} to <h>$HOME/gcc/dl/gcc-${version}/</h>..."
 
+set_window_title "Unpacking GCC ${version}..."
+report_step "Unpacking GCC ${version} to <h>$HOME/gcc/dl/gcc-${version}/</h>..."
+echo ""
+#
 result=0
 if [ ! $pv_available ]; then
    #
    # The `pv` command is not installed. Extract files without a 
    # progress indicator.
    #
-   echo ""
-   
    tar xf "gcc-${version}.tar.gz" --skip-old-files --checkpoint-action=ttyout='(%d seconds elapsed): %T%*\r'
    result=$?
 else
@@ -214,8 +227,6 @@ else
    # able to show progress because it's responsible for feeding 
    # the input file into `tar`, and it knows how much it's fed.
    #
-   echo ""
-   
    pv "gcc-${version}.tar.gz" | tar x --skip-old-files
    result=${PIPESTATUS[1]}
 fi
@@ -223,6 +234,7 @@ if [ $result != 0 ]; then
    report_error_and_exit "Unpacking failed. Aborting installation process."
 fi
 
+set_window_title "Downloading prerequisites (in-tree) for GCC ${version}..."
 report_step "Downloading prerequisites (in-tree) for GCC ${version}..."
 echo ""
 
@@ -232,7 +244,8 @@ cd "gcc-${version}"
 mkdir -p $BASEDIR/build/$version
 mkdir -p $BASEDIR/install/$version
 
-report_step "Building GCC version ${version} to <h>$HOME/gcc/build/${version}/</h>...";
+set_window_title "Building GCC ${version}..."
+report_step "Building GCC ${version} to <h>$HOME/gcc/build/${version}/</h>...";
 echo "";
 
 cd build/$version/
@@ -250,6 +263,7 @@ if [ $? != 0 ]; then
    report_error_and_exit "Build failed. Aborting installation process."
 fi
 #
+set_window_title "Installing GCC ${version}..."
 report_step "Installing GCC version ${version} to <h>$HOME/gcc/install/${version}/</h>..."
 echo ""
 
@@ -274,6 +288,7 @@ if [ $fast == 1 ]; then
    # GMP build.
    #
    if [ ! $m4_available ]; then
+      set_window_title "Attempting to install M4 (required for GMP build)..."
       report_step "Attempting to install M4 (required for GMP build)..."
       echo ""
       sudo apt-get install -y m4
@@ -284,6 +299,14 @@ if [ $fast == 1 ]; then
    #
    # Next, GMP.
    #
+   if [ -d gmp ]; then
+      #
+      # Test. Sometimes, Bash seems to think the folder exists when it visibly 
+      # does not. Perhaps GCC creates it, deletes it, and we end up checking 
+      # for it in the split-second between the two events?
+      #
+      sleep 0.2
+   fi
    if [ ! -d gmp ]; then
       find_gmp_directory() {
          cd $BASEDIR/dl/gcc-$version/
@@ -297,6 +320,7 @@ if [ $fast == 1 ]; then
       }
       GMPDIR="${BASEDIR}/dl/gcc-${version}/$(find_gmp_directory)"
       
+      set_window_title "Installing GMP headers..."
       report_step "Installing GMP headers to <h>$HOME/gcc/build/${version}/gmp</h>..."
       echo ""
       
@@ -306,7 +330,7 @@ if [ $fast == 1 ]; then
       make
       #make install # Don't need the rest of GMP; we just want the headers.
    else
-      report_step "GMP headers appear to already be present in <h>$HOME/gcc/build/${version}/gmp</h>; this is unexpected, so please double-check that they're actually there."
+      report_step "GMP headers appear to already be present in <h>$HOME/gcc/build/${version}/gmp</h>\; this is unexpected, so please double-check that they're actually there."
       echo ""
    fi
    #
@@ -314,5 +338,6 @@ if [ $fast == 1 ]; then
    #
 fi
 
+set_window_title "Finished installing GCC ${version}"
 report_step "Finished installing GCC version ${version}."
 printf "\n";
