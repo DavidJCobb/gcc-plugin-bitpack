@@ -7,7 +7,13 @@
 
 C++:
 
-* GCC wrapper rewrite
+* `lu-bitpack-rewrite-2`
+  * Versioning issues
+    * GCC 13+ requires a newer version of Ubuntu than WSL installs. WSL uses Ubuntu 22.04 LTS, which can't update `libstdc++6` past the version used by GCC 12.3.0. (Running `sudo apt-get install libstdc++6` claims that that's the latest version, when it isn't. Compiling our GCC plug-in against GCC 13+ thus causes it to fail to link at run-time, because it wants a newer version of the library than is available on the system. The error message shown looks like `version \`GLIBCXX_3.4.32' not found`.)
+      * If we were to update WSL!Ubuntu, we'd be able to then update `libstdc++6` without losing the ability to run programs and GCC plug-ins compiled against older versions. A process for that is described [here](https://phoenixnap.com/kb/wsl-upgrade-ubuntu).
+      * That said, the project that motivated this plug-in's creation is, I suspect, mostly worked with by WSL users, so it might not even be unreasonable to just cap our support at GCC 13. Doesn't feel satisfying, though...
+      * Wait. Why isn't the plug-in using whatever version of libstdc++ comes with the version of GCC we're trying to link against?! Like, does GCC 13+ not use the newer version of `libstdc++` internally?
+        * Hm... I've been using "fast" (i.e. non-bootstrapping) build options for the last few GCC versions. They worked, of course, but it's entirely possible that had I run bootstrapped builds, they might've failed for this same reason. Given that each such build would take 45 minutes, I'm not eager to check.
   * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
   * NOTE: Given `typedef struct T {} U`, if both `T` and `U` appear in the to-be-serialized data, we emit separate `<struct>` elements for each of them in the XML output. This is because they are, technically, separate `..._TYPE` nodes.
     * I think this is a necessary evil. Typedefs can be annotated with bitpacking options separately from the original type, which can affect how they or their contents are bitpacked and therefore necessitate different bitpacking functions. In any case, this whole situation is a minor edge-case. We should probably document it somewhere (and document this paragraph i.e. the reason not to do anything about it) but otherwise leave it be.
