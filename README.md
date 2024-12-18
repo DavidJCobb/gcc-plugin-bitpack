@@ -19,6 +19,11 @@ As of this writing, I'm currently targeting GCC 11.4.0.
 * Export an XML file describing the resulting bitpacked format.
   * This is meant to aid with structs that may change, by facilitating the development of external tools that (guided by the XML) can read data in an older format and convert it to a newer one.
   * This can also offer statistics useful for retrofitting this bitpacking scheme into older programs: the report can contain statistics that can help you measure which pieces of data are more "expensive" or appear more frequently. This can help you reason about how much space you have to work with and how much space certain changes may consume.
+* Supported versions
+  * I aim to support the lowest and highest minor version for every major version after GCC 11.4.0.
+    * This includes 11.5.0, the highest minor version for GCC 11.
+    * As of this writing, I've run basic builds and tests up to GCC 14.2.0.
+  * The plug-in has been most extensively tested with GCC 11.4.0, since that's just what I ended up with when I started using WSL.
 
 ## Distant goals
 
@@ -110,6 +115,149 @@ Substitute `13.1.0` for the version of GCC to build for, and `codegen-various-a`
 
 
 ## Usage
+
+### Pragmas
+
+#### `enable`
+
+This pragma activates the plug-in's functionality. You should use it in the translation unit where you intend to generate functions.
+
+```c
+#pragma lu_bitpack enable
+```
+
+Most of the plug-in's logic, including most attribute validation, will not run unless you've `enable`d the plug-in's functionality. This is intended to avoid slowing down builds when bitpacking attributes are used within frequently-referenced headers.
+
+Code generation will fail if `enable` isn't used before `generate_functions`, or if any bitpacking attributes are seen before `enable` is used.
+
+#### `set_options`
+
+This pragma sets global bitpacking options. It must be run after the `enable` pragma and before the `generate_functions` pragma.
+
+Most of these options are used to tell the generated code where to find bitpacking-related functions. The general design is to have a "bitstream state" struct that wraps a buffer pointer and an offset, and is passed to each individual serialization function to read or save a value (with the same struct used for reading and writing to the buffer).
+
+| Option name | Required | Type | Description |
+| :- | :-: | :- | :- |
+| `sector_count` | Optional | integer | Maximum number of sectors to generate code for. If the to-be-serialized values end up being split into more than this many sectors, code generation will fail. |
+| `sector_size` | Optional | integer | Maximum size in bytes of each sector. If not specified, then there will be no limit. |
+| `bitstream_state_typename` | Required | typename | Name of a bitstream state struct type. |
+| `bool_typename` | Optional | typename | Name of an integral type that should be treated as a boolean type; if not specified, defaults to `bool`. Exists to help with older C dialects that don't define `bool` as its own type. |
+| `buffer_byte_typename` | Required | typename | Name of a single-byte integral type. |
+| `func_initialize` | Required | function identifier | Identifier of a function with signature `void f(const bitstream_state_typename*, buffer_byte_typename*)` used to initialize the bitstream state. |
+| `func_read_bool` | Required | function identifier | Identifier of a function with signature `bool_typename f(bitstream_state_typename*)` used to read a boolean serialized as a single bit. |
+| `func_read_u8` | Required | function identifier | Identifier of a function with signature `uint8_t f(bitstream_state_typename*, uint8_t bitcount)` used to read a `uint8_t` with a given serialized bitcount. |
+| `func_read_u16` | Required | function identifier | Identifier of a function with signature `uint16_t f(bitstream_state_typename*, uint8_t bitcount)` used to read a `uint16_t` with a given serialized bitcount. |
+| `func_read_u32` | Required | function identifier | Identifier of a function with signature `uint32_t f(bitstream_state_typename*, uint8_t bitcount)` used to read a `uint32_t` with a given serialized bitcount. |
+| `func_read_s8` | Required | function identifier | Identifier of a function with signature `int8_t f(bitstream_state_typename*, uint8_t bitcount)` used to read a `int8_t` with a given serialized bitcount. |
+| `func_read_s16` | Required | function identifier | Identifier of a function with signature `int16_t f(bitstream_state_typename*, uint8_t bitcount)` used to read a `int16_t` with a given serialized bitcount. |
+| `func_read_s32` | Required | function identifier | Identifier of a function with signature `int32_t f(bitstream_state_typename*, uint8_t bitcount)` used to read a `int32_t` with a given serialized bitcount. |
+| `func_read_buffer` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, buffer_byte_type* dst, uint16_t max_length)` used to read a serialized opaque buffer. |
+| `func_read_string_nt` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, char* string, uint16_t max_length)` used to read a serialized string that requires a null terminator in memory. |
+| `func_read_string` | Required | function identifier | Synonym for `func_read_string_nt`. You only need to specify one of them. |
+| `func_read_string_ut` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, char* string, uint16_t max_length)` used to read a serialized string that doesn't require a null terminator in memory. |
+| `func_save_bool` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, bool_typename)` used to save a boolean, serialized it as a single bit. |
+| `func_save_u8` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, uint8_t value, uint8_t bitcount)` used to save a `uint8_t` with a given serialized bitcount. |
+| `func_save_u16` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, uint16_t value, uint8_t bitcount)` used to save a `uint16_t` with a given serialized bitcount. |
+| `func_save_u32` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, uint32_t value, uint8_t bitcount)` used to save a `uint32_t` with a given serialized bitcount. |
+| `func_save_s8` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, int8_t value, uint8_t bitcount)` used to save a `int8_t` with a given serialized bitcount. |
+| `func_save_s16` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, int16_t value, uint8_t bitcount)` used to save a `int16_t` with a given serialized bitcount. |
+| `func_save_s32` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, int32_t value, uint8_t bitcount)` used to save a `int32_t` with a given serialized bitcount. |
+| `func_save_buffer` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, const buffer_byte_type* dst, uint16_t max_length)` used to save an opaque buffer. |
+| `func_save_string_nt` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, const char* string, uint16_t max_length)` used to save a serialized string that requires a null terminator in memory. |
+| `func_save_string` | Required | function identifier | Synonym for `func_save_string_nt`. You only need to specify one of them. |
+| `func_save_string_ut` | Required | function identifier | Identifier of a function with signature `void f(bitstream_state_typename*, const char* string, uint16_t max_length)` used to save a serialized string that doesn't require a null terminator in memory. |
+
+#### `generate_functions`
+
+This pragma triggers generation of bitpack-related functions and saving of any enabled XML output. This pragma must be used at file scope, and you must have already `enable`d code generation and `set_options` via the respective pragmas.
+
+```c
+#pragma lu_bitpack generate_functions( \
+   read_name = generated_read,         \
+   save_name = generated_save,         \
+   data      = sTestStruct,            \
+   enable_debug_output = true \
+)
+```
+
+Options are key/value pairs, with pairs being comma-separated and keys being separated from their values with a `=` glyph. The options are as follows:
+
+<dl>
+   <dt><code>read_name</code></dt>
+      <dd>
+         <p>Identifier of the function to generate for reading a bitstream. This function must have the signature <code>void func_name(const buffer_byte_type* src, int sector_id)</code> given the buffer byte type specified in the global options. The function will be implicitly declared if you haven't already declared it; and the function must not have already been defined.</p>
+      </dd>
+   <dt><code>save_name</code></dt>
+      <dd>
+         <p>Identifier of the function to generate for reading a bitstream. This function must have the signature <code>void func_name(buffer_byte_type* dst, int sector_id)</code> given the buffer byte type specified in the global options. The function will be implicitly declared if you haven't already declared it; and the function must not have already been defined.</p>
+      </dd>
+   <dt><code>data</code></dt>
+      <dd>
+         <p>A list of identifiers (of top-level variables) to read/save into the serialized bitstream. Identifiers must be separated with whitespace or with a <code>|</code> glyph; the latter case will push the right-side identifier into the next sector.</p>
+      </dd>
+   <dt><code>enable_debug_output</code></dt>
+      <dd>
+         <p>This must be either an integer literal, or the identifiers <code>true</code> or <code>false</code>. If it is non-zero or <code>true</code>, then we will log debug output during code generation.</p>
+      </dd>
+</dl>
+
+If successful, code generation will define (and implicitly declare, if needed) the requested read and save functions. Additionally, the following symbols will be defined:
+
+<dl>
+   <dt><code>__lu_bitpack_sector_count</code></dt>
+      <dd>
+         <p>A <code>size_t</code>-type variable declared and defined within the current translation unit, equaling the number of sectors generated. If the current environment supports it, the variable will be declared <code>constexpr</code> as well.</p>
+      </dd>
+   <dt><code>__lu_bitpack_max_sector_size</code></dt>
+      <dd>
+         <p>A <code>size_t</code>-type variable declared and defined within the current translation unit. If the current environment supports it, the variable will be declared <code>constexpr</code> as well.</p>
+         <p>If your global options cap the sector count at 1 <em>and</em> set no max limit on the sector size, then the value of this variable will be the bytecount (rounded up to the nearest byte) of the sole generated sector. Otherwise, it will be the max sector size in bytes. This means that for the non-sectored use case &mdash; "just dump everything into a big ol' buffer" &mdash; you can use this variable to know how big that ol' buffer ended up being, and know how much memory to allocate for stream reads and writes.</p>
+      </dd>
+   <dt><code>__lu_bitpack_read_sector_<var>n</var></code> for integer <var>n</var></dt>
+   <dt><code>__lu_bitpack_save_sector_<var>n</var></code> for integer <var>n</var></dt>
+      <dd>
+         <p>Per-sector functions generated and called by the top-level read and save functions. These are exposed to user code so that they can be targeted with this plug-in's debugging pragmas; future versions of the plug-in may cloak these functions and offer dedicated pragmas for dumping information about them.</p>
+      </dd>
+   <dt><code>__lu_bitpack_read_sector_<var>T</var></code> for typename <var>T</var></dt>
+   <dt><code>__lu_bitpack_save_sector_<var>T</var></code> for typename <var>T</var></dt>
+      <dd>
+         <p>Functions generated whenever an entire struct or union <code><var>T</var></code> is generated via a single function call. These are exposed to user code so that they can be targeted with this plug-in's debugging pragmas; future versions of the plug-in may cloak these functions and offer dedicated pragmas for dumping information about them.</p>
+      </dd>
+</dl>
+
+#### `debug_dump_bp_data_options`
+
+Dumps the computed bitpacking options of a given identifier to the console. You can specify nested identifiers using `::`, and as of this writing, you can refer to types or declarations.
+
+```c++
+static struct TestStruct {
+   int foo;
+   int bar;
+} sTestStruct;
+
+#pragma lu_bitpack debug_dump_bp_data_options TestStruct::foo
+#pragma lu_bitpack debug_dump_bp_data_options sTestStruct::bar
+```
+
+#### `debug_dump_function`
+
+Dumps information about a given function (specified by its identifier) to the console.
+
+```c++
+#pragma lu_bitpack debug_dump_function main
+```
+
+This was used during plug-in development. It may be removed in future versions.
+
+#### `debug_dump_identifier`
+
+Dumps information about a given identifier to the console.
+
+```c++
+#pragma lu_bitpack debug_dump_identifier main
+```
+
+This was used during plug-in development. It may be removed in future versions.
 
 ### Attributes
 
@@ -371,3 +519,7 @@ struct Foo {
 When running the plug-in, you can specify the path to an output XML file. This file will contain a representation of the serialization format that this plug-in generates code for, as well as information that can be processed to measure stats about the packed output (e.g. space-efficiency, etc.).
 
 See [README - XML OUTPUT](README%20-%20XML%20OUTPUT.md) for further details.
+
+### Notes
+
+* Typedefs are not treated as strictly equivalent to the original type, because you can attach bitpacking options to the `typedef` itself. The plug-in makes no effort to consider typedefs equivalent even in cases where no options are applied to them. Given `struct A` and `typedef struct A B`, if the to-be-serialized output contains values that use both typename `A` and typename `B`, these will be treated as separate types. The XML output will have separate `<struct>` elements for each typename, and if at least one instance of each typename fits wholly within a sector, code generation will produce separate functions for each, even if their bitpacking options would be identical and thus the functions would be identical.

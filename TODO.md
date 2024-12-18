@@ -8,21 +8,17 @@
 C++:
 
 * `lu-bitpack-rewrite-2`
-  * Versioning issues
-    * GCC 13+ requires a newer version of Ubuntu than WSL installs. WSL uses Ubuntu 22.04 LTS, which can't update `libstdc++6` past the version used by GCC 12.3.0. (Running `sudo apt-get install libstdc++6` claims that that's the latest version, when it isn't. Compiling our GCC plug-in against GCC 13+ thus causes it to fail to link at run-time, because it wants a newer version of the library than is available on the system. The error message shown looks like `version \`GLIBCXX_3.4.32' not found`.)
-      * If we were to update WSL!Ubuntu, we'd be able to then update `libstdc++6` without losing the ability to run programs and GCC plug-ins compiled against older versions. A process for that is described [here](https://phoenixnap.com/kb/wsl-upgrade-ubuntu).
-      * That said, the project that motivated this plug-in's creation is, I suspect, mostly worked with by WSL users, so it might not even be unreasonable to just cap our support at GCC 13. Doesn't feel satisfying, though...
-      * Wait. Why isn't the plug-in using whatever version of libstdc++ comes with the version of GCC we're trying to link against?! Like, does GCC 13+ not use the newer version of `libstdc++` internally?
-        * Hm... I've been using "fast" (i.e. non-bootstrapping) build options for the last few GCC versions. They worked, of course, but it's entirely possible that had I run bootstrapped builds, they might've failed for this same reason. Given that each such build would take 45 minutes, I'm not eager to check.
+  * Versioning
+    * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.1.0.
+    * We should test the "debug dump" pragmas for each version up from 11.4.0 through 14.2.0, since that'll most rigorously test the GCC wrappers.
+      * We should update the code that debug-dumps identifiers, to indicate whether variables are declared `constexpr`.
   * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
-  * NOTE: Given `typedef struct T {} U`, if both `T` and `U` appear in the to-be-serialized data, we emit separate `<struct>` elements for each of them in the XML output. This is because they are, technically, separate `..._TYPE` nodes.
-    * I think this is a necessary evil. Typedefs can be annotated with bitpacking options separately from the original type, which can affect how they or their contents are bitpacked and therefore necessitate different bitpacking functions. In any case, this whole situation is a minor edge-case. We should probably document it somewhere (and document this paragraph i.e. the reason not to do anything about it) but otherwise leave it be.
+  * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
   * Testcases needed:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
   * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
-* Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
 * As a band-aid to the next item, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.
