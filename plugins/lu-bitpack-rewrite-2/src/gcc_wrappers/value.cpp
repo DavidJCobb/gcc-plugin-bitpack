@@ -54,7 +54,11 @@ namespace gcc_wrappers {
             // https://github.com/gcc-mirror/gcc/commit/7a3ee77a2e33b8b8ad31aea27996ebe92a5c8d83
             ,
             UNKNOWN_LOCATION // source location: arrow operator, if present
-            #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 0
+            #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 3
+               // NOTE: As of this writing, this change hasn't actually shipped yet, and 
+               //       the latest version of GCC is 14.2.0. Making a blind guess that 
+               //       this will make it into 14.3.0.
+               //
                // https://github.com/gcc-mirror/gcc/commit/bb49b6e4f55891d0d8b596845118f40df6ae72a5
                ,
                true // default; todo: use false for offsetof, etc.?

@@ -96,7 +96,9 @@ struct Inventory {
 
 ## Building
 
-The makefiles assume that you've downloaded and installed GCC in `$HOME/gcc/build/11.4.0` or the equivalent folder for other GCC versions, and that `$HOME/gcc/build/11.4.0/gmp` contains built GMP sources. The `setup.sh` bash script will install GCC and ensure that GMP is set up appropriately (versions of GCC prior to 13.1.0 only place GMP in the GCC objdir if you do a slow bootstrapping build; the bash script detects GMP's absence in that scenario and builds it to that spot for you).
+The makefiles assume that you've downloaded and installed GCC in `$HOME/gcc/build/11.4.0` or the equivalent folder for other GCC versions, and that `$HOME/gcc/build/11.4.0/gmp` contains built GMP sources.
+
+If you `sudo apt install lua5.4`, you can then use `lua setup.lua --version 11.4.0 --fast` to install any given GCC version and ensure that GMP is set up appropriately. (Versions of GCC prior to 13.1.0 only place GMP in the GCC objdir if you do a slow bootstrapping build; the script detects GMP's absence in that scenario and builds it to that spot for you, so the plug-in makefiles can reference it.) Alternatively, there is `setup.sh` which does the same thing, but which I don't intend to maintain anymore (bash is as painful as its name would imply).
 
 From within the plug-in source directory: running testcases:
 
@@ -104,7 +106,7 @@ From within the plug-in source directory: running testcases:
 make GCCVER=13.1.0 testname=codegen-various-a testcase
 ```
 
-Substitute `GCCVER` for the version of GCC to build for, and `codegen-various-a` for a folder name in the `testcases` subfolder.
+Substitute `13.1.0` for the version of GCC to build for, and `codegen-various-a` for a folder name in the `testcases` subfolder. Bear in mind that GCC 13+ requires newer versions of Ubuntu than 22.04, which is the default for WSL as of this writing.
 
 
 ## Usage
