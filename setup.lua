@@ -32,12 +32,19 @@ end
 
 --
 
+-- Helper for shell and syscalls.
 local shell = {
    cwd      = nil,
    cwd_real = nil,
 }
 do -- member functions
    function shell:cd(path)
+      --
+      -- We can't just use `os.execute` to run `cd` because that 
+      -- spawns a separate shell/process. Instead, we have to 
+      -- remember a preferred current working directory, so we 
+      -- can prefix each command with a `cd` call as a one-liner.
+      --
       if path then
          self.cwd      = nil
          self.cwd_real = self:run_and_read("readlink -f " .. path)
@@ -47,7 +54,7 @@ do -- member functions
       self.cwd = path
    end
    
-   function shell:resolve(path)
+   function shell:resolve(path) -- resolve a relative path (e.g. ~/foo) to an absolute one
       local command = "readlink -f " .. path
       local stream  = assert(io.popen(command, "r"))
       local output  = stream:read("*all")
@@ -88,13 +95,14 @@ do -- member functions
       return self:exists(path .. "/")
    end
    
-   function shell:has_program(name)
+   function shell:has_program(name) -- check if a program is installed
       return self:exec("command -v " .. name) == 0
    end
 end
 
 --
 
+-- Helper for formatted text output.
 local console = {
    stream = io.output()
 }
@@ -196,6 +204,8 @@ do
       self:print(text)
       self:print(RESET_FORMAT)
       self:print("\n")
+      -- Unlike errors, we don't print a second line break after because some 
+      -- places may want to print additional information paired with this output.
    end
    
    function console:set_window_title(text)
@@ -296,6 +306,7 @@ do
       params.version = value
    end
 end
+
 if params.fast then
    --[[
       --disable-nls
@@ -492,6 +503,7 @@ function deal_with_prereqs()
       console:report_step(status)
       print("")
    end
+   -- TODO: This should be shell:run but we should test that before committing it
    if not shell:exec("./contrib/download_prerequisites") then
       console:report_fatal_error("Failed to download prerequisites. Aborting installation process. Recommend retrying with --erase-prerequisites to clear any corrupt downloads.")
    end
