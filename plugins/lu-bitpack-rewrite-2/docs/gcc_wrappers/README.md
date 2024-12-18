@@ -167,9 +167,6 @@ The equivalent using raw `tree` nodes, in GCC 11.4.0, would look roughly like th
 
 ```c++
 tree make_function(tree type) {
-   auto int_type  = gw::builtin_types::get().basic_int;
-   auto void_type = gw::builtin_types::get().basic_void;
-   
    auto fn_type = build_function_type_list(
       void_type_node,
       build_pointer_type(type),
