@@ -9,7 +9,7 @@ C++:
 
 * `lu-bitpack-rewrite-2`
   * Versioning
-    * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.1.0.
+    * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
     * We should test the "debug dump" pragmas for each version up from 11.4.0 through 14.2.0, since that'll most rigorously test the GCC wrappers.
       * We should update the code that debug-dumps identifiers, to indicate whether variables are declared `constexpr`.
   * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
@@ -18,6 +18,7 @@ C++:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
+  * Delete all of the plug-in folders other than `lu-bitpack-rewrite-2`, and rename `lu-bitpack-rewrite-2` to `lu_bitpack`.
   * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
 * As a band-aid to the next item, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
@@ -28,5 +29,3 @@ C++:
     
   This functionality would be fairly complex to implement, but the benefit it offers is that transform functions which require a complete object (e.g. because they want to assert correctness on read, or because the non-transformed data is the result of non-trivial calculations performed on the transformed data) will always receive one. Transform functions that don't require a complete object can be marked as multi-stage and so run without needing to rely on static storage.
     * If any single-stage functions are used, then the caller of `generate_read` will need a way to manually signal that a read operation has started/completed/aborted, irrespective of what sectors are read first and last.
-
-After we've gotten the redesign implemented, and our codegen is done, we should investigate using `gengtype` to mark our singletons as roots and ensure that tree nodes don't get deleted out from under our `basic_global_state`.

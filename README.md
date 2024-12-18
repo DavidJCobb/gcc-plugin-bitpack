@@ -25,17 +25,11 @@ As of this writing, I'm currently targeting GCC 11.4.0.
     * As of this writing, I've run basic builds and tests up to GCC 14.2.0.
   * The plug-in has been most extensively tested with GCC 11.4.0, since that's just what I ended up with when I started using WSL.
 
-## Distant goals
-
-* Some form of GCC version-independence
-  * Study GCC commit history and figure out what range of GCC versions should be compatible with the plug-in given the data structures and functions we access?
-  * Wrap GCC internals somehow, to facilitate supporting a larger range of versions by adapting differently-versioned data structures to a common interface?
-  * What about the ABI?
-
 ## Non-goals
 
 * Presence bits (think "`std::optional`") and variable-length data. My current use case entails packing data into a limited storage space, such that the largest possible data must fit. Ergo bitpacked data must always be uniform in size, so we can check statically whether we have enough room.
   * Tagged unions are zero-padded as necessary, so that all "branches" of the union have equal-size serialized representations.
+* Support for use in precompiled headers. This would require altering the plug-in to be `gengtype`-friendly, which is not currently in scope.
 
 ## Advanced features
 
@@ -97,6 +91,8 @@ struct Inventory {
 ```
 
 (Yes, the example above could be accomplished using the `lu_bitpack_range(min, max)` attribute, but only because I made the item categories contiguous for clarity. In a real-world scenario, global item IDs may not be sorted by category: weapons and armor may be interleaved together, and in that case, you'd need a more complex mapping between global and category-local IDs.)
+
+There are some constraints that the transform functions have to operate under; refer to the documentation for transform options below.
 
 
 ## Building
