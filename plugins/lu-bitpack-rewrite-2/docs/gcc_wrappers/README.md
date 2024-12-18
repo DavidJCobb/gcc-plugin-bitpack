@@ -297,10 +297,10 @@ tree make_function(tree type) {
                   ),
                   get_identifier("foo"),
                   UNKNOWN_LOCATION
-                  #if GCCPLUGIN_VERSION_MAJOR >= 9 && GCCPLUGIN_VERSION_MINOR >= 5
+                  #if GCCPLUGIN_VERSION_MAJOR >= 13 && GCCPLUGIN_VERSION_MINOR >= 1
                      ,
                      UNKNOWN_LOCATION
-                     #if GCCPLUGIN_VERSION_MAJOR >= 13 && GCCPLUGIN_VERSION_MINOR >= 3
+                     #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 3 // future
                         ,
                         true
                      #endif
