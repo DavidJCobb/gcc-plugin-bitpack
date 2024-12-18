@@ -522,7 +522,7 @@ There are three basic categories for these wrappers.
   Optional wrappers can be constructed from one another, from a general wrapper, or from a bare `tree`.
 * **View-like wrappers** are a special case offered for attribute lists (`attribute_list`) and chains (`chain`).
   * The `chain` wrapper is a view because tree nodes of (more or less) any type can also be chains or links therein; "chain-ness" is orthogonal to the node type and doesn't fit within the `node` wrapper type hierarchy.
-  * The `attribute_list` wrapper is a view because access to attributes is more ergonomic this way. I reserve the right to wrap the attribute-owning `DECL` or `TYPE` directly in the future, but for now, `attribute_list` wraps the list head, and having to distinguish between `attribute_list` and `optional_attribute_list` is clumsy given the interface that we offer for attribute lists.
+  * The `attribute_list` wrapper is a view because access to attributes is more ergonomic this way. I reserve the right to wrap the attribute-owning `DECL` or `TYPE` directly in the future; but for now, `attribute_list` wraps the list head, and it does so in a special-case manner because having to distinguish between `attribute_list` and `optional_attribute_list` would've been clumsy given the interface that we offer for attribute lists.
 
 ## Class hierarchy
 
