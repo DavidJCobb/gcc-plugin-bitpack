@@ -10,8 +10,6 @@ C++:
 * `lu-bitpack-rewrite-2`
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
-    * We should test the "debug dump" pragmas for each version up from 11.4.0 through 14.2.0, since that'll most rigorously test the GCC wrappers.
-      * We should update the code that debug-dumps identifiers, to indicate whether variables are declared `constexpr`.
   * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
   * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
   * Testcases needed:
