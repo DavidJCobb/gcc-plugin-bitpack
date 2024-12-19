@@ -76,8 +76,8 @@
          </stats>
          <instructions>
             <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.names[1]" />
-            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.enemy_name">
-               <default-value-string>Silver</default-value-string>
+            <string nonstring="true" length="7" type="u8[7]" value="sTestStruct.foe_name">
+               <default-value-string>Carter</default-value-string>
             </string>
             <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_1D[0]" />
             <integer min="0" bitcount="8" type="u8" value="sTestStruct.single_element_array_2D[0][0]" />
@@ -96,26 +96,26 @@
             <loop counter-var="__b" count="3" start="0" array="sTestStruct.decimals">
                <buffer bytecount="4" type="float" value="sTestStruct.decimals[__b]" />
             </loop>
-            <omitted type="u8[7]" value="sTestStruct.default_names.hoenn">
-               <default-value-string>May</default-value-string>
+            <omitted type="u8[7]" value="sTestStruct.default_names.a">
+               <default-value-string>Ana</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.sinnoh">
-               <default-value-string>Dawn</default-value-string>
+            <omitted type="u8[7]" value="sTestStruct.default_names.b">
+               <default-value-string>Kris</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.johto_modern">
-               <default-value-string>Lyra</default-value-string>
+            <omitted type="u8[7]" value="sTestStruct.default_names.c">
+               <default-value-string>Kara</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.unova_a">
+            <omitted type="u8[7]" value="sTestStruct.default_names.d">
                <default-value-string>Hilda</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.kalos">
-               <default-value-string>Serena</default-value-string>
+            <omitted type="u8[7]" value="sTestStruct.default_names.e">
+               <default-value-string>Janine</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.paldea">
-               <default-value-string>Juliana</default-value-string>
+            <omitted type="u8[7]" value="sTestStruct.default_names.f">
+               <default-value-string>Darlene</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.unova_b">
-               <default-value-string>Rosa</default-value-string>
+            <omitted type="u8[7]" value="sTestStruct.default_names.g">
+               <default-value-string>Mary</default-value-string>
             </omitted>
             <omitted type="char[12]" value="sTestStruct.xml_tricky_test">
                <default-value-string>&lt;"xml"&gt;

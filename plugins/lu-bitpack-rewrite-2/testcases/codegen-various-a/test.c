@@ -72,7 +72,7 @@ struct TestStruct {
    LU_BP_CATEGORY("test-names") player_name names[2];
    
    // Vary the test: make `player-name` and `test-names` stats vary from each other.
-   LU_BP_DEFAULT("Silver") player_name enemy_name;
+   LU_BP_DEFAULT("Carter") player_name foe_name;
    
    u8 single_element_array_1D[1];
    u8 single_element_array_2D[1][1];
@@ -85,14 +85,14 @@ struct TestStruct {
    LU_BP_AS_OPAQUE_BUFFER float decimals[3];
    
    struct {
-      LU_BP_OMIT LU_BP_DEFAULT("May")     player_name hoenn;
-      LU_BP_OMIT LU_BP_DEFAULT("Dawn")    player_name sinnoh;
-      LU_BP_OMIT LU_BP_DEFAULT("Lyra")    player_name johto_modern;
-      LU_BP_OMIT LU_BP_DEFAULT("Hilda")   player_name unova_a;
-      LU_BP_OMIT LU_BP_DEFAULT("Serena")  player_name kalos;
-      LU_BP_OMIT LU_BP_DEFAULT("Juliana") player_name paldea;
+      LU_BP_OMIT LU_BP_DEFAULT("Ana")     player_name a;
+      LU_BP_OMIT LU_BP_DEFAULT("Kris")    player_name b;
+      LU_BP_OMIT LU_BP_DEFAULT("Kara")    player_name c;
+      LU_BP_OMIT LU_BP_DEFAULT("Hilda")   player_name d;
+      LU_BP_OMIT LU_BP_DEFAULT("Janine")  player_name e;
+      LU_BP_OMIT LU_BP_DEFAULT("Darlene") player_name f;
       // Test to verify that the previous name doesn't overflow:
-      LU_BP_OMIT LU_BP_DEFAULT("Rosa")    player_name unova_b;
+      LU_BP_OMIT LU_BP_DEFAULT("Mary")    player_name g;
    } default_names;
    
    LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") LU_BP_STRING char xml_tricky_test[12];
@@ -128,7 +128,7 @@ void print_test_struct() {
    printf("      \"%.7s\",\n", sTestStruct.names[0]);
    printf("      \"%.7s\",\n", sTestStruct.names[1]);
    printf("   },\n");
-   printf("   .enemy_name = \"%.7s\",\n", sTestStruct.enemy_name);
+   printf("   .foe_name = \"%.7s\",\n", sTestStruct.foe_name);
    printf("   .single_element_array_1D == { %u },\n", sTestStruct.single_element_array_1D[0]);
    printf("   .single_element_array_2D == { { %u } },\n", sTestStruct.single_element_array_2D[0][0]);
    printf("   .single_element_array_3D == { { { %u } } },\n", sTestStruct.single_element_array_3D[0][0][0]);
@@ -142,13 +142,13 @@ void print_test_struct() {
       printf("      %f,\n", sTestStruct.decimals[i]);
    printf("   },\n");
    printf("   .default_names == {\n");
-   printf("      \"%.7s\",\n", sTestStruct.default_names.hoenn);
-   printf("      \"%.7s\",\n", sTestStruct.default_names.sinnoh);
-   printf("      \"%.7s\",\n", sTestStruct.default_names.johto_modern);
-   printf("      \"%.7s\",\n", sTestStruct.default_names.unova_a);
-   printf("      \"%.7s\",\n", sTestStruct.default_names.kalos);
-   printf("      \"%.7s\",\n", sTestStruct.default_names.paldea);
-   printf("      \"%.7s\",\n", sTestStruct.default_names.unova_b);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.a);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.b);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.c);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.d);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.e);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.f);
+   printf("      \"%.7s\",\n", sTestStruct.default_names.g);
    printf("   },\n");
    printf("   .xml_tricky_test = \"%.12s\",\n", sTestStruct.xml_tricky_test);
    printf("   .xml_tricky_test_2 = \"%.12s\",\n", sTestStruct.xml_tricky_test_2);
@@ -170,7 +170,7 @@ int main() {
    sTestStruct.three_to_seven = 5;
    memcpy(&sTestStruct.names[0], "ABCDEFG", 7);
    memcpy(&sTestStruct.names[1], "HIJKLMN", 7);
-   memcpy(&sTestStruct.enemy_name, "TUVWXYZ", 7);
+   memcpy(&sTestStruct.foe_name, "TUVWXYZ", 7);
    sTestStruct.single_element_array_1D[0] = 1;
    sTestStruct.single_element_array_2D[0][0] = 2;
    sTestStruct.single_element_array_3D[0][0][0] = 3;

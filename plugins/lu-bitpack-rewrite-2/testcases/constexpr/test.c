@@ -30,6 +30,8 @@ static struct TestInstance {
 #pragma lu_bitpack debug_dump_identifier sTestInstance.bitfield_1
 #pragma lu_bitpack debug_dump_identifier sTestInstance.bitfield_2
 
+// a handful of random other tests thrown in here for temporary convenience:
+
 static struct TestInstance* sTestPointer = &sTestInstance;
 
 #pragma lu_bitpack debug_dump_identifier sTestPointer.bar  // should fail

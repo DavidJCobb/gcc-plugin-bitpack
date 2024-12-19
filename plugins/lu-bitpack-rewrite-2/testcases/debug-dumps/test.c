@@ -72,7 +72,7 @@ struct TestStruct {
    LU_BP_CATEGORY("test-names") player_name names[2];
    
    // Vary the test: make `player-name` and `test-names` stats vary from each other.
-   LU_BP_DEFAULT("Silver") player_name enemy_name;
+   LU_BP_DEFAULT("Carter") player_name foe_name;
    
    u8 single_element_array_1D[1];
    u8 single_element_array_2D[1][1];
@@ -85,14 +85,14 @@ struct TestStruct {
    LU_BP_AS_OPAQUE_BUFFER float decimals[3];
    
    struct {
-      LU_BP_OMIT LU_BP_DEFAULT("May")     player_name hoenn;
-      LU_BP_OMIT LU_BP_DEFAULT("Dawn")    player_name sinnoh;
-      LU_BP_OMIT LU_BP_DEFAULT("Lyra")    player_name johto_modern;
-      LU_BP_OMIT LU_BP_DEFAULT("Hilda")   player_name unova_a;
-      LU_BP_OMIT LU_BP_DEFAULT("Serena")  player_name kalos;
-      LU_BP_OMIT LU_BP_DEFAULT("Juliana") player_name paldea;
+      LU_BP_OMIT LU_BP_DEFAULT("Ana")     player_name a;
+      LU_BP_OMIT LU_BP_DEFAULT("Kris")    player_name b;
+      LU_BP_OMIT LU_BP_DEFAULT("Kara")    player_name c;
+      LU_BP_OMIT LU_BP_DEFAULT("Hilda")   player_name d;
+      LU_BP_OMIT LU_BP_DEFAULT("Janine")  player_name e;
+      LU_BP_OMIT LU_BP_DEFAULT("Darlene") player_name f;
       // Test to verify that the previous name doesn't overflow:
-      LU_BP_OMIT LU_BP_DEFAULT("Rosa")    player_name unova_b;
+      LU_BP_OMIT LU_BP_DEFAULT("Mary")    player_name g;
    } default_names;
    
    LU_BP_OMIT LU_BP_DEFAULT("<\"xml\">\n<>") LU_BP_STRING char xml_tricky_test[12];
