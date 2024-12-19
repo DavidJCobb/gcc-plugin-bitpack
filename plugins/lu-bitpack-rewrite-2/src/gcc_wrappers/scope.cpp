@@ -24,6 +24,10 @@ namespace gcc_wrappers {
          case FUNCTION_DECL:
          case BLOCK:
          
+         // These are the DECL_CONTEXT of their member CONST_DECLs.
+         case ENUMERAL_TYPE:
+            return true;
+         
          // The only types that can contain other types or declarations.
          case RECORD_TYPE:
          case UNION_TYPE:
@@ -81,6 +85,7 @@ namespace gcc_wrappers {
             case TRANSLATION_UNIT_DECL:
             case NAMESPACE_DECL:
                return {};
+            case ENUMERAL_TYPE:
             case RECORD_TYPE:
             case UNION_TYPE:
             case QUAL_UNION_TYPE:

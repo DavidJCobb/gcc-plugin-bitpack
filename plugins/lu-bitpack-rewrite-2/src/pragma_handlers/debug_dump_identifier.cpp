@@ -9,52 +9,79 @@
 #include <print-tree.h> // debug_tree
 
 #include "gcc_wrappers/decl/base.h"
+#include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/decl/function.h"
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/decl/variable.h"
 #include "gcc_wrappers/type/base.h"
+#include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/enumeration.h"
 #include "gcc_wrappers/type/integral.h"
 #include "gcc_wrappers/attribute.h"
 #include "gcc_wrappers/identifier.h"
 #include "gcc_wrappers/scope.h"
+#include <diagnostic.h>
 namespace gw {
    using namespace gcc_wrappers;
 }
 
+#include "gcc_helpers/identifier_path.h"
+#include "pragma_parse_exception.h"
+#include "lu/stringf.h"
+
 namespace pragma_handlers { 
+   static void _print_bool(const std::string_view label, bool value, size_t indent = 0) {
+      if (indent) {
+         while (indent--)
+            std::cerr << "   ";
+      }
+      std::cerr << '[';
+      if (value) {
+         std::cerr << 'x';
+      } else {
+         std::cerr << ' ';
+      }
+      std::cerr << ']';
+      std::cerr << ' ';
+      std::cerr << label;
+      std::cerr << '\n';
+   }
+
    extern void debug_dump_identifier(cpp_reader* reader) {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack debug_dump_identifier";
       
-      gw::optional_identifier name_opt;
+      gw::optional_node subject;
+      std::string fqn;
       {
-         location_t loc;
-         tree       data;
-         auto token_type = pragma_lex(&data, &loc);
-         if (token_type != CPP_NAME) {
-            std::cerr << "error: " << this_pragma_name << ": not a valid identifier\n";
+         gcc_helpers::identifier_path path;
+         try {
+            path.parse(*reader);
+         } catch (pragma_parse_exception& ex) {
+            auto out = lu::stringf("%s: failed: %s", this_pragma_name, ex.what());
+            inform(ex.location, out.c_str());
             return;
          }
-         name_opt = data;
+         fqn = path.fully_qualified_name();
+         try {
+            subject = path.resolve();
+         } catch (std::runtime_error& ex) {
+            auto out = lu::stringf("%s: failed to dump identifier %<%s%>: %s", this_pragma_name, fqn.c_str(), ex.what());
+            inform(UNKNOWN_LOCATION, out.c_str());
+            return;
+         }
       }
-      auto raw = lookup_name(name_opt.unwrap());
-      if (raw == NULL_TREE) {
-         //
-         // Handle types that have no accompanying DECL node (e.g. RECORD_TYPE 
-         // declared directly rather than with the typedef keyword).
-         //
-         raw = identifier_global_tag(name_opt.unwrap());
-         if (raw == NULL_TREE) {
-            std::cerr << "error: " << this_pragma_name << ": identifier " << name_opt->name() << " not found\n";
-            return;
-         }
+      if (!subject) { // should never happen
+         inform(UNKNOWN_LOCATION, "identifier not found");
+         return;
       }
       
-      gw::type::optional_base also_dump;
-      if (gw::type::base::raw_node_is(raw)) {
-         std::cerr << "Identifier " << name_opt->name() << " is a type.\n";
+      gw::optional_node also_dump;
+      
+      inform(UNKNOWN_LOCATION, "printing information about identifier %<%s%>", fqn.c_str());
+      if (subject->is<gw::type::base>()) {
+         std::cerr << "This object is a type.\n";
          
-         auto type = gw::type::base::wrap(raw);
+         auto type = subject->as<gw::type::base>();
          std::cerr << "Pretty-printed: " << type.pretty_print() << '\n';
          
          std::cerr << "Attributes:\n";
@@ -70,29 +97,44 @@ namespace pragma_handlers {
          }
          
          std::cerr << "Qualifiers:\n";
-         std::cerr << " - Atomic:   " << (type.is_atomic() ? "true" : "false") << '\n';
-         std::cerr << " - Const:    " << (type.is_const() ? "true" : "false") << '\n';
-         std::cerr << " - Restrict: " << (type.is_restrict() ? "true" : "false") << '\n';
-         std::cerr << " - Volatile: " << (type.is_volatile() ? "true" : "false") << '\n';
-         std::cerr << " - Allowed to be restrict: " << (type.is_restrict_allowed() ? "true" : "false") << '\n';
+         _print_bool("Atomic", type.is_atomic());
+         _print_bool("Const",  type.is_const());
+         _print_bool("Restrict", type.is_restrict());
+         _print_bool("Volatile", type.is_volatile());
+         _print_bool("Allowed to be restrict", type.is_restrict_allowed());
          
          std::cerr << "Traits:\n";
-         std::cerr << " - Is complete: " << (type.is_complete() ? "true" : "false") << '\n';
-         std::cerr << " - Is pointer: " << (type.is_pointer() ? "true" : "false") << '\n';
-         std::cerr << " - Is reference: " << (type.is_reference() ? "true" : "false") << '\n';
-         std::cerr << "    - lvalue: " << (type.is_lvalue_reference() ? "true" : "false") << '\n';
-         std::cerr << "    - rvalue: " << (type.is_rvalue_reference() ? "true" : "false") << '\n';
-         std::cerr << " - Alignment: " << type.alignment_in_bits() << " bits (" << type.alignment_in_bytes() << " bytes)\n";
+         _print_bool("Is complete", type.is_complete());
+         _print_bool("Is pointer", type.is_pointer());
+         _print_bool("Is reference", type.is_reference());
+         _print_bool("lvalue", type.is_lvalue_reference(), 1);
+         _print_bool("rvalue", type.is_rvalue_reference(), 1);
+         std::cerr << " - Alignment:    " << type.alignment_in_bits() << " bits (" << type.alignment_in_bytes() << " bytes)\n";
          std::cerr << " - Size: " << type.size_in_bits() << " bits (" << type.size_in_bytes() << " bytes)\n";
          std::cerr << " - Minimum required alignment: " << type.minimum_alignment_in_bits() << " bits\n";
-         std::cerr << " - Is packed: " << (type.is_packed() ? "true" : "false") << '\n';
+         _print_bool("Is packed", type.is_packed());
          
-         if (type.is_enum()) {
+         if (type.is_array()) {
+            auto casted = type.as_array();
+            
+            std::cerr << "Array info:\n";
+            std::cerr << " - Value type: " << (casted.value_type().pretty_print()) << "\n";
+            {
+               auto opt = casted.extent();
+               std::cerr << " - Extent:     ";
+               if (opt.has_value()) {
+                  std::cerr << *opt;
+               } else {
+                  std::cerr << "unknown/VLA";
+               }
+               std::cerr << '\n';
+            }
+         } else if (type.is_enum()) {
             auto casted  = type.as_enum();
             
             std::cerr << "Enumeration info:\n";
-            std::cerr << " - Is opaque: " << (casted.is_opaque() ? "true" : "false") << '\n';
-            std::cerr << " - Is scoped: " << (casted.is_scoped() ? "true" : "false") << '\n';
+            _print_bool("Is opaque", casted.is_opaque());
+            _print_bool("Is scoped", casted.is_scoped());
             
             auto members = casted.all_enum_members();
             std::cerr << "Enumeration members:\n";
@@ -108,19 +150,19 @@ namespace pragma_handlers {
             auto casted = type.as_integral();
             
             std::cerr << "Integral info:\n";
-            std::cerr << " - Signed: " << (casted.is_signed() ? "true" : "false") << '\n';
+            _print_bool("Signed", casted.is_signed());
             std::cerr << " - Min: " << casted.minimum_value() << '\n';
             std::cerr << " - Max: " << casted.maximum_value() << '\n';
             std::cerr << " - Bitcount: " << casted.bitcount() << '\n';
          }
-      } else if (gw::decl::base::raw_node_is(raw)) {
-         std::cerr << "Identifier " << name_opt->name() << " is a declaration.\n";
+      } else if (subject->is<gw::decl::base>()) {
+         std::cerr << "This object is a declaration.\n";
          
-         auto decl = gw::decl::base::wrap(raw);
-         if (gw::decl::type_def::raw_node_is(raw)) {
+         auto decl = subject->as<gw::decl::base>();
+         if (subject->is<gw::decl::type_def>()) {
             std::cerr << "That declaration is a typedef.\n";
             
-            auto decl  = gw::decl::type_def::wrap(raw);
+            auto decl  = subject->as<gw::decl::type_def>();
             auto prior = decl.is_synonym_of();
             auto after = decl.declared();
             if (prior && after) {
@@ -146,9 +188,9 @@ namespace pragma_handlers {
          }
          
          std::cerr << "Decl properties:\n";
-         std::cerr << " - Artificial: " << (decl.is_artificial() ? "true" : "false") << '\n';
-         std::cerr << " - Ignored for debugging: " << (decl.is_sym_debugger_ignored() ? "true" : "false") << '\n';
-         std::cerr << " - Used: " << (decl.is_used() ? "true" : "false") << '\n';
+         _print_bool("Artificial", decl.is_artificial());
+         _print_bool("Ignored for debugging", decl.is_sym_debugger_ignored());
+         _print_bool("Used", decl.is_used());
          
          auto scope = decl.context();
          if (scope) {
@@ -171,25 +213,75 @@ namespace pragma_handlers {
             }
          }
          
-         if (gw::decl::base_value::raw_node_is(raw)) {
-            auto decl = gw::decl::base_value::wrap(raw);
-            
-            auto type = decl.value_type();
-            std::cerr << "Value type: " << type.pretty_print() << '\n';
-            
-            if (gw::decl::variable::raw_node_is(raw)) {
-               auto decl = gw::decl::variable::wrap(raw);
+         if (subject->is<gw::decl::base_value>()) {
+            auto decl = subject->as<gw::decl::base_value>();
+            {
+               gw::type::optional_base type;
+               if (subject->is<gw::decl::field>()) {
+                  //
+                  // Value type access is overridden for fields, to account 
+                  // for bitfields and how they affect typing.
+                  //
+                  auto decl = subject->as<gw::decl::field>();
+                  type = decl.value_type();
+               } else {
+                  type = decl.value_type();
+               }
+               std::cerr << "Value type: " << type->pretty_print() << '\n';
+            }
+            if (subject->is<gw::decl::field>()) {
+               auto decl = subject->as<gw::decl::field>();
+               {
+                  auto offset = decl.offset_in_bits();
+                  if (offset % 8) {
+                     std::cerr << "This field's offset is " << offset << " bits.\n";
+                  } else {
+                     std::cerr << "This field's offset is " << offset << " bits (" << (offset / 8) << " bytes).\n";
+                  }
+               }
+               if (decl.is_bitfield()) {
+                  std::cerr << "This field is a bitfield of width " << decl.size_in_bits() << ".\n";
+               }
+               if (decl.is_non_addressable()) {
+                  std::cerr << "This field is not an addressable value.\n";
+               }
+               if (decl.is_padding()) {
+                  std::cerr << "This field is compiler-generated padding.\n";
+               }
+            } else if (subject->is<gw::decl::variable>()) {
+               auto decl = subject->as<gw::decl::variable>();
+               if (decl.is_declared_constexpr()) {
+                  std::cerr << "This variable was declared constexpr.\n";
+               }
                auto init = decl.initial_value();
                if (init) {
                   std::cerr << "The declared entity has an initial value.\n";
                }
             }
+         } else if (subject->is<gw::decl::function>()) {
+            auto decl = subject->as<gw::decl::function>();
+            std::cerr << "This is a function.\n";
+            
+            _print_bool("Noreturn", decl.is_noreturn());
+            _print_bool("Nothrow", decl.is_nothrow());
+            _print_bool("Is defined", decl.has_body());
+            std::cerr << "Linkage:\n";
+            if (decl.is_externally_accessible()) {
+               std::cerr << " - Non-static\n";
+            } else {
+               std::cerr << " - Static\n";
+            }
+            if (decl.is_defined_elsewhere()) {
+               std::cerr << " - Extern?\n";
+            } else {
+               std::cerr << " - Non-extern\n";
+            }
          }
       }
       
       std::cerr << '\n';
-      std::cerr << "Dumping identifier " << name_opt->name() << " as raw data...\n";
-      debug_tree(raw);
+      std::cerr << "Dumping identifier " << fqn << " as raw data...\n";
+      debug_tree(subject.unwrap());
       
       if (also_dump) {
          std::cerr << "\nDumping typedef-declared type as raw data...\n";

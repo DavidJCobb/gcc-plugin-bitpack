@@ -1,8 +1,5 @@
 #include "pragma_handlers/debug_dump_identifier.h"
-#include <cassert>
 #include <iostream>
-#include <limits>
-#include <string_view>
 
 #include <gcc-plugin.h>
 #include <tree.h>
@@ -19,136 +16,38 @@ namespace gw {
    using namespace gcc_wrappers;
 }
 
+#include "gcc_helpers/identifier_path.h"
+#include "pragma_parse_exception.h"
+#include "lu/stringf.h"
+
 constexpr const char* this_pragma_name = "#pragma lu_bitpack debug_dump_bp_data_options";
-
-static std::string _fully_qualified_name(const std::vector<gw::identifier>& names, size_t up_to = std::numeric_limits<size_t>::max()) {
-   size_t end = names.size();
-   if (end > up_to)
-      end = up_to;
-   
-   std::string fqn;
-   for(size_t i = 0; i < end; ++i) {
-      if (i > 0)
-         fqn += "::";
-      fqn += names[i].name();
-   }
-   return fqn;
-}
-
-static gw::optional_node _lookup_path(const std::vector<gw::identifier>& names) {
-   assert(!names.empty());
-   
-   gw::optional_node subject;
-   
-   //
-   // Start by looking up the top-level identifier.
-   //
-   auto id = names.front();
-   subject = lookup_name(id.unwrap());
-   if (!subject) {
-      //
-      // Handle types that have no accompanying DECL node (e.g. RECORD_TYPE 
-      // declared directly rather than with the typedef keyword).
-      //
-      subject = identifier_global_tag(id.unwrap());
-      if (!subject) {
-         std::cerr << "error: " << this_pragma_name << ": identifier " << id.name() << " not found\n";
-         return {};
-      }
-   }
-   
-   //
-   // Resolve nested names.
-   //
-   for(size_t i = 1; i < names.size(); ++i) {
-      gw::type::optional_container cont;
-      if (subject->is<gw::type::container>()) {
-         cont = subject->as<gw::type::container>();
-      } else if (subject->is<gw::decl::base_value>()) {
-         auto vt = subject->as<gw::decl::base_value>().value_type();
-         if (vt.is_container()) {
-            cont = vt.as_container();
-         }
-      }
-      if (!cont) {
-         auto fqn = _fully_qualified_name(names, i);
-         std::cerr << "error: " << this_pragma_name << ": identifier " << fqn.c_str() << " does not name a struct or union type (or a field or variable of such type), so we cannot access its members\n";
-         return {};
-      }
-      
-      gw::optional_node memb;
-      for(auto item : cont->member_chain()) {
-         if (item.is<gw::decl::base_value>()) {
-            auto cast = item.as<gw::decl::base_value>();
-            auto name = cast.name();
-            if (name == names[i].name()) {
-               memb = cast;
-               break;
-            }
-         } else if (item.is<gw::type::container>()) {
-            auto cast = item.as<gw::type::container>();
-            auto name = cast.name();
-            if (name == names[i].name()) {
-               memb = cast;
-               break;
-            }
-         }
-      }
-      if (!memb) {
-         auto fqn = _fully_qualified_name(names, i);
-         std::cerr << "error: " << this_pragma_name << ": identifier " << fqn.c_str() << " names a struct or union type which does not contain a nested type or member variable (static or non-static) named " << names[i].name() << "\n";
-         return {};
-      }
-      
-      subject = memb;
-   }
-   
-   return subject;
-}
 
 namespace pragma_handlers { 
    extern void debug_dump_bp_data_options(cpp_reader* reader) {
-      std::vector<gw::identifier> names;
+      gw::optional_node subject;
+      std::string fqn;
       {
-         location_t loc;
-         tree       data;
-         do {
-            auto token_type = pragma_lex(&data, &loc);
-            if (token_type == CPP_EOF)
-               break;
-            if (!names.empty()) {
-               if (token_type != CPP_SCOPE) {
-                  std::cerr << "error: " << this_pragma_name << ": expected token %<::%> or end of line";
-                  return;
-               }
-               token_type = pragma_lex(&data, &loc);
-            }
-            if (token_type != CPP_NAME) {
-               std::cerr << "error: " << this_pragma_name << ": expected an identifier";
-               if (!names.empty()) {
-                  std::cerr << " after " << names.back().name();
-               }
-               if (data != NULL_TREE) {
-                  std::cerr << "; saw ";
-                  std::cerr << gw::optional_node(data)->code_name();
-                  std::cerr << " instead";
-               }
-               std::cerr << '\n';
-               return;
-            }
-            names.push_back(gw::identifier::wrap(data));
-         } while (true);
-         if (names.empty()) {
-            std::cerr << "error: " << this_pragma_name << ": no identifier given\n";
+         gcc_helpers::identifier_path path;
+         try {
+            path.parse(*reader);
+         } catch (pragma_parse_exception& ex) {
+            auto out = lu::stringf("%s: failed: %s", this_pragma_name, ex.what());
+            inform(ex.location, out.c_str());
+            return;
+         }
+         fqn = path.fully_qualified_name();
+         try {
+            subject = path.resolve();
+         } catch (std::runtime_error& ex) {
+            auto out = lu::stringf("%s: failed to dump identifier %<%s%>: %s", this_pragma_name, fqn.c_str(), ex.what());
+            inform(UNKNOWN_LOCATION, out.c_str());
             return;
          }
       }
-      
-      auto subject = _lookup_path(names);
-      if (!subject)
+      if (!subject) { // should never happen
+         inform(UNKNOWN_LOCATION, "identifier not found");
          return;
-      
-      auto fqn = _fully_qualified_name(names);
+      }
       
       bitpacking::data_options options;
       options.config.report_errors = false;

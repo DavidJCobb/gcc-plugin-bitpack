@@ -76,6 +76,7 @@ SOURCES=\
         src/codegen/value_path.cpp \
         src/codegen/whole_struct_function_dictionary.cpp \
         src/gcc_helpers/c/at_file_scope.cpp \
+        src/gcc_helpers/identifier_path.cpp \
         src/gcc_helpers/stringify_function_signature.cpp \
         src/lu/strings/builder.cpp \
         src/lu/strings/handle_kv_string.cpp \
@@ -108,6 +109,9 @@ test: $(PLUGIN)
 .PHONY: testcase
 testcase: TESTDIR=testcases/$(testname)
 testcase: PLUGINARGS=-fplugin-arg-$(PLUGIN_NAME)-xml-out=$(TESTDIR)/test.xml
+ifeq (constexpr,$(testname))
+testcase: PLUGINARGS+= -std=c23
+endif
 testcase: $(PLUGIN)
 ifdef test
 	$(error Specify a testname as make testname=name testcase)
