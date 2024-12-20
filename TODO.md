@@ -11,6 +11,7 @@ C++:
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
   * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
+  * We try to disallow marking non-addressable struct fields as to-be-transformed, but if the transform attributes are applied to the field's type rather than to the field itself, I believe that would dodge our validation.
   * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
   * Testcases needed:
     * Transforms
