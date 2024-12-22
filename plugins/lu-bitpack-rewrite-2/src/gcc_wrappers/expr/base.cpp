@@ -71,4 +71,8 @@ namespace gcc_wrappers::expr {
    size_t base::operator_operand_count() const {
       return TREE_CODE_LENGTH(this->code());
    }
+   
+   bool base::is_comparison_oeprator() const {
+      return COMPARISON_CLASS_P(this->_node) != 0;
+   }
 }

@@ -37,6 +37,8 @@ namespace gcc_wrappers::expr {
          bool is_associative_operator() const; // a + b + c == (a + b) + c == a + (b + c)
          bool is_commutative_operator() const; // a + b == b + a
          size_t operator_operand_count() const; // number of operands allowed, not number actually present
+         
+         bool is_comparison_oeprator() const;
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(base);
 }
