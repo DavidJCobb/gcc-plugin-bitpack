@@ -23,9 +23,15 @@ namespace gcc_wrappers::type {
          
          bool is_opaque() const;
          bool is_scoped() const;
+         
+         base underlying_type() const;
+         bool has_explicit_underlying_type() const;
       
          template<typename Functor>
          void for_each_enum_member(Functor&& functor) const;
+         
+         // GCC parse state.
+         bool is_still_being_defined() const;
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(enumeration);
 }

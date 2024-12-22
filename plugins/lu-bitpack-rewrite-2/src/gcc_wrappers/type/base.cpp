@@ -353,7 +353,7 @@ namespace gcc_wrappers::type {
    bool base::has_c_boolean_semantics() const {
       if (this->is_boolean())
          return true;
-      #if GCCPLUGIN_VERSION_MAJOR >= 14 && GCCPLUGIN_VERSION_MINOR >= 2
+      #if GCCPLUGIN_VERSION_MAJOR >= 13 && GCCPLUGIN_VERSION_MINOR >= 1
          if (!this->is_enum())
             return false;
          

@@ -4,6 +4,8 @@
 #include "gcc_wrappers/expr/declare_label.h"
 #include "gcc_wrappers/expr/go_to_label.h"
 #include "gcc_wrappers/expr/ternary.h"
+#include "gcc_wrappers/environment/c_family/language.h"
+#include <c-family/c-common.h> // LABEL_DECL_BREAK, LABEL_DECL_CONTINUE
 
 namespace gcc_wrappers::flow {
    simple_for_loop::simple_for_loop(type::integral counter_type)
@@ -11,6 +13,15 @@ namespace gcc_wrappers::flow {
       counter("__i", counter_type)
    {
       this->counter.make_artificial();
+      switch (environment::c_family::current_language()) {
+         case environment::c_family::language::c:
+         case environment::c_family::language::objective_c:
+            LABEL_DECL_BREAK(this->label_break.unwrap()) = 1;
+            LABEL_DECL_CONTINUE(this->label_continue.unwrap()) = 1;
+            break;
+         default:
+            break;
+      }
    }
    
    void simple_for_loop::bake(statement_list&& loop_body) {

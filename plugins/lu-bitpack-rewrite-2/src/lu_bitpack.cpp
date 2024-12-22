@@ -283,6 +283,9 @@ int plugin_init (
       std::cerr << "This plug-in is for version " <<
                    GCCPLUGIN_VERSION_MAJOR << "." <<
                    GCCPLUGIN_VERSION_MINOR << ".\n";
+      if (gcc_version.basever) {
+         std::cerr << "We appear to be running in version " << gcc_version.basever << ".\n";
+      }
       return 1;
    }
    

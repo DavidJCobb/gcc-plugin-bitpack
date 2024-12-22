@@ -43,6 +43,9 @@ namespace gcc_wrappers::type {
          
          template<typename Functor>
          void for_each_static_data_member(Functor&& functor) const;
+         
+         // GCC parse state.
+         bool is_still_being_defined() const;
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(container);
 }
