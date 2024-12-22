@@ -18,6 +18,8 @@ Data options fall into two basic categories: those options that are usable on ba
 Data options take three forms as the plug-in executes:
 
 * **Attributes:** Once bitpacking has been enabled (via the custom `enable` pragma), our attribute handlers activate. To the fullest extent possible, attribute handlers will not allow an entity to retain an attribute if the attribute is used incorrectly; we write sentinel attributes onto the entity in order to simplify error checking and error handling later on. This allows us to report problems as attributes are parsed, and to report problems with entities that have been given bitpacking attributes but haven't yet been added to the list of values to serialize.
+
+  (When performing validation, attribute handlers only check details that are visible from the handler. For example, an individual attribute handler doesn't check for the presence of other, mutually conflicting, attributes on the same entity; and if the annotated entity is a declaration, we may check basic constraints on the type (e.g. no integral attributes on non-integral types), but we don't check for preexisting attributes on the type. More detailed validation is performed when we compute a declaration's data options, per the below.)
   
   Attribute handlers may transform the attribute arguments from a form that is valid for C++ into a form that is more directly usable by the plug-in internals. For example, the `lu_bitpack_transform` attribute takes a single argument: a string literal, with options specified as key/value pairs. The attribute handler transforms this into two arguments: the raw identifiers of the transform functions.
 
@@ -26,6 +28,8 @@ Data options take three forms as the plug-in executes:
 * **Computed data options:** These are the final data options that apply to a given (variable or field) declaration. Some options may be inferred from other options and/or from the declaration's type. For example, if you don't explicitly specify a bitcount for an integral value, we will compute the bitcount to use based on the minimum and maximum values you specified (if any), the value's type, and, if the value is a bitfield, its width in bits. Similarly, if a to-be-serialized value of integral type has no bitpacking options whatsoever, we would auto-generate integral data options for it.
   
   Computing these options is potentially a multi-stage process. A declaration first pulls any options specified on its type, and then overrides those with options specified on the declaration itself. If the declaration's type is a `typedef`, then attributes applied to the `typedef` override attributes applied to the original type; and this applies recursively, for `typedef`s of `typedef`s.
+  
+  Additionally, data options, once computed, may be considered invalid, e.g. if the declaration (or its type, or any transitive `typedef`s) had any invalid attributes (as detected by the attribute handlers), or if their bitpacking options are individually valid but mutually conflicting, or if their bitpacking options are invalid in ways that can't be detected from attribute handlers (per the below).
 
 Notably, there are a few cases where attribute handlers can't perform full validation, and where by the time full validation is possible, applying sentinel attributes to mark an entity as invalid is no longer possible. Chiefly these cases involve the bitpacking options for tagged unions:
 
@@ -40,6 +44,8 @@ Notably, there are a few cases where attribute handlers can't perform full valid
 * A union cannot be both internally and externally tagged. GCC has a built-in function to make attributes mutually exclusive, but in that case, the attribute handlers fail to run at all. Additionally, it doesn't cover the case of a union type being marked as internally tagged, and then a struct field of that type being marked as externally tagged. Ergo we have to validate this from a `PLUGIN_FINISH_TYPE` handler.
 
 * A to-be-transformed value must be addressable, i.e. it cannot be a bitfield. We may be able to validate that from the attribute handler for transform options, but we'd end up overlooking the case of a bitfield that does not itself specify transform options, but rather is influenced by them because they were applied to the bitfield's type.
+
+----
 
 Data options can be computed at any time, but during codegen, they are stored on `decl_descriptor` objects, which wrap all to-be-serialized `DECL`s (variables and fields).
 
