@@ -27,7 +27,9 @@ Checks if this is a scoped enum (i.e. `enum class` in C++; impossible in C).
 
 ### `is_still_being_defined`
 
-This will be `true` if the enum is still being defined &mdash; simply put, if GCC is still parsing the content between the curly braces that wrap the enum's contents. Exactly which properties of the enum are available will depend on GCC's implementation, but as of GCC 14.2.0, more-or-less everything but the enum's members should work.
+This will be `true` if the enum is still being defined &mdash; simply put, if GCC is still parsing the content between the curly braces that wrap the enum's contents. Exactly which properties of the enum are available will depend on GCC's implementation, but as of GCC 14.2.0, everything except for the following is believed to work:
+
+* An enum with no explicitly set underlying type will not *have* an underlying type, because the type is to be computed from the enum's members. Calling the `underlying_type` accessor under these conditions is undefined behavior.
 
 ### `underlying_type`
 
