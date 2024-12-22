@@ -8,6 +8,9 @@
 
 #include <print-tree.h> // debug_tree
 
+#include "gcc_wrappers/constant/floating_point.h"
+#include "gcc_wrappers/constant/integer.h"
+#include "gcc_wrappers/constant/string.h"
 #include "gcc_wrappers/decl/base.h"
 #include "gcc_wrappers/decl/field.h"
 #include "gcc_wrappers/decl/function.h"
@@ -135,6 +138,10 @@ namespace pragma_handlers {
             std::cerr << "Enumeration info:\n";
             _print_bool("Is opaque", casted.is_opaque());
             _print_bool("Is scoped", casted.is_scoped());
+            if (!casted.is_still_being_defined()) {
+               auto under = casted.underlying_type();
+               std::cerr << "Underlying type: " << under.pretty_print() << '\n';
+            }
             
             auto members = casted.all_enum_members();
             std::cerr << "Enumeration members:\n";
@@ -256,6 +263,32 @@ namespace pragma_handlers {
                auto init = decl.initial_value();
                if (init) {
                   std::cerr << "The declared entity has an initial value.\n";
+                  if (init->is<gw::constant::integer>()) {
+                     auto casted = init->as<gw::constant::integer>();
+                     auto value  = casted.try_value_signed();
+                     std::cerr << "Initial value: integer ";
+                     if (value.has_value()) {
+                        std::cerr << *value;
+                     } else {
+                        auto value_u = casted.try_value_unsigned();
+                        if (value_u.has_value()) {
+                           std::cerr << *value_u;
+                        } else {
+                           std::cerr << "<magnitude too large to print?>";
+                        }
+                     }
+                     std::cerr << '\n';
+                  } else if (init->is<gw::constant::floating_point>()) {
+                     auto casted = init->as<gw::constant::floating_point>();
+                     std::cerr << "Initial value: floating-point " << casted.to_string() << '\n';
+                  } else if (init->is<gw::constant::string>()) {
+                     auto casted = init->as<gw::constant::string>();
+                     std::cerr << "Initial value: string[";
+                     std::cerr << casted.length();
+                     std::cerr << "]: ";
+                     std::cerr << casted.value();
+                     std::cerr << '\n';
+                  }
                }
             }
          } else if (subject->is<gw::decl::function>()) {
