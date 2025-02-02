@@ -515,7 +515,7 @@ There are three basic categories for these wrappers.
   
   Aside from copying or rebinding to another wrapper, a new general wrapper can only be instantiated through three means:
   * Dereferencing an optional wrapper.
-  * Calling <code><var>wrapper_type</var>.wrap</code> passing a raw `tree`. We will `assert` that the tree is non-null and of the correct type for the chosen wrapper.
+  * Calling <code><var>wrapper_type</var>::wrap</code> passing a raw `tree`. We will `assert` that the tree is non-null and of the correct type for the chosen wrapper.
   * Using non-copy constructors, when available, to create new `tree`s of the wrapped type.
 * **Optional wrappers** will wrap a single `tree`, which may be `NULL_TREE`. These wrappers dereference to reference-like wrappers with an interface similar to `std::optional`. We define an optional wrapper for each reference-like wrapper following the naming convention <code>optional_<var>basename</var></code> (e.g. `node` and `optional_node`; `decl::field` and `decl::optional_field`; `type::pointer` and `type::optional_pointer`).
   
@@ -532,7 +532,7 @@ The `value` wrapper is something of a special-case. All `EXPR`s and `CST`s can b
 
 In general, `expr` wrappers exist for "advanced" operations, like function calls, declaration placement[^decl-exprs], `goto`s, and ternaries; while `value` is used for "simple" operations, like unary and binary operators, member accesses, and array accesses.
 
-[^decl-exprs]: `DECL` nodes indicate the existence, source code location, and content of a declaration, but they don't have a "location" in *practical* terms. However, `DECLARE_EXPR` and `LABEL_EXPR` are needed to actually place a `DECL` in a particular scope and at a particular position relative to other expressions in that scope.
+[^decl-exprs]: `DECL` nodes indicate the existence, source code location, and content of a declaration, but they don't have a "location" in *practical* terms. `DECLARE_EXPR` and `LABEL_EXPR` are needed to actually place a `DECL` in a particular scope and at a particular position relative to other expressions in that scope.
 
 ### General wrappers
 

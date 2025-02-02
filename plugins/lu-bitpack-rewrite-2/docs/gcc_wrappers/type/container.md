@@ -27,4 +27,4 @@ Returns the type's raw member chain, i.e. `TREE_FIELDS(type)`.
 
 ### `is_still_being_defined`
 
-This will be `true` if the type is still being defined &mdash; simply put, if GCC is still parsing the content between the curly braces that wrap the type's contents. Exactly which properties of the enum are available will depend on GCC's implementation.
+This will be `true` if the type is still being defined &mdash; simply put, if GCC is still parsing the content between the curly braces that wrap the type's contents. Exactly which properties of the container type are available will depend on GCC's implementation.
