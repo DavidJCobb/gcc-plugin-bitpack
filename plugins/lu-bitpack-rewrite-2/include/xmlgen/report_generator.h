@@ -64,16 +64,6 @@ namespace xmlgen {
       protected:
          category_info& _get_or_create_category_info(std::string_view name);
          type_info& _get_or_create_type_info(gcc_wrappers::type::base);
-      
-         void _apply_x_options_to(
-            xml_element&,
-            const bitpacking::data_options&
-         );
-         
-         void _apply_type_info_to(
-            xml_element& type_node,
-            gcc_wrappers::type::base
-         );
          
          std::string _loop_variable_to_string(codegen::decl_descriptor_pair) const;
          std::string _variable_to_string(codegen::decl_descriptor_pair) const;

@@ -37,24 +37,108 @@
    </categories>
    <c-types>
       <struct c-alignment="1" c-sizeof="1" name="NamedByTypedef">
+         <members>
+            <integer min="0" bitcount="8" type="u8" name="data" />
+         </members>
          <instructions>
             <integer min="0" bitcount="8" type="u8" value="data" />
          </instructions>
       </struct>
       <struct c-alignment="1" c-sizeof="1" name="NamedByTypedefOnly">
+         <members>
+            <integer min="0" bitcount="8" type="u8" name="data" />
+         </members>
          <instructions>
             <integer min="0" bitcount="8" type="u8" value="data" />
          </instructions>
       </struct>
       <struct c-sizeof="3" c-alignment="1" tag="Color">
+         <members>
+            <integer min="0" bitcount="8" type="u8" name="r" />
+            <integer min="0" bitcount="8" type="u8" name="g" />
+            <integer min="0" bitcount="8" type="u8" name="b" />
+         </members>
          <instructions>
             <integer min="0" bitcount="8" type="u8" value="r" />
             <integer min="0" bitcount="8" type="u8" value="g" />
             <integer min="0" bitcount="8" type="u8" value="b" />
          </instructions>
       </struct>
-      <struct c-sizeof="1" c-alignment="1" tag="NamedByTag" />
-      <struct c-sizeof="128" c-alignment="4" tag="TestStruct" />
+      <struct c-sizeof="1" c-alignment="1" tag="NamedByTag">
+         <members>
+            <integer min="0" bitcount="8" type="u8" name="data" />
+         </members>
+      </struct>
+      <struct c-sizeof="128" c-alignment="4" tag="TestStruct">
+         <members>
+            <struct type="Color" name="color" />
+            <integer min="0" bitcount="3" type="u8" name="three_bit" />
+            <integer min="0" bitcount="5" type="u5" name="five_bit" />
+            <integer min="0" bitcount="7" type="u8" name="seven_bit" />
+            <integer max="7" min="3" bitcount="3" type="int" name="three_to_seven" />
+            <string nonstring="true" length="7" type="u8[7][2]" name="names">
+               <array-rank extent="2" />
+            </string>
+            <string nonstring="true" length="7" type="u8[7]" name="foe_name">
+               <default-value-string>Carter</default-value-string>
+            </string>
+            <integer min="0" bitcount="8" type="u8[1]" name="single_element_array_1D">
+               <array-rank extent="1" />
+            </integer>
+            <integer min="0" bitcount="8" type="u8[1][1]" name="single_element_array_2D">
+               <array-rank extent="1" />
+               <array-rank extent="1" />
+            </integer>
+            <integer min="0" bitcount="8" type="u8[1][1][1]" name="single_element_array_3D">
+               <array-rank extent="1" />
+               <array-rank extent="1" />
+               <array-rank extent="1" />
+            </integer>
+            <integer min="0" bitcount="5" type="u5[3]" name="array">
+               <array-rank extent="3" />
+            </integer>
+            <boolean type="bool8" name="boolean" />
+            <buffer bytecount="4" type="float[3]" name="decimals">
+               <array-rank extent="3" />
+            </buffer>
+            <struct name="default_names">
+               <members>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="a">
+                     <default-value-string>Ana</default-value-string>
+                  </omitted>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="b">
+                     <default-value-string>Kris</default-value-string>
+                  </omitted>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="c">
+                     <default-value-string>Kara</default-value-string>
+                  </omitted>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="d">
+                     <default-value-string>Hilda</default-value-string>
+                  </omitted>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="e">
+                     <default-value-string>Janine</default-value-string>
+                  </omitted>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="f">
+                     <default-value-string>Darlene</default-value-string>
+                  </omitted>
+                  <omitted nonstring="true" length="7" type="u8[7]" name="g">
+                     <default-value-string>Mary</default-value-string>
+                  </omitted>
+               </members>
+            </struct>
+            <omitted nonstring="false" length="11" type="char[12]" name="xml_tricky_test">
+               <default-value-string>&lt;"xml"&gt;
+&lt;&gt;</default-value-string>
+            </omitted>
+            <omitted type="char[12]" name="xml_tricky_test_2">
+               <default-value-string>&lt;"xml"&gt;
+&lt;&gt;</default-value-string>
+            </omitted>
+            <struct type="NamedByTypedefOnly" name="named_by_typedef_only" />
+            <struct type="NamedByTag" name="using_tag_name" />
+            <struct type="NamedByTypedef" name="using_typedef_name" />
+         </members>
+      </struct>
    </c-types>
    <sectors>
       <sector>
@@ -96,28 +180,28 @@
             <loop counter-var="__b" count="3" start="0" array="sTestStruct.decimals">
                <buffer bytecount="4" type="float" value="sTestStruct.decimals[__b]" />
             </loop>
-            <omitted type="u8[7]" value="sTestStruct.default_names.a">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.a">
                <default-value-string>Ana</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.b">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.b">
                <default-value-string>Kris</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.c">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.c">
                <default-value-string>Kara</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.d">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.d">
                <default-value-string>Hilda</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.e">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.e">
                <default-value-string>Janine</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.f">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.f">
                <default-value-string>Darlene</default-value-string>
             </omitted>
-            <omitted type="u8[7]" value="sTestStruct.default_names.g">
+            <omitted nonstring="true" length="7" type="u8[7]" value="sTestStruct.default_names.g">
                <default-value-string>Mary</default-value-string>
             </omitted>
-            <omitted type="char[12]" value="sTestStruct.xml_tricky_test">
+            <omitted nonstring="false" length="11" type="char[12]" value="sTestStruct.xml_tricky_test">
                <default-value-string>&lt;"xml"&gt;
 &lt;&gt;</default-value-string>
             </omitted>

@@ -88,7 +88,10 @@ SOURCES=\
         src/pragma_handlers/enable.cpp \
         src/pragma_handlers/generate_functions.cpp \
         src/pragma_handlers/set_options.cpp \
+        src/xmlgen/bitpacking_default_value_to_xml.cpp \
+        src/xmlgen/bitpacking_x_options_to_xml.cpp \
         src/xmlgen/is_valid_name.cpp \
+        src/xmlgen/referenceable_struct_members_to_xml.cpp \
         src/xmlgen/report_generator.cpp \
         src/xmlgen/string_as_cdata.cpp \
         src/xmlgen/write_string_as_attribute_value.cpp \

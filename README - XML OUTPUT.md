@@ -49,9 +49,18 @@ Elements that represent struct and union types may contain `instructions` and `s
 Struct and union types may also have the following child elements:
 
 <dl>
-   <dt><code>transform-option</code></dt>
+   <dt><code>members</code></dt>
       <dd>
-         <p>Indicates the transform bitpacking options applied to this type, via the <code>transformed-type</code>, <code>pack-function</code>, and <code>unpack-function</code> attributes.</p>
+         <p>A list of all referenceable members in the struct, as value elements (see below). Anonymous struct types (e.g. <code>struct { ...} foo</code>) may contain their own <code>&lt;members&gt;</code> elements as well.</p>
+         <p>This is emitted regardless of whether the struct has a whole-struct function generated (i.e. regardless of whether an <code>instructions</code> element is also present). The general pattern that tools would want to use, when using the XML output, is to use <code>members</code> as the canonical reference for what data is in a given struct type, and then read <code>instructions</code> nodes from the various relevant places (starting with the sectors) to see when and how data is read into those members.</p>
+      </dd>
+   <dt><code>opaque-buffer-options</code></dt>
+      <dd>
+         <p>Indicates the opaque buffer bitpacking options applied to this type, and has the same attributes as a <code>buffer</code> value element (see below).</p>
+      </dd>
+   <dt><code>transform-options</code></dt>
+      <dd>
+         <p>Indicates the transform bitpacking options applied to this type, and has the same attributes as a <code>transformed</code> value element (see below).</p>
       </dd>
 </dl>
 
@@ -150,6 +159,12 @@ The `nonstring` attribute will be `true` if the value was affected by the `nonst
 ##### `structure`
 
 Indicates a structure to be serialized whole by calling a whole-struct serialization function. If you find the corresponding `struct` element in the XML output, its `instructions` node will match the code for the whole-struct serialization function.
+
+##### `transformed`
+
+Indicates a value that is transformed and serialized as another type. The `transformed-type` attribute indicates the type to which the value is transformed, and the `pack-function` and `unpack-function` attributes are the identifiers of those functions used to carry out the transformation.
+
+Remember that transitive transformations are possible. You will have to see if the transformed type is present in the XML output's `c-types` section and, if so, whether that type is itself transformed (and so on).
 
 ##### `union-external-tag`
 

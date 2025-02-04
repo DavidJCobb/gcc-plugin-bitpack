@@ -31,6 +31,10 @@ namespace typed_options {
 #include "codegen/instructions/union_switch.h"
 #include "codegen/instructions/utils/walk.h"
 
+#include "xmlgen/bitpacking_default_value_to_xml.h"
+#include "xmlgen/bitpacking_x_options_to_xml.h"
+#include "xmlgen/referenceable_struct_members_to_xml.h"
+
 namespace {
    using owned_element = xmlgen::report_generator::owned_element;
 }
@@ -53,71 +57,6 @@ namespace xmlgen {
             return info;
       auto& info = this->_types.emplace_back(type);
       return info;
-   }
-   
-   void report_generator::_apply_x_options_to(
-      xml_element& node,
-      const bitpacking::data_options& options
-   ) {
-      if (options.is<typed_options::buffer>()) {
-         const auto& casted = options.as<typed_options::buffer>();
-         node.set_attribute_i("bytecount", casted.bytecount);
-      } else if (options.is<typed_options::integral>()) {
-         const auto& casted = options.as<typed_options::integral>();
-         node.set_attribute_i("bitcount", casted.bitcount);
-         node.set_attribute_i("min", casted.min);
-         if (casted.max != typed_options::integral::no_maximum) {
-            node.set_attribute_i("max", casted.max);
-         }
-      } else if (options.is<typed_options::pointer>()) {
-         ;
-      } else if (options.is<typed_options::string>()) {
-         const auto& casted = options.as<typed_options::string>();
-         node.set_attribute_i("length",    casted.length);
-         node.set_attribute_b("nonstring", casted.nonstring);
-      } else if (options.is<typed_options::tagged_union>()) {
-         const auto& casted = options.as<typed_options::tagged_union>();
-         node.set_attribute("tag", casted.tag_identifier);
-      } else if (options.is<typed_options::transformed>()) {
-         const auto& casted = options.as<typed_options::transformed>();
-         if (auto opt = casted.transformed_type)
-            node.set_attribute("transformed-type", opt->pretty_print());
-         if (auto opt = casted.pre_pack)
-            node.set_attribute("pack-function",    opt->name());
-         if (auto opt = casted.post_unpack)
-            node.set_attribute("unpack-function",  opt->name());
-      }
-   }
-   
-   void report_generator::_apply_type_info_to(xml_element& node, gw::type::base type) {
-      // Options.
-      bitpacking::data_options options;
-      options.load(type);
-      {
-         std::unique_ptr<xml_element> x_opt;
-         if (options.is<typed_options::buffer>()) {
-            x_opt = std::make_unique<xml_element>();
-            x_opt->node_name = "opaque-buffer-options";
-         } else if (options.is<typed_options::integral>()) {
-            x_opt = std::make_unique<xml_element>();
-            x_opt->node_name = "integral-options";
-         } else if (options.is<typed_options::pointer>()) {
-            return;
-         } else if (options.is<typed_options::string>()) {
-            x_opt = std::make_unique<xml_element>();
-            x_opt->node_name = "string-options";
-         } else if (options.is<typed_options::tagged_union>()) {
-            x_opt = std::make_unique<xml_element>();
-            x_opt->node_name = "union-options";
-         } else if (options.is<typed_options::transformed>()) {
-            x_opt = std::make_unique<xml_element>();
-            x_opt->node_name = "transform-options";
-         }
-         if (x_opt != nullptr) {
-            _apply_x_options_to(*x_opt, options);
-            node.append_child(std::move(x_opt));
-         }
-      }
    }
    
    std::string report_generator::_loop_variable_to_string(codegen::decl_descriptor_pair pair) const {
@@ -224,59 +163,8 @@ namespace xmlgen {
       node.set_attribute("type", value_type.pretty_print());
       
       const auto& options = instr.value.bitpacking_options();
-      if (options.default_value) {
-         auto dv = *options.default_value;
-         if (dv.is<gw::constant::string>()) {
-            auto sub    = std::make_unique<xml_element>();
-            sub->node_name = "default-value-string";
-            sub->text_content = dv.as<gw::constant::string>().value();
-            node.append_child(std::move(sub));
-         } else if (dv.is<gw::constant::integer>()) {
-            std::string text;
-            {
-               auto opt = dv.as<gw::constant::integer>().try_value_signed();
-               if (opt.has_value()) {
-                  text = lu::stringf("%d", *opt);
-               } else {
-                  text = "???";
-               }
-            }
-            node.set_attribute("default-value", text);
-         } else if (dv.is<gw::constant::floating_point>()) {
-            auto text = dv.as<gw::constant::floating_point>().to_string();
-            node.set_attribute("default-value", text);
-         } else {
-            node.set_attribute("default-value", "???");
-         }
-      }
-      if (options.is_omitted) {
-         node.node_name = "omitted";
-         return node_ptr;
-      }
-      
-      node.node_name = "unknown";
-      if (options.is<typed_options::boolean>()) {
-         node.node_name = "boolean";
-      } else if (options.is<typed_options::buffer>()) {
-         node.node_name = "buffer";
-      } else if (options.is<typed_options::integral>()) {
-         node.node_name = "integer";
-      } else if (options.is<typed_options::pointer>()) {
-         node.node_name = "pointer";
-      } else if (options.is<typed_options::string>()) {
-         node.node_name = "string";
-      } else if (options.is<typed_options::structure>()) {
-         node.node_name = "struct";
-      } else if (options.is<typed_options::tagged_union>()) {
-         auto& casted = options.as<typed_options::tagged_union>();
-         if (casted.is_internal)
-            node.node_name = "union-internal-tag";
-         else
-            node.node_name = "union-external-tag";
-      } else if (options.is<typed_options::transformed>()) {
-         node.node_name = "transformed";
-      }
-      _apply_x_options_to(node, options);
+      bitpacking_default_value_to_xml(node, options);
+      bitpacking_x_options_to_xml(node, options, false);
       
       return node_ptr;
    }
@@ -454,7 +342,21 @@ namespace xmlgen {
             out += "   <c-types>\n";
             for(auto& info : list) {
                auto  node_ptr = info.stats.to_xml();
-               this->_apply_type_info_to(*node_ptr, info.stats.type);
+               {
+                  bitpacking::data_options options;
+                  options.load(info.stats.type);
+                  //
+                  bitpacking_x_options_to_xml(
+                     *node_ptr,
+                     options,
+                     true
+                  );
+               }
+               if (info.stats.type.is_container()) {
+                  auto cont      = info.stats.type.as_container();
+                  auto child_ptr = referenceable_struct_members_to_xml(cont);
+                  node_ptr->append_child(std::move(child_ptr));
+               }
                
                xml_element* instr = nullptr;
                if (info.instructions) {
