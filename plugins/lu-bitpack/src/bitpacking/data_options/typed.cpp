@@ -186,6 +186,8 @@ namespace bitpacking::typed_data_options::computed {
       this->transformed_type = src.transformed_type;
       this->pre_pack         = src.pre_pack;
       this->post_unpack      = src.post_unpack;
+      if (src.never_split_across_sectors)
+         this->never_split_across_sectors = true;
       
       auto type = _get_innermost_value_type(target);
       if (type && this->transformed_type && (*type).is_same(*this->transformed_type)) {

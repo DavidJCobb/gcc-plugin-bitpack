@@ -73,6 +73,7 @@ namespace bitpacking::typed_data_options {
          gcc_wrappers::type::optional_base     transformed_type;
          gcc_wrappers::decl::optional_function pre_pack;
          gcc_wrappers::decl::optional_function post_unpack;
+         bool never_split_across_sectors = false;
          
          bool load(gcc_wrappers::node target, const requested::transformed&, bool complain = true);
          
@@ -109,6 +110,7 @@ namespace bitpacking::typed_data_options {
          gcc_wrappers::type::optional_base     transformed_type;
          gcc_wrappers::decl::optional_function pre_pack;
          gcc_wrappers::decl::optional_function post_unpack;
+         bool never_split_across_sectors = false;
          
          bool operator==(const transformed&) const noexcept = default;
       };

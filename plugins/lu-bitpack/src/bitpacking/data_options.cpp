@@ -208,6 +208,7 @@ namespace bitpacking {
             if (dst.pre_pack && dst.post_unpack) {
                dst.transformed_type = get_transformed_type(*dst.pre_pack, *dst.post_unpack);
             }
+            dst.never_split_across_sectors = args[2].as<gw::constant::integer>().try_value_unsigned().value() != 0;
             continue;
          }
          

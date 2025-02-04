@@ -362,21 +362,33 @@ When these attributes are applied, they designate <dfn>transformation functions<
 When these attributes are applied to [fields that are of] an array type, the attributes are assumed to pertain to the innermost value type.
 
 <dl>
-   <dt><code>lu_bitpack_transforms("pre_pack=<var>pre</var>,post_unpack=<var>post</var>")</code></dt>
-      <dd><p>Specify <dfn>pre-pack</dfn> and <dfn>post-unpack</dfn> functions by their identifiers. These functions must exist at file scope.</p>
-      <p>The pre-pack function should have the signature <code>void pre(const <var>InSitu</var>*, <var>Transform</var>*)</code>. The post-unpack function should have the signature <code>void post(<var>InSitu</var>*, const <var>Transform</var>*)</code>.</p></dd>
+   <dt><code>lu_bitpack_transforms("<var>options</var>")</code></dt>
+      <dd>
+         <p>Specify a comma-separated list of options, where most options are either key/value pairs (separated with equal signs) or single keys. The available options are:</p>
+         <dl>
+            <dt><code>pre_pack=<var>pre</var></code></dt>
+               <dd><p>Required. The identifier of a <dfn>pre-pack</dfn> function, used to transform a value from its in situ type to its transformed type. The function must exist at file scope, and should have the signature <code>void pre(const <var>InSitu</var>*, <var>Transform</var>*)</code>.</p></dd>
+            <dt><code>post_unpack=<var>post</var></code></dt>
+               <dd><p>Required. The identifier of a <dfn>post-unpack</dfn> function, used to transform a value from its transformed type back to its in situ type. The function must exist at file scope, and should have the signature <code>void post(<var>InSitu</var>*, const <var>Transform</var>*)</code>.</p></dd>
+            <dt><code>never_split_across_sectors</code></dt>
+               <dd><p>Optional. If specified, then the transformed value will never be split across sector boundaries. This makes transformations more straightforward for you to implement.</p></dd>
+         </dl>
+      </dd>
 </dl>
 
-Additional requirements exist for pre-pack and post-unpack functions:
+The pre-pack and post-unpack functions must be symmetric: if a (valid) value is round-tripped through them, it should come out unchanged.
 
-* These functions must be symmetric.
+##### Sector splitting
+
+If the value is allowed to be split across multiple sectors (the default), then additional requirements exist to facilitate this:
+
 * It must be valid to invoke these functions on partially-constructed values.
   * These functions must not crash or fail on incomplete or invalid data.
   * These functions must not assume that data which appears to be valid actually is valid.
   * These functions must not have side-effects that depend on data being valid. (Save those for after you finish reading the entire bitstream.)
   * These functions must not assume that because one piece of data appears to be valid, any other piece of data is also valid.
 
-These requirements exist because a transformed value may be split across multiple sectors, and special measures have to be taken to prevent fields read in a later sector from clobbering fields read in an earlier sector.
+These requirements exist because when a transformed value is split across sectors, special measures have to be taken to prevent fields read in a later sector from clobbering fields read in an earlier sector.
 
 The naive approach to reading a transformed object would be as follows:
 
@@ -384,7 +396,7 @@ The naive approach to reading a transformed object would be as follows:
 * Read the object's data.
 * Call the post-unpack function to convert the transformed object back to its in situ type.
 
-However, when the transformed object is split across multiple sectors, this process ends up becoming:
+However, when the transformed object is split across multiple sectors, the naive approach ends up with the following behavior:
 
 * Construct an uninitialized transformed object.
 * Read the first few fields.
@@ -404,6 +416,8 @@ To prevent this, we use the following process whenever it appears as though a tr
 * Call the pre-pack function to convert the (incomplete) in situ object, overwriting the transformed object. Because the pre-pack and post-unpack functions are supposed to be symmetric, this means that the fields we read in the previous sector will be converted and written into the current sector's transformed object, preventing them from being lost.
 * Read the last few fields.
 * Call the post-unpack function to convert the now-complete transformed object back to its in situ type.
+
+This process generalizes to cases where an especially large transformed object is split across more than two sectors.
 
 #### Union options
 

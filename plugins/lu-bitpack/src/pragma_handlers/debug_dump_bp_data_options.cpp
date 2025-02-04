@@ -157,6 +157,14 @@ namespace pragma_handlers {
             }
             std::cerr << '\n';
          }
+         {
+            std::cerr << "    - Allow splitting across sectors: ";
+            if (src.never_split_across_sectors)
+               std::cerr << "no";
+            else
+               std::cerr << "yes";
+            std::cerr << '\n';
+         }
       } else {
          std::cerr << " - Bitpacking type: unknown\n";
       }

@@ -80,20 +80,20 @@ struct BadStruct {
       } a_data;
    } a_wrapped;
    
-   LU_BP_UNION_TAG(nope) union {
+   LU_BP_UNION_TAG(nope) union { // should fail
    } missing_tag;
    
-   LU_BP_UNION_TAG(a_tag) union {
+   LU_BP_UNION_TAG(a_tag) union { // should fail
       int a;
    } externally_tagged_with_member_sans_id;
    
-   LU_BP_UNION_INTERNAL_TAG(tag) union {
+   LU_BP_UNION_INTERNAL_TAG(tag) union { // should fail
       struct {
          int tag;
       } a;
    } internally_tagged_with_member_sans_id;
    
-   LU_BP_UNION_INTERNAL_TAG(tag) union {
+   LU_BP_UNION_INTERNAL_TAG(tag) union { // should fail
       LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
@@ -104,7 +104,7 @@ struct BadStruct {
       } y;
    } internal_tag_out_of_order;
    
-   LU_BP_UNION_INTERNAL_TAG(tag) union {
+   LU_BP_UNION_INTERNAL_TAG(tag) union { // should fail
       LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
@@ -115,7 +115,7 @@ struct BadStruct {
       } y;
    } internal_tag_different_types;
    
-   LU_BP_UNION_INTERNAL_TAG(tag) union {
+   LU_BP_UNION_INTERNAL_TAG(tag) union { // should fail
       LU_BP_TAGGED_ID(0) struct {
          int header;
          int tag;
@@ -126,14 +126,14 @@ struct BadStruct {
       } y;
    } internal_tag_different_options;
    
-   LU_BP_UNION_TAG(a_tag) LU_BP_UNION_INTERNAL_TAG(tag) union {
+   LU_BP_UNION_TAG(a_tag) LU_BP_UNION_INTERNAL_TAG(tag) union { // should fail
    } contradictorily_tagged_union;
    
-   LU_BP_UNION_INTERNAL_TAG(tag) union {
+   LU_BP_UNION_INTERNAL_TAG(tag) union { // should fail
    } empty_internally_tagged_union;
 };
    
-union LU_BP_UNION_INTERNAL_TAG(tag) MisorderedInternalTag {
+union LU_BP_UNION_INTERNAL_TAG(tag) MisorderedInternalTag { // should fail
    LU_BP_TAGGED_ID(0) struct {
       int header;
       int tag;
@@ -142,4 +142,8 @@ union LU_BP_UNION_INTERNAL_TAG(tag) MisorderedInternalTag {
       int tag;
       int header;
    } y;
+};
+
+union LU_BP_UNION_TAG(a_tag) OrphanedExternallyTaggedUnion { // should fail
+   int a;
 };

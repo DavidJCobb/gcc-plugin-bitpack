@@ -3,7 +3,7 @@
 #include "bitstreams.h"
 #include "helpers.h"
 
-#define SECTOR_COUNT 3
+#define SECTOR_COUNT 5
 #define SECTOR_SIZE 7
 
 #pragma lu_bitpack enable
@@ -159,6 +159,9 @@ struct TestStruct {
    LU_BP_TRANSFORM(PackBespoke,UnpackBespoke) struct Bespoke b;
    struct TransitiveA c;
    struct NestedOuter d;
+   
+   __attribute__((lu_bitpack_transforms("pre_pack=PackTransitiveA,post_unpack=UnpackTransitiveA,never_split_across_sectors")))
+   struct TransitiveA e;
 } sTestStruct;
 
 
@@ -168,6 +171,7 @@ struct TestStruct {
    data      = sTestStruct,            \
    enable_debug_output = true \
 )
+#pragma lu_bitpack debug_dump_bp_data_options TestStruct::e
 
 //
 // Testing:
@@ -193,6 +197,10 @@ void print_test_struct() {
    printf("      .a == %u\n", sTestStruct.d.a);
    printf("      .b == %u\n", sTestStruct.d.b);
    printf("   },\n");
+   printf("   .e == {\n");
+   printf("      .a == %d\n", sTestStruct.e.a);
+   printf("      .b == %d\n", sTestStruct.e.b);
+   printf("   },\n");
    printf("}\n");
 }
 
@@ -210,6 +218,8 @@ int main() {
    sTestStruct.c.b = 3;
    sTestStruct.d.a = 127;
    sTestStruct.d.b = 96;
+   sTestStruct.e.a = 3;
+   sTestStruct.e.b = 3;
    
    const char* divider = "====================================================\n";
    

@@ -121,6 +121,11 @@ namespace codegen {
          //
          return false;
       }
+      if (desc.options.is<typed_options::transformed>()) {
+         const auto& casted = desc.options.as<typed_options::transformed>();
+         if (casted.never_split_across_sectors)
+            return false;
+      }
       
       // Is struct or union?
       auto type = *desc.types.serialized;

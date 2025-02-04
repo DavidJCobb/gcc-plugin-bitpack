@@ -8,8 +8,10 @@
 #include "attribute_handlers/helpers/bp_attr_context.h"
 #include "attribute_handlers/generic_bitpacking_data_option.h"
 #include "bitpacking/transform_function_validation_helpers.h"
+#include "gcc_wrappers/constant/integer.h"
 #include "gcc_wrappers/constant/string.h"
 #include "gcc_wrappers/decl/function.h"
+#include "gcc_wrappers/builtin_types.h"
 #include "gcc_wrappers/identifier.h"
 namespace gw {
    using namespace gcc_wrappers;
@@ -39,6 +41,7 @@ namespace attribute_handlers {
       struct {
          std::optional<std::string> pre_pack;
          std::optional<std::string> post_unpack;
+         bool never_split_across_sectors = false;
       } params;
       try {
          lu::strings::handle_kv_string(data.value(), std::array{
@@ -54,6 +57,13 @@ namespace attribute_handlers {
                .has_param = true,
                .handler   = [&params](std::string_view v, int vi) {
                   params.post_unpack = v;
+               },
+            },
+            lu::strings::kv_string_param{
+               .name      = "never_split_across_sectors",
+               .has_param = false,
+               .handler   = [&params](std::string_view v, int vi) {
+                  params.never_split_across_sectors = true;
                },
             },
          });
@@ -166,6 +176,13 @@ namespace attribute_handlers {
       
       gw::list_node args({}, pre_pack);
       args.append({}, post_unpack);
+      {
+         auto cst = gw::constant::integer(
+            gw::builtin_types::get().basic_int,
+            params.never_split_across_sectors ? 1 : 0
+         );
+         args.append({}, cst);
+      }
       context.reapply_with_new_args(args);
    }
 

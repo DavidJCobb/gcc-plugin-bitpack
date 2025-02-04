@@ -68,7 +68,7 @@ namespace gcc_wrappers {
    node list_node::nth_pair(size_t n) {
       size_t i = 0;
       for(auto raw = this->_node; raw != NULL_TREE; raw = TREE_CHAIN(raw)) {
-         if (i == n)
+         if (i++ == n)
             return node::wrap(raw);
       }
       throw std::out_of_range("out-of-bounds indexed access to `list_node`");

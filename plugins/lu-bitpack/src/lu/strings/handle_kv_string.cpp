@@ -87,7 +87,7 @@ namespace lu::strings::_impl {
             } else {
                if (i != std::string::npos && data[i] == '=') {
                   throw std::runtime_error(stringf(
-                     "unexpected non-whitespace content after number (seen: %s=...)",
+                     "unexpected value for a key which should not have one (seen: %s=...)",
                      std::string(subarg).c_str()
                   ));
                }

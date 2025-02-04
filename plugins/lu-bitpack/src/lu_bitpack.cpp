@@ -169,7 +169,7 @@ namespace _attributes {
    static struct attribute_spec bitpack_transforms = {
       .name = "lu_bitpack_transforms",
       .min_length = 1, // min argcount
-      .max_length = 2, // max argcount // 2, for internal use
+      .max_length = 3, // max argcount // 3, for internal use
       .decl_required = false,
       .type_required = false,
       .function_type_required = false,

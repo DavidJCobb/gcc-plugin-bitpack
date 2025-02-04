@@ -8,17 +8,19 @@ C++:
 * `lu-bitpack`
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
-  * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
-  * We try to disallow marking non-addressable struct fields as to-be-transformed, but if the transform attributes are applied to the field's type rather than to the field itself, I believe that would dodge our validation.
   * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
   * Testcases needed:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
-  * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
-* As a band-aid to the "transformations and sector splitting" long-term task, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
+* Investigate compatibility with devkitARM, as a test for GCC forks generally. We'll likely have to be able to build devkitARM itself from source, and then compile against whatever headers it exposes to plug-ins (hopefully they didn't change much about that end of things).
 
 ## Long-term
+
+### Misc
+
+* Fail if a union type is marked as an externally-tagged union. (Currently, we've marked the attribute as decl-only, but that causes attribute warnings emitted by GCC itself, not errors, much less errors that would prevent codegen.)
+* XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
 
 ### Transformations and sector splitting
 
