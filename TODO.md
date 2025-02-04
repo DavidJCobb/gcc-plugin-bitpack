@@ -1,13 +1,11 @@
 
 # To-do
 
-## `lu-bitpack-rewrite`
-
-### Short-term
+## Short-term
 
 C++:
 
-* `lu-bitpack-rewrite-2`
+* `lu-bitpack`
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
   * Do not allow an externally tagged union to be used as the type to which a to-be-transformed entity is transformed.
@@ -17,7 +15,6 @@ C++:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
-  * Delete all of the plug-in folders other than `lu-bitpack-rewrite-2`, and rename `lu-bitpack-rewrite-2` to `lu_bitpack`.
   * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
 * As a band-aid to the next item, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
