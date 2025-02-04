@@ -13,7 +13,7 @@ C++:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
-* Investigate compatibility with devkitARM, as a test for GCC forks generally. We'll likely have to be able to build devkitARM itself from source, and then compile against whatever headers it exposes to plug-ins (hopefully they didn't change much about that end of things).
+* Investigate compatibility with devkitARM, as a test for GCC forks generally. We'll likely have to be able to build devkitARM itself from source (though we should first double-check this; maybe they ship plug-in source?), and then compile against whatever headers it exposes to plug-ins (hopefully they didn't change much about that end of things).
 
 ## Long-term
 
