@@ -16,7 +16,12 @@ C++:
       * From non-union to internally tagged union
       * From union to internally tagged union
   * XML report generation feels a bit spaghetti -- specifically, the way we put XML tags together at the tail end of the process, when we "bake" output.
-* As a band-aid to the next item, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
+* As a band-aid to the "transformations and sector splitting" long-term task, add a data option for to-be-transformed entities that prevents us from splitting them across sector boundaries.
+
+## Long-term
+
+### Transformations and sector splitting
+
 * Investigate a change to transformations, to account for sector splitting. I want to allow the user to provide two kinds of transform functions.
   * <dfn>Multi-stage functions</dfn> work as transformation functions currently do, with respect to sector splitting: they must accept invalid data, have no way of knowing whether data is valid or invalid, and may be repeatedly invoked for "the same" object (at different stages of "construction") if that object is split across sectors.
   * <dfn>Single-stage functions</dfn> are only invoked on fully-constructed objects (i.e. an object that has been read from the bitstream in full), as is typical in programming generally. To ensure this, we'd define a `static` instance of each individual transformed object that gets split across sectors, so that we can invoke the post-unpack function only after an instance is fully read (and without needing to invoke the pre-pack function as a per-sector pre-process step for reads).
