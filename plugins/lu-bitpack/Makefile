@@ -107,7 +107,7 @@ include ../../Makefile.common
 
 .PHONY: test
 test: $(PLUGIN)
-	$(CCPLUGIN) -c -o /dev/null testcases/basic/test.c -Itest
+	$(TARGET_CC) -c -o /dev/null testcases/basic/test.c -Itest
 
 .PHONY: testcase
 testcase: TESTDIR=testcases/$(testname)
@@ -121,8 +121,8 @@ ifdef test
 else
 	- rm -f testcases/*.o
 	- rm -f $(TESTDIR)/*.o
-	$(CCPLUGIN) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
-	$(CCPLUGIN) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
-	$(CCPLUGIN) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
+	$(TARGET_CC) $(PLUGINARGS) -c testcases/bitstreams.c -o testcases/bitstreams.o -Itestcases
+	$(TARGET_CC) $(PLUGINARGS) -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o -Itestcases
+	$(TARGET_CC) $(PLUGINARGS) testcases/bitstreams.o $(TESTDIR)/test.o -o $(TESTDIR)/test
 	$(TESTDIR)/test
 endif
