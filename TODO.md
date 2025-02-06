@@ -6,6 +6,7 @@
 C++:
 
 * `lu-bitpack`
+  * The project that I wanted to use this plug-in for requires that we be able to *dereference and then serialize* global pointers; i.e. we have some `gFooPtr` and we don't want to serialize the pointer itself, but rather we want to serialize the pointed-to data. The bitpacking plug-in currently can't do this, because it operates entirely in terms of `DECL`s.
   * Investigate being able to load global bitpacking options from an XML file (e.g. `#pragma lu_bitpack load_options "./path/to/file.xml"`), as a more convenient way to pass them in.
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
