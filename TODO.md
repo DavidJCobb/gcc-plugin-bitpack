@@ -7,6 +7,21 @@ C++:
 
 * `lu-bitpack`
   * The project that I wanted to use this plug-in for requires that we be able to *dereference and then serialize* global pointers; i.e. we have some `gFooPtr` and we don't want to serialize the pointer itself, but rather we want to serialize the pointed-to data. The bitpacking plug-in currently can't do this, because it operates entirely in terms of `DECL`s.
+    * We'd need to start by finding the places that rely on `decl_descriptor`s.
+      * Serialization items consist of segments, which each refer to a `decl_descriptor`.
+      * Rechunked items refer to `decl_descriptor`s via `qualified_decl` chunks.
+      * Final code generation operates in terms of `value_path`s, which are defined in terms of `decl_descriptor_pair`s.
+      * ...Is that everything?
+    * Once we find all such places, we'd have to audit them and see if we could expand them to use arbitrary expressions. Among other things, we need to be able to ascertain what, exactly, each piece of code *needs* from the `decl_descriptor`s. Type or size information? Bitpacking options? Help with member access?
+      * Notably, any member access into a value will lead to a `decl_descriptor` -- that of the `FIELD_DECL` being accessed.
+      * My thinking is, we could create a `value_descriptor` type that wraps either a `decl_descriptor` or a value-expression, and have it offer the same information and capabilities that `decl_descriptor` presently offers. It may perhaps be easiest to define it as something akin to `std::variant<decl_descriptor, expression_descriptor>` so that the code for handling expressions is as clean as that for handling DECLs, with a class to glue them.
+      * List of places
+        * Serialization items
+          * ...
+        * Rechunked items
+          * ...
+        * Instruction nodes
+          * ...
   * Investigate being able to load global bitpacking options from an XML file (e.g. `#pragma lu_bitpack load_options "./path/to/file.xml"`), as a more convenient way to pass them in.
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
