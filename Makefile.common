@@ -21,6 +21,12 @@
 #       could use `arm-none-eabi` (no quotes) to build the plug-
 #       in for the ARM EABI compiler.
 #
+#    TARGET_COMPILER
+#       If specified,  overrides all other configuration for the 
+#       target compiler.  We will build using the given compiler 
+#       and pull GMP from the given `GCCVER`. This should be the
+#       C compiler. Builds object files to `build/bespoke/`.
+#
 
 ################################################################
 
@@ -43,8 +49,10 @@ ifdef TARGET_MACHINE
 override TARGET_MACHINE := $(TARGET_MACHINE)-
 endif
 
-BUILD_INSTALLDIR=$(HOME)/gcc/install/$(BUILD_GCCVER)
 TARGET_INSTALLDIR=$(HOME)/gcc/install/$(TARGET_GCCVER)
+TARGET_GMPDIR=$(HOME)/gcc/build/$(TARGET_GCCVER)/gmp
+
+BUILD_INSTALLDIR=$(HOME)/gcc/install/$(BUILD_GCCVER)
 
 BUILD_CC=$(BUILD_INSTALLDIR)/bin/gcc
 BUILD_CXX=$(BUILD_INSTALLDIR)/bin/g++
@@ -54,8 +62,15 @@ PLUGINFLAG=-fplugin=./$(PLUGIN)
 TARGET_CC=$(TARGET_INSTALLDIR)/bin/$(TARGET_MACHINE)gcc $(PLUGINFLAG)
 TARGET_CXX=$(TARGET_INSTALLDIR)/bin/$(TARGET_MACHINE)g++ $(PLUGINFLAG)
 
-TARGET_GMPDIR=$(HOME)/gcc/build/$(TARGET_GCCVER)/gmp
-TARGET_PLUGINDIR=$(shell $(TARGET_CC) -print-file-name=plugin)
+BUILD_OBJECT_PATH=build/$(TARGET_GCCVER)
+ifdef TARGET_COMPILER
+override TARGET_CC=$(TARGET_COMPILER)
+BUILD_OBJECT_PATH=build/bespoke
+endif
+
+ifndef TARGET_PLUGINDIR
+override TARGET_PLUGINDIR=$(shell $(TARGET_CC) -print-file-name=plugin)
+endif
 
 BUILD_CXXFLAGS=-std=gnu++20 -fPIC -Wall -g -fno-rtti -I$(TARGET_PLUGINDIR)/include -I$(TARGET_GMPDIR) -I$(INCDIR)
 # This is a side effect of using C++11
@@ -65,14 +80,14 @@ BUILD_LDFLAGS=
 BUILD_LDADD=
 
 END=
-OBJECTS=$(patsubst src/%.cpp,build/$(TARGET_GCCVER)/%.o,$(SOURCES))
+OBJECTS=$(patsubst src/%.cpp,$(BUILD_OBJECT_PATH)/%.o,$(SOURCES))
 
 all: $(PLUGIN)
 
 $(PLUGIN): $(OBJECTS)
 	$(BUILD_CXX) $(BUILD_LDFLAGS) -o $@ -shared $+ $(BUILD_LDADD)
 
-build/$(TARGET_GCCVER)/%.o: src/%.cpp
+$(BUILD_OBJECT_PATH)/%.o: src/%.cpp
 	$(shell mkdir -p $(dir $@))
 	$(BUILD_CXX) -c -o $@ $(BUILD_CXXFLAGS) $<
 
