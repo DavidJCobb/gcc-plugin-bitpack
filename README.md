@@ -109,6 +109,14 @@ make GCCVER=13.1.0 testname=codegen-various-a testcase
 
 Substitute `13.1.0` for the version of GCC to build for, and `codegen-various-a` for a folder name in the `testcases` subfolder. Bear in mind that GCC 13+ requires newer versions of Ubuntu than 22.04, which is the default for WSL as of this writing.
 
+To build the plug-in in general, just run e.g. `make GCCVER=13.1.0`.
+
+To build the plug-in to run with a specific compiler (e.g. one with a different architecture), run:
+
+```
+make GCCVER=13.1.0 TARGET_COMPILER=path/to/my-cool-architecture-gcc-13.1.0
+```
+
 
 ## Usage
 

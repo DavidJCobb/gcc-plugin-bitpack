@@ -6,6 +6,7 @@
 C++:
 
 * `lu-bitpack`
+  * Investigate being able to load global bitpacking options from an XML file (e.g. `#pragma lu_bitpack load_options "./path/to/file.xml"`), as a more convenient way to pass them in.
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
   * Verify that our "on type finished" callback handler doesn't spuriously fire for forward-declarations. If it does, we do have a way to check if a type is complete, and we can gate things out based on that.
@@ -13,7 +14,6 @@ C++:
     * Transforms
       * From non-union to internally tagged union
       * From union to internally tagged union
-* Investigate compatibility with devkitARM, as a test for GCC forks generally. We'll likely have to be able to build devkitARM itself from source (though we should first double-check this; maybe they ship plug-in source?), and then compile against whatever headers it exposes to plug-ins (hopefully they didn't change much about that end of things).
 
 ## Long-term
 
