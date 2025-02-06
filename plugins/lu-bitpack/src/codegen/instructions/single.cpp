@@ -226,15 +226,32 @@ namespace codegen::instructions {
                save_func = global.functions.save.s32;
             }
             //*/
+            size_t bitcount = 0;
             if (vt_canonical == ty.uint8 || vt_canonical == ty.int8 || vt_canonical == ty.basic_char) {
-               read_func = global.functions.read.u8;
-               save_func = global.functions.save.u8;
+               bitcount = 8;
             } else if (vt_canonical == ty.uint16 || vt_canonical == ty.int16) {
-               read_func = global.functions.read.u16;
-               save_func = global.functions.save.u16;
+               bitcount = 16;
             } else if (vt_canonical == ty.uint32 || vt_canonical == ty.int32) {
-               read_func = global.functions.read.u32;
-               save_func = global.functions.save.u32;
+               bitcount = 32;
+            } else if (vt_canonical == ty.basic_int) {
+               bitcount = ty.basic_int.bitcount();
+            }
+            switch (bitcount) {
+               case 8:
+                  read_func = global.functions.read.u8;
+                  save_func = global.functions.save.u8;
+                  break;
+               case 16:
+                  read_func = global.functions.read.u16;
+                  save_func = global.functions.save.u16;
+                  break;
+               case 32:
+                  read_func = global.functions.read.u32;
+                  save_func = global.functions.save.u32;
+                  break;
+               default:
+                  assert(bitcount != 0 && "Unknown integral type!");
+                  assert(false && "The `int` type has an unexpected/unsupported bitcount!");
             }
          }
          assert(!!read_func);
