@@ -22,6 +22,7 @@ C++:
           * ...
         * Instruction nodes
           * ...
+  * When we generate code for unions, we need to generate an `else` branch for when the tag value doesn't match any of the defined members. In this branch, we should zero-pad the entire union (minus any values we already read as part of handling an internally-tagged union).
   * Investigate being able to load global bitpacking options from an XML file (e.g. `#pragma lu_bitpack load_options "./path/to/file.xml"`), as a more convenient way to pass them in.
   * Versioning
     * The project builds, and testcase `codegen-various-a` passes at run-time, all the way up through GCC 14.2.0.
