@@ -30,6 +30,16 @@ namespace codegen {
          const decl_descriptor& describe(gcc_wrappers::decl::param);
          const decl_descriptor& describe(gcc_wrappers::decl::variable);
          
+         // Create a descriptor for a pointer variable, and specify that what 
+         // we are describing is the pointed-to value. Asserts that either no 
+         // descriptor for the variable already exists, or the old descriptor 
+         // has the same level of pointer indirection.
+         //
+         // Descriptors exist per-DECL, so you can't have two descriptors for 
+         // the same DECL with different levels of indirection
+         const decl_descriptor& dereference_and_describe(gcc_wrappers::decl::param, size_t how_many_times = 1);
+         const decl_descriptor& dereference_and_describe(gcc_wrappers::decl::variable, size_t how_many_times = 1);
+         
          gcc_wrappers::type::optional_base type_transforms_into(gcc_wrappers::type::base);
    };
 }

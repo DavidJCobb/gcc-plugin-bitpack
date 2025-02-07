@@ -46,20 +46,14 @@ namespace codegen {
             assert(decl_r.is<gw::decl::param>() || decl_r.is<gw::decl::variable>());
             out = optional_value_pair(pair);
             first = false;
-            continue;
-         }
-         if (!first) {
-            //
-            // We may have a value path that looks like `a.b.c.d`, but `a` 
-            // may actually be a pointer. This is likely to occur when we 
-            // generate whole-struct serialization functions, where the 
-            // struct instance is a pointer argument to the function. We 
-            // need to produce `a->b.c.d` (or rather `(*a).b.c.d`) rather 
-            // than trying to do member access on the pointer itself.
-            //
-            if (out.read->value_type().is_pointer()) {
-               out = out.dereference();
+            {
+               auto count = pair.read->variable.dereference_count;
+               for(size_t i = 0; i < count; ++i) {
+                  assert(out.read->value_type().is_pointer());
+                  out = out.dereference();
+               }
             }
+            continue;
          }
          
          if (segm.is_array_access()) {
@@ -76,6 +70,7 @@ namespace codegen {
             auto& pair = segm.member_descriptor();
             assert(pair.read != nullptr);
             assert(pair.save != nullptr);
+            assert(pair.read->variable.dereference_count == 0);
             out = out.access_member(pair.read->decl.name().data());
          }
       }

@@ -94,33 +94,43 @@ namespace codegen {
       this->has_any_errors = !this->options.valid();
       this->_compute_types();
    }
-   decl_descriptor::decl_descriptor(gw::decl::param decl)
+   decl_descriptor::decl_descriptor(gw::decl::param decl, size_t dereference_count)
    :
       decl(decl),
       types({
          .basic_type = decl.value_type(),
       })
    {
-      if (this->types.basic_type.is_pointer()) {
-         //
-         // Special-case: when we generate whole-struct functions, those 
-         // functions will take the struct to serialize as a pointer argument. 
-         // We need to strip the pointer.
-         //
-         this->types.basic_type = this->types.basic_type.remove_pointer();
+      if (dereference_count) {
+         this->variable.dereference_count = dereference_count;
+         for(size_t i = 0; i < dereference_count; ++i) {
+            assert(this->types.basic_type.is_pointer());
+            this->types.basic_type = this->types.basic_type.remove_pointer();
+         }
+         this->options.load(this->types.basic_type);
+      } else {
+         this->options.load(decl);
       }
-      this->options.load(decl);
       this->has_any_errors = !this->options.valid();
       this->_compute_types();
    }
-   decl_descriptor::decl_descriptor(gw::decl::variable decl)
+   decl_descriptor::decl_descriptor(gw::decl::variable decl, size_t dereference_count)
    :
       decl(decl),
       types({
          .basic_type = decl.value_type(),
       })
    {
-      this->options.load(decl);
+      if (dereference_count) {
+         this->variable.dereference_count = dereference_count;
+         for(size_t i = 0; i < dereference_count; ++i) {
+            assert(this->types.basic_type.is_pointer());
+            this->types.basic_type = this->types.basic_type.remove_pointer();
+         }
+         this->options.load(this->types.basic_type);
+      } else {
+         this->options.load(decl);
+      }
       this->has_any_errors = !this->options.valid();
       this->_compute_types();
    }

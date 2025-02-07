@@ -209,7 +209,12 @@ namespace pragma_handlers {
                auto id   = entry.id;
                auto decl = gw::decl::variable::wrap(lookup_name(id.unwrap()));
                
-               const auto& desc = decl_dictionary.describe(decl);
+               const auto& desc =
+                  entry.dereference_count > 0 ?
+                     decl_dictionary.dereference_and_describe(decl, entry.dereference_count)
+                  :
+                     decl_dictionary.describe(decl)
+               ;
                if (!codegen::describe_and_check_decl_tree(desc)) {
                   error_at(entry.loc, "%<#pragma lu_bitpack generate_functions%>: aborting codegen due to invalid bitpacking data options applied to a to-be-serialized value");
                   return;

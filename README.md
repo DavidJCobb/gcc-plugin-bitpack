@@ -198,6 +198,7 @@ Options are key/value pairs, with pairs being comma-separated and keys being sep
    <dt><code>data</code></dt>
       <dd>
          <p>A list of identifiers (of top-level variables) to read/save into the serialized bitstream. Identifiers must be separated with whitespace or with a <code>|</code> glyph; the latter case will push the right-side identifier into the next sector.</p>
+         <p>If you have a pointer variable and you wish to serialize the data to which it points, you can prefix the identifier with one or more <code>*</code> glyphs to indicate dereferencing, as in C code. Note that when using this feature, bitpacking attributes applied to the variable will be ignored (because those attributes still apply to the variable itself i.e. the pointer, not the pointed-to data).</p>
       </dd>
    <dt><code>enable_debug_output</code></dt>
       <dd>

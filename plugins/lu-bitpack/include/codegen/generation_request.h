@@ -12,6 +12,7 @@ namespace codegen {
          struct identifier {
             gcc_wrappers::identifier id;
             location_t loc = UNKNOWN_LOCATION;
+            size_t dereference_count = 0;
             
             struct {
                gcc_wrappers::optional_node referent; // thing to which the identifier refers

@@ -20,14 +20,39 @@ namespace codegen {
    }
    const decl_descriptor& decl_dictionary::describe(gw::decl::param decl) {
       auto& item = this->_data[decl];
-      if (!item.get())
+      if (item.get()) {
+         assert(item->variable.dereference_count == 0);
+      } else {
          item = std::make_unique<decl_descriptor>(decl);
+      }
       return *item.get();
    }
    const decl_descriptor& decl_dictionary::describe(gw::decl::variable decl) {
       auto& item = this->_data[decl];
-      if (!item.get())
+      if (item.get()) {
+         assert(item->variable.dereference_count == 0);
+      } else {
          item = std::make_unique<decl_descriptor>(decl);
+      }
+      return *item.get();
+   }
+   
+   const decl_descriptor& decl_dictionary::dereference_and_describe(gcc_wrappers::decl::param decl, size_t how_many_times) {
+      auto& item = this->_data[decl];
+      if (item.get()) {
+         assert(item->variable.dereference_count == how_many_times);
+      } else {
+         item = std::make_unique<decl_descriptor>(decl, how_many_times);
+      }
+      return *item.get();
+   }
+   const decl_descriptor& decl_dictionary::dereference_and_describe(gcc_wrappers::decl::variable decl, size_t how_many_times) {
+      auto& item = this->_data[decl];
+      if (item.get()) {
+         assert(item->variable.dereference_count == how_many_times);
+      } else {
+         item = std::make_unique<decl_descriptor>(decl, how_many_times);
+      }
       return *item.get();
    }
    

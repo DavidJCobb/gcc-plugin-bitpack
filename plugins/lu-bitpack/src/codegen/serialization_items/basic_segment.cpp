@@ -48,7 +48,16 @@ namespace codegen::serialization_items {
    std::string basic_segment::to_string() const {
       std::string out;
       
+      size_t dereference_count = this->desc->variable.dereference_count;
+      if (dereference_count) {
+         out += '(';
+         for(size_t i = 0; i < dereference_count; ++i)
+            out += '*';
+      }
       out += this->desc->decl.name();
+      if (dereference_count) {
+         out += ')';
+      }
       for(auto& access : this->array_accesses) {
          out += '[';
          if (access.count == 1) {

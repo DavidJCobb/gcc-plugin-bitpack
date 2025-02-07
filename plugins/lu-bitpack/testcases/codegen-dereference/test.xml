@@ -29,7 +29,7 @@
             <bitcounts total-packed="64" />
          </stats>
          <instructions>
-            <struct type="TestStruct" value="sTestStruct" />
+            <struct type="TestStruct" value="(*sTestStructPtr)" />
          </instructions>
       </sector>
    </sectors>

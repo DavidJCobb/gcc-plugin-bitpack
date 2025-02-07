@@ -99,7 +99,13 @@ namespace codegen {
             
             token = pragma_lex(&data, &loc);
          } else if (key == "data") {
-            if (pragma_lex(&data, &loc) != CPP_NAME) {
+            size_t deref_count = 0;
+            token = pragma_lex(&data, &loc);
+            while (token == CPP_MULT) {
+               ++deref_count;
+               token = pragma_lex(&data, &loc);
+            }
+            if (token != CPP_NAME) {
                error_at(loc, "%qs: identifier expected as part of value for key %qs", pragma_name, key.data());
                return false;
             }
@@ -109,7 +115,8 @@ namespace codegen {
             do {
                this->identifier_groups.back().push_back(identifier{
                   .id  = gw::identifier::wrap(data),
-                  .loc = loc
+                  .loc = loc,
+                  .dereference_count = deref_count,
                });
                
                token = pragma_lex(&data, &loc);
@@ -121,7 +128,12 @@ namespace codegen {
                   //
                   // Next token.
                   //
+                  deref_count = 0;
                   token = pragma_lex(&data, &loc);
+                  while (token == CPP_MULT) {
+                     ++deref_count;
+                     token = pragma_lex(&data, &loc);
+                  }
                   if (token != CPP_NAME) {
                      error_at(loc, "%qs: identifier expected after %<|%>, as part of value for key %qs", pragma_name, key.data());
                      return false;
@@ -176,6 +188,23 @@ namespace codegen {
                   error_at(entry.loc, "%<#pragma lu_bitpack generate_functions%>: identifier %qE does not name a variable", id.unwrap());
                }
                return false;
+            }
+            {
+               auto decl = node->as<gw::decl::variable>();
+               auto type = decl.value_type();
+               for(size_t i = 0; i < entry.dereference_count; ++i) {
+                  if (!type.is_pointer()) {
+                     if (complain) {
+                        if (entry.dereference_count == 1) {
+                           error_at(entry.loc, "%<#pragma lu_bitpack generate_functions%>: identifier %qE is meant to be dereferenced once before being serialized, but it is not a pointer", id.unwrap());
+                        } else {
+                           error_at(entry.loc, "%<#pragma lu_bitpack generate_functions%>: identifier %qE is meant to be dereferenced %u times before being serialized, but it is not a pointer of that depth", id.unwrap(), (unsigned int)entry.dereference_count);
+                        }
+                     }
+                     return false;
+                  }
+                  type = type.remove_pointer();
+               }
             }
             entry.cached.referent = node;
          }

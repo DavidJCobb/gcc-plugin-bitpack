@@ -74,7 +74,7 @@ namespace codegen::instructions::utils {
             serialization_item item;
             auto& segm = item.segments.emplace_back();
             auto& data = segm.data.emplace<serialization_items::basic_segment>();
-            data.desc = &decl_dict.describe(result.read.nth_parameter(1));
+            data.desc = &decl_dict.dereference_and_describe(result.read.nth_parameter(1));
             si = item.expanded();
             
             serialization_item_list_ops::fold_sequential_array_elements(si);
@@ -94,8 +94,8 @@ namespace codegen::instructions::utils {
       // Do the update.
       //
       {
-         const auto& desc_read = decl_dict.describe(result.read.nth_parameter(1));
-         const auto& desc_save = decl_dict.describe(result.save.nth_parameter(1));
+         const auto& desc_read = decl_dict.dereference_and_describe(result.read.nth_parameter(1));
+         const auto& desc_save = decl_dict.dereference_and_describe(result.save.nth_parameter(1));
          auto _fix_value = [&desc_read, &desc_save](value_path& path) {
             if (path.segments.empty())
                return;

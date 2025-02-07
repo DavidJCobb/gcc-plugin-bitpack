@@ -19,8 +19,8 @@ namespace codegen {
       
       public:
          decl_descriptor(gcc_wrappers::decl::field);
-         decl_descriptor(gcc_wrappers::decl::param);
-         decl_descriptor(gcc_wrappers::decl::variable);
+         decl_descriptor(gcc_wrappers::decl::param,    size_t dereference_count = 0);
+         decl_descriptor(gcc_wrappers::decl::variable, size_t dereference_count = 0);
          
       public:
          gcc_wrappers::decl::base_value decl;
@@ -45,6 +45,12 @@ namespace codegen {
          struct {
             std::vector<size_t> extents; // for convenience: array extents leading to `serialized`
          } array;
+         struct {
+            // If non-zero, then the DECL is a pointer, and this descriptor describes 
+            // a pointed-to value that one can access by dereferencing the DECL this 
+            // many times. Only valid for VAR_DECLs and PARM_DECLs.
+            size_t dereference_count = 0;
+         } variable;
          bool has_any_errors = false;
          
          // Gets the members of the `serialized` type, as decl descriptors.

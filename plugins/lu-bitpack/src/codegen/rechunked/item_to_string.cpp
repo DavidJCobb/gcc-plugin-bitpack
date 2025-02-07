@@ -18,6 +18,8 @@ namespace codegen::rechunked {
       bool first = true;
       for(auto* desc : chunk.descriptors) {
          assert(desc != nullptr);
+         for(size_t i = 0; i < desc->variable.dereference_count; ++i)
+            dst += '*';
          if (first) {
             first = false;
          } else {

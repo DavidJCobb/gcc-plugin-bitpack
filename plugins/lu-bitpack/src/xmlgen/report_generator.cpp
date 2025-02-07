@@ -80,6 +80,16 @@ namespace xmlgen {
       for(size_t i = 0; i < this->_transformed_values.size(); ++i)
          if (pair == this->_transformed_values[i])
             return lu::stringf("__transformed_var_%u", (int)i);
+         
+      size_t deref = pair.read->variable.dereference_count;
+      if (deref) {
+         std::string out = "(";
+         for(size_t i = 0; i < deref; ++i)
+            out += '*';
+         out += pair.read->decl.name();
+         out += ')';
+         return out;
+      }
       
       return std::string(pair.read->decl.name());
    }
