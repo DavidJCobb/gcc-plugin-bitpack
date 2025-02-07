@@ -77,7 +77,7 @@ namespace pragma_handlers {
       bool valid = type.has_signature(
          false, // not unprototyped
          false, // not varargs
-         false, // require exact match; do not consider implicit argument conversions
+         true,  // require exact match; do not consider implicit argument conversions
          return_type,
          args
       );
