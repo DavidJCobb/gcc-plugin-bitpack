@@ -197,6 +197,10 @@ namespace codegen::instructions {
          auto& int_opt = options.as<typed_options::integral>();
          
          auto type = value.read->value_type();
+         {
+            // If the value we're working with is a bitfield, then we need to 
+            // get the non-bitfielded type.
+         }
          gw::decl::optional_function read_func;
          gw::decl::optional_function save_func;
          {
@@ -235,23 +239,24 @@ namespace codegen::instructions {
                bitcount = 32;
             } else if (vt_canonical == ty.basic_int) {
                bitcount = ty.basic_int.bitcount();
+            } else {
+               //
+               // Bitfield type or unsupported type.
+               //
+               bitcount = vt_canonical.size_in_bits();
             }
-            switch (bitcount) {
-               case 8:
-                  read_func = global.functions.read.u8;
-                  save_func = global.functions.save.u8;
-                  break;
-               case 16:
-                  read_func = global.functions.read.u16;
-                  save_func = global.functions.save.u16;
-                  break;
-               case 32:
-                  read_func = global.functions.read.u32;
-                  save_func = global.functions.save.u32;
-                  break;
-               default:
-                  assert(bitcount != 0 && "Unknown integral type!");
-                  assert(false && "The `int` type has an unexpected/unsupported bitcount!");
+            if (bitcount <= 8) {
+               read_func = global.functions.read.u8;
+               save_func = global.functions.save.u8;
+            } else if (bitcount <= 16) {
+               read_func = global.functions.read.u16;
+               save_func = global.functions.save.u16;
+            } else if (bitcount <= 32) {
+               read_func = global.functions.read.u32;
+               save_func = global.functions.save.u32;
+            } else {
+               assert(bitcount != 0 && "Unknown integral type!");
+               assert(false && "The `int` type has an unexpected/unsupported bitcount!");
             }
          }
          assert(!!read_func);

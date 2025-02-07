@@ -29,6 +29,10 @@ namespace gcc_wrappers::decl {
          type::base value_type() const;
          
          value as_value();
+            
+         bool is_read_only() const;
+         void make_read_only();
+         void set_is_read_only(bool);
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(base_value);
 }

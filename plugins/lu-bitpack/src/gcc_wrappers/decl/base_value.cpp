@@ -30,4 +30,14 @@ namespace gcc_wrappers::decl {
    type::base base_value::value_type() const {
       return type::base::wrap(TREE_TYPE(this->_node));
    }
+   
+   bool base_value::is_read_only() const {
+      return TREE_READONLY(this->_node) != 0;
+   }
+   void base_value::make_read_only() {
+      set_is_read_only(true);
+   }
+   void base_value::set_is_read_only(bool v) {
+      TREE_READONLY(this->_node) = v;
+   }
 }

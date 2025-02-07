@@ -10,6 +10,8 @@
 #include <tree.h>
 #include <c-family/c-common.h> // lookup_name
 #include <stringpool.h> // get_identifier
+#include <c-tree.h> // c_bind
+#include <toplev.h> // rest_of_decl_compilation
 #include <diagnostic.h>
 
 #include "codegen/generation_request.h"
@@ -325,12 +327,13 @@ namespace pragma_handlers {
          }
          
          const auto& ty = gw::builtin_types::get_fast();
+         auto const_size_type = ty.size.add_const();
          {  // __lu_bitpack_sector_count
-            gw::decl::variable var("__lu_bitpack_sector_count", ty.size);
+            gw::decl::variable var("__lu_bitpack_sector_count", const_size_type);
             var.make_artificial();
             var.set_initial_value(gw::constant::integer(ty.size, count));
+            var.make_read_only();
             var.make_file_scope_static();
-            var.set_is_defined_elsewhere(false);
             if constexpr (gw::environment::c::constexpr_supported) {
                if (gw::environment::c::current_dialect() >= gw::environment::c::dialect::c23) {
                   var.make_declared_constexpr();
@@ -338,11 +341,11 @@ namespace pragma_handlers {
             }
          }
          {  // __lu_bitpack_max_sector_size
-            gw::decl::variable var("__lu_bitpack_max_sector_size", ty.size);
+            gw::decl::variable var("__lu_bitpack_max_sector_size", const_size_type);
             var.make_artificial();
             var.set_initial_value(gw::constant::integer(ty.size, max_size));
+            var.make_read_only();
             var.make_file_scope_static();
-            var.set_is_defined_elsewhere(false);
             if constexpr (gw::environment::c::constexpr_supported) {
                if (gw::environment::c::current_dialect() >= gw::environment::c::dialect::c23) {
                   var.make_declared_constexpr();
