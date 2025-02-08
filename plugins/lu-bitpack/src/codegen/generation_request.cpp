@@ -128,16 +128,16 @@ namespace codegen {
                   //
                   // Next token.
                   //
-                  deref_count = 0;
                   token = pragma_lex(&data, &loc);
-                  while (token == CPP_MULT) {
-                     ++deref_count;
-                     token = pragma_lex(&data, &loc);
-                  }
-                  if (token != CPP_NAME) {
+                  if (token != CPP_MULT && token != CPP_NAME) {
                      error_at(loc, "%qs: identifier expected after %<|%>, as part of value for key %qs", pragma_name, key.data());
                      return false;
                   }
+               }
+               deref_count = 0;
+               while (token == CPP_MULT) {
+                  ++deref_count;
+                  token = pragma_lex(&data, &loc);
                }
                if (token == CPP_NAME) {
                   continue;

@@ -157,14 +157,20 @@ namespace codegen {
    }
    
    size_t decl_descriptor::serialized_type_size_in_bits() const {
+      if (this->options.is<typed_options::boolean>())
+         return 1;
+      
       if (this->options.is<typed_options::buffer>())
-         return options.as<typed_options::buffer>().bytecount * 8;
+         return this->options.as<typed_options::buffer>().bytecount * 8;
       
       if (this->options.is<typed_options::integral>())
-         return options.as<typed_options::integral>().bitcount;
+         return this->options.as<typed_options::integral>().bitcount;
+      
+      if (this->options.is<typed_options::pointer>())
+         return this->types.serialized->size_in_bits();
       
       if (this->options.is<typed_options::string>())
-         return options.as<typed_options::string>().length * 8;
+         return this->options.as<typed_options::string>().length * 8;
       
       auto type = *this->types.serialized;
       if (type.is_record()) {
@@ -201,6 +207,33 @@ namespace codegen {
          return largest;
       }
       
+      if (this->options.is<typed_options::transformed>()) {
+         //
+         // The transformed type IS NOT a struct or union.
+         //
+         bitpacking::data_options transformed_type_options;
+         transformed_type_options.load(type);
+         assert(transformed_type_options.valid() && "Unable to compute serialized size of a to-be-transformed DECL; the transformed type has invalid options.");
+         assert(!transformed_type_options.is<typed_options::structure>());
+         assert(!transformed_type_options.is<typed_options::tagged_union>());
+         
+         if (transformed_type_options.is<typed_options::boolean>())
+            return 1;
+         
+         if (transformed_type_options.is<typed_options::buffer>())
+            return transformed_type_options.as<typed_options::buffer>().bytecount * 8;
+         
+         if (transformed_type_options.is<typed_options::integral>())
+            return transformed_type_options.as<typed_options::integral>().bitcount;
+         
+         if (transformed_type_options.is<typed_options::pointer>())
+            return type.size_in_bits();
+         
+         if (transformed_type_options.is<typed_options::string>())
+            return transformed_type_options.as<typed_options::string>().length * 8;
+      }
+      
+      assert(this->options.is_omitted && "We don't know the serialized size of this value. If it's not omitted, we're in trouble!");
       return 0;
    }
    

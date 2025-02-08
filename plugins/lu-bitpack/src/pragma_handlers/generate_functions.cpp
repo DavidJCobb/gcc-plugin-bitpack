@@ -228,7 +228,12 @@ namespace pragma_handlers {
                data.desc = &desc;
             }
             
-            all_sectors_si = codegen::serialization_item_list_ops::divide_items_by_sectors(sector_size_in_bits, items);
+            {
+               auto these_sectors = codegen::serialization_item_list_ops::divide_items_by_sectors(sector_size_in_bits, items);
+               for(size_t i = 0; i < these_sectors.size(); ++i) {
+                  all_sectors_si.push_back(std::move(these_sectors[i]));
+               }
+            }
             //
             // Verify that we fit under the sector count limit; if we don't, 
             // report the problem to the user, show any pending debug output, 
