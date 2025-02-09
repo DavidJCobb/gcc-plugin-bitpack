@@ -44,6 +44,9 @@ namespace codegen {
          bool is_opaque_buffer() const;
          bool is_padding() const;
          bool is_union() const;
+         
+         // Think of this as akin to a `String.starts_with` check.
+         bool is_whole_or_part(const serialization_item&) const;
       
       protected:
          std::vector<serialization_item> _expand_record() const;

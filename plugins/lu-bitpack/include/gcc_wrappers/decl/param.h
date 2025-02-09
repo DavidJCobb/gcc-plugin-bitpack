@@ -14,6 +14,10 @@ namespace gcc_wrappers::decl {
          
       public:
          type::base effective_type() const;
+         
+         bool is_ever_read() const;
+         void make_ever_read();
+         void set_is_ever_read(bool);
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(param);
 }

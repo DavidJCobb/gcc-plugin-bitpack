@@ -82,11 +82,14 @@ SOURCES=\
         src/lu/strings/handle_kv_string.cpp \
         src/lu/strings/trim.cpp \
         src/lu/stringf.cpp \
+        src/pragma_handlers/helpers/parse_c_serialization_item.cpp \
         src/pragma_handlers/debug_dump_bp_data_options.cpp \
         src/pragma_handlers/debug_dump_function.cpp \
         src/pragma_handlers/debug_dump_identifier.cpp \
         src/pragma_handlers/enable.cpp \
         src/pragma_handlers/generate_functions.cpp \
+        src/pragma_handlers/serialized_offset_to_constant.cpp \
+        src/pragma_handlers/serialized_sector_id_to_constant.cpp \
         src/pragma_handlers/set_options.cpp \
         src/xmlgen/bitpacking_default_value_to_xml.cpp \
         src/xmlgen/bitpacking_x_options_to_xml.cpp \
@@ -99,6 +102,7 @@ SOURCES=\
         src/xmlgen/xml_element.cpp \
         src/basic_global_state.cpp \
         src/debugprint.cpp \
+        src/last_generation_result.cpp \
         src/pragma_parse_exception.cpp \
         src/$(PLUGIN_NAME).cpp \
 		$(END)

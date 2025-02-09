@@ -18,6 +18,7 @@
 #include "codegen/generation_result.h"
 
 #include "basic_global_state.h"
+#include "last_generation_result.h"
 #include "codegen/debugging/print_sectored_serialization_items.h"
 #include "codegen/debugging/print_sectored_rechunked_items.h"
 #include "codegen/instructions/base.h"
@@ -338,7 +339,8 @@ namespace pragma_handlers {
             var.make_artificial();
             var.set_initial_value(gw::constant::integer(ty.size, count));
             var.make_read_only();
-            var.make_file_scope_static();
+            var.make_file_scope_extern();
+            var.set_is_defined_elsewhere(false);
             if constexpr (gw::environment::c::constexpr_supported) {
                if (gw::environment::c::current_dialect() >= gw::environment::c::dialect::c23) {
                   var.make_declared_constexpr();
@@ -350,7 +352,8 @@ namespace pragma_handlers {
             var.make_artificial();
             var.set_initial_value(gw::constant::integer(ty.size, max_size));
             var.make_read_only();
-            var.make_file_scope_static();
+            var.make_file_scope_extern();
+            var.set_is_defined_elsewhere(false);
             if constexpr (gw::environment::c::constexpr_supported) {
                if (gw::environment::c::current_dialect() >= gw::environment::c::dialect::c23) {
                   var.make_declared_constexpr();
@@ -358,6 +361,11 @@ namespace pragma_handlers {
             }
          }
          inform(UNKNOWN_LOCATION, "generated built-in variables (%<__lu_bitpack_sector_count%> and friends)");
+      }
+      
+      {
+         auto& dst = last_generation_result::get();
+         dst.update(all_sectors_si);
       }
       
       //

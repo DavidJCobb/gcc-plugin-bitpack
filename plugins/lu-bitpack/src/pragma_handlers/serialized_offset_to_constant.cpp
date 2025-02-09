@@ -1,0 +1,164 @@
+#include "pragma_handlers/serialized_offset_to_constant.h"
+#include <inttypes.h> // PRIu64
+#include "gcc_wrappers/constant/integer.h"
+#include "gcc_wrappers/decl/variable.h"
+#include "gcc_wrappers/builtin_types.h"
+#include "gcc_wrappers/identifier.h"
+#include "codegen/decl_descriptor.h"
+#include "last_generation_result.h"
+#include "pragma_parse_exception.h"
+#include "pragma_handlers/helpers/parse_c_serialization_item.h"
+#include <c-family/c-common.h> // lookup_name
+#include <diagnostic.h>
+namespace gw {
+   using namespace gcc_wrappers;
+}
+
+namespace pragma_handlers {
+   extern void serialized_offset_to_constant(cpp_reader* reader) {
+      constexpr const char* this_pragma_name = "#pragma lu_bitpack serialized_offset_to_constant";
+      
+      auto& result = last_generation_result::get();
+      
+      location_t pragma_loc = UNKNOWN_LOCATION;
+      
+      // Extract the identifier to use for the generated variable.
+      gw::optional_identifier     requested_name;
+      gw::decl::optional_variable generated_variable;
+      {
+         tree       data;
+         location_t loc;
+         auto token_type = pragma_lex(&data, &loc);
+         pragma_loc = loc;
+         if (token_type != CPP_NAME) {
+            error_at(loc, "expected an identifier naming the variable to generate");
+            return;
+         }
+         requested_name = gw::identifier::wrap(data);
+         
+         auto raw = lookup_name(requested_name.unwrap());
+         if (raw != NULL_TREE) {
+            if (TREE_CODE(raw) != VAR_DECL) {
+               error_at(loc, "identifier %qE already exists, and does not name a variable", requested_name.unwrap());
+               return;
+            }
+            generated_variable = gw::decl::variable::wrap(raw);
+            
+            auto type = generated_variable->value_type();
+            if (!type.is_integer()) {
+               error_at(loc, "identifier %qE already exists, and names a variable that is not of an integer type", requested_name.unwrap());
+               return;
+            }
+            if (generated_variable->initial_value()) {
+               error_at(loc, "identifier %qE already exists, and names a variable that is already defined", requested_name.unwrap());
+               return;
+            }
+         }
+      }
+      
+      // Figure out what to-be-serialized value the user wants to know about.
+      codegen::serialization_item requested_item;
+      try {
+         requested_item = helpers::parse_c_serialization_item(reader);
+      } catch (const pragma_parse_exception& ex) {
+         error_at(ex.location, ex.what());
+         return;
+      }
+      
+      // Find what sector the to-be-serialized value is in, and find its bit-offset 
+      // within that sector.
+      size_t sector_count = result.sector_count();
+      std::optional<size_t> value;
+      for(size_t i = 0; i < sector_count; ++i) {
+         auto& items = result.get_sector_items()[i];
+         for(size_t j = 0; j < items.size(); ++j) {
+            auto& item = items[j];
+            if (!item.is_whole_or_part(requested_item))
+               continue;
+            
+            const auto& offsets = result.get_sector_offsets(i);
+            const auto& data    = offsets[j];
+            size_t additional = 0;
+            {
+               //
+               // Consider the following scenario: we have `int foo[7]`, and we query 
+               // the location of `foo[3]`. If the entirety of `foo` fit into a single 
+               // sector, then the only serialization item to find is `foo`, and the 
+               // offset of that serialization item will be the offset of `foo[0]`. To 
+               // find the offset of `foo[3]`, we have to drill down into the array.
+               //
+               // In the scenario where we want the offset of `foo[3]`, but only have 
+               // a serialization item for `foo`:
+               //
+               //  - segm_a    == `foo[3]`
+               //  - segm_b    == `foo`
+               //  - depth     == 1
+               //  - min_depth == 0
+               //
+               auto&  segm_a      = requested_item.segments.back().as_basic();
+               auto&  segm_b      = item.segments.back().as_basic();
+               size_t depth       = segm_a.array_accesses.size();
+               size_t min_depth   = segm_b.array_accesses.size();
+               assert(segm_a.desc == segm_b.desc);
+               assert(depth >= min_depth);
+               if (depth >= 0) {
+                  size_t single_size = segm_a.desc->serialized_type_size_in_bits();
+                  auto&  extents     = segm_a.desc->array.extents;
+                  for(size_t k = 0; k < depth; ++k) {
+                     size_t find_start = segm_a.array_accesses[k].start;
+                     size_t base_start = 0;
+                     if (segm_b.array_accesses.size() > k)
+                        base_start = segm_b.array_accesses[k].start;
+                     
+                     size_t diff = find_start - base_start;
+                     if (diff > 0) {
+                        for(size_t l = k + 1; l < extents.size(); ++l)
+                           diff *= extents[l];
+                        additional += diff * single_size;
+                     }
+                  }
+               }
+            }
+            
+            value = data.first + additional;
+            break;
+         }
+         
+         if (value.has_value())
+            break;
+      }
+      
+      // Generate the variable.
+      bool variable_already_declared = !!generated_variable;
+      if (!generated_variable) {
+         generated_variable = gw::decl::variable(*requested_name, gw::builtin_types::get().size, pragma_loc);
+         generated_variable->make_artificial();
+         generated_variable->make_read_only();
+      }
+      {
+         auto type = generated_variable->value_type();
+         if (!value.has_value()) {
+            error_at(pragma_loc, "%qs: the requested value does not appear to be present in the bitstream", this_pragma_name);
+            //
+            // We create the variable even if we don't have a match, so that user 
+            // code which refers to the variable doesn't generate compiler errors 
+            // about its nonexistence.
+            //
+            value = 0;
+         }
+         auto cst = gw::constant::integer(type.as_integral(), *value);
+         generated_variable->set_initial_value(cst);
+      }
+      if (!variable_already_declared) {
+         generated_variable->commit_to_current_scope();
+         generated_variable->set_is_defined_elsewhere(false);
+      }
+      
+      // Report status to the user.
+      if (variable_already_declared) {
+         inform(pragma_loc, "generated value %" PRIu64 " for previously-declared variable %qE", (uint64_t)*value, requested_name.unwrap());
+      } else {
+         inform(pragma_loc, "generated variable %qE with value %" PRIu64, requested_name.unwrap(), (uint64_t)*value);
+      }
+   }
+}

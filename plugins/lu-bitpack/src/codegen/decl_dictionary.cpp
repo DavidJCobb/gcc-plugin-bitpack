@@ -56,6 +56,13 @@ namespace codegen {
       return *item.get();
    }
    
+   const decl_descriptor* decl_dictionary::find_existing_descriptor(gcc_wrappers::decl::variable decl) const {
+      auto it = this->_data.find(decl);
+      if (it == this->_data.end())
+         return nullptr;
+      return it->second.get();
+   }
+   
    gcc_wrappers::type::optional_base decl_dictionary::type_transforms_into(gw::type::base type) {
       auto& item = this->_transformations[type];
       if (item)

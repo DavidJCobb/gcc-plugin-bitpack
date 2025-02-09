@@ -230,6 +230,57 @@ If successful, code generation will define (and implicitly declare, if needed) t
       </dd>
 </dl>
 
+#### `serialized_offset_to_constant`
+
+Defines a new `const size_t` variable with a name of your choosing, and sets its value to the location of a serialized value within the bitstream &mdash; specifically, the offset in bits from the start of the containing sector.
+
+```
+c++
+struct TestStruct {
+   u8 a;
+};
+
+static struct TestStruct  sTestStruct1;
+static struct TestStruct* sTestStruct2Ptr;
+
+// Define a new variable named `offset_of_a_1`
+#pragma lu_bitpack serialized_offset_to_constant offset_of_a_1 sTestStruct1.a
+
+// Define a new variable named `offset_of_a_2`
+#pragma lu_bitpack serialized_offset_to_constant offset_of_a_2 sTestStruct2Ptr->a
+```
+
+The syntax for referencing values in this pragma resembles C-language expressions and is as follows:
+
+* The first "segment" may be a bare identifier `foo` or a dereferenced identifier `(*foo)` (which may be multiply dereferenced).
+* Thereafter, you can access named members or array elements (via integer-constant indices) in any arbitrary combination, e.g. `foo.bar` or `foo[3]`.
+* Named members of the first "segment" may be accessed via `->` or `.`, while named members of all following segments must be accessed via `.`.
+* If you ask about a compound value, then you'll be told the offset at which the value starts; for example, asking about `foo` gives you the offset of `foo[0]`. Note that compound values may be split across sectors; if you need to access elements of an array, you should ask about each element individually.
+
+The pragma issues an error (and defines the variable with value 0 to avoid an error cascade) if you specify an improperly-formatted serialized value reference, or if the value you ask about isn't actually serialized.
+
+#### `serialized_sector_id_to_constant`
+
+Defines a new `const size_t` variable with a name of your choosing, and sets its value to the location of a serialized value within the bitstream &mdash; specifically, the index of the sector to which the value is serialized.
+
+```
+c++
+struct TestStruct {
+   u8 a;
+};
+
+static struct TestStruct  sTestStruct1;
+static struct TestStruct* sTestStruct2Ptr;
+
+// Define a new variable named `sector_of_a_1`
+#pragma lu_bitpack serialized_sector_id_to_constant sector_of_a_1 sTestStruct1.a
+
+// Define a new variable named `sector_of_a_2`
+#pragma lu_bitpack serialized_sector_id_to_constant sector_of_a_2 sTestStruct2Ptr->a
+```
+
+This pragma has the same syntax and caveats as `serialized_offset_to_constant`.
+
 #### `debug_dump_bp_data_options`
 
 Dumps the computed bitpacking options of a given identifier to the console. You can specify nested identifiers using `::`, and as of this writing, you can refer to types or declarations.

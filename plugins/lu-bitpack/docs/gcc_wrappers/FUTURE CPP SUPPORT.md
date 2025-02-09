@@ -40,3 +40,8 @@ auto& [x, y] = my_foo;
 ```
 
 Here, `x` and `y` are `VAR_DECL`s which use `DECL_HAS_VALUE_EXPR_P` to indicate that their values are located at `my_foo.a` and `my_foo.b`. They aren't `REFERENCE_TYPE`s; rather, it's more akin to `#define x my_foo.a` but with proper scoping.
+
+## Individual features we'd need to support
+
+* Checking/altering whether a variable is `thread_local` (investigate `DECL_THREAD_LOCAL_P`)
+

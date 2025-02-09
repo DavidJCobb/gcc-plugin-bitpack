@@ -479,6 +479,43 @@ namespace codegen {
       return true;
    }
    
+   bool serialization_item::is_whole_or_part(const serialization_item& other) const {
+      if (this->segments.size() < other.segments.size())
+         return false;
+      if (this->segments.empty() || other.segments.empty())
+         return false;
+      {
+         auto& segm = this->segments.back();
+         if (!segm.is_basic())
+            return false;
+      }
+      for(size_t i = 0; i < other.segments.size(); ++i) {
+         if (!this->segments[i].is_basic())
+            return false;
+         if (!other.segments[i].is_basic())
+            return false;
+         auto& segm_a = this->segments[i].as_basic(); // superstring
+         auto& segm_b = other.segments[i].as_basic(); // prefix
+         if (segm_a.desc != segm_b.desc)
+            return false;
+         for(size_t j = 0; j < segm_b.array_accesses.size(); ++j) {
+            array_access_info aai_superstring;
+            auto&             aai_prefix = segm_b.array_accesses[j];
+            if (j < segm_a.array_accesses.size()) {
+               aai_superstring = segm_a.array_accesses[j];
+            } else {
+               aai_superstring.start = 0;
+               aai_superstring.count = segm_a.desc->array.extents[j];
+            }
+            if (aai_superstring.start > aai_prefix.start)
+               return false;
+            if (aai_superstring.start + aai_superstring.count < aai_prefix.start + aai_prefix.count)
+               return false;
+         }
+      }
+      return true;
+   }
+   
    std::string serialization_item::to_string() const {
       if (this->segments.empty()) {
          return "<empty>";

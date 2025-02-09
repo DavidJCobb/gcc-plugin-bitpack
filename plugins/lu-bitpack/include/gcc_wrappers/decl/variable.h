@@ -44,6 +44,12 @@ namespace gcc_wrappers::decl {
          void make_externally_accessible();
          void set_is_externally_accessible(bool);
          
+         // Indicates whether the variable has ever been used in any 
+         // manner other than having its value set.
+         bool is_ever_read() const;
+         void make_ever_read();
+         void set_is_ever_read(bool);
+         
          // The getter should always be safe.
          //
          // The setter makes this assertion unconditionally:
@@ -57,7 +63,18 @@ namespace gcc_wrappers::decl {
          void make_declared_constexpr();
          void set_is_declared_constexpr(bool);
          
-         void make_file_scope_static();
+         
+         // Attempt to introduce this variable into the file/global scope, 
+         // such that name lookups, etc., can find it; and finalizes 
+         // compilation of the variable, generating whatever assembler 
+         // labels, etc., are necessary.
+         void make_file_scope_extern();
+         
+         // Attempt to introduce this variable into the scope that the 
+         // parser is currently in, such that name lookups, etc., can 
+         // find the variable; and finalizes compilation of the variable, 
+         // generating whatever assembler labels, etc., are necessary.
+         void commit_to_current_scope();
    };
    DECLARE_GCC_OPTIONAL_NODE_WRAPPER(variable);
 }

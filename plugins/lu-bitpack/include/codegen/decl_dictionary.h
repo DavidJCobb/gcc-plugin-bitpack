@@ -40,6 +40,8 @@ namespace codegen {
          const decl_descriptor& dereference_and_describe(gcc_wrappers::decl::param, size_t how_many_times = 1);
          const decl_descriptor& dereference_and_describe(gcc_wrappers::decl::variable, size_t how_many_times = 1);
          
+         const decl_descriptor* find_existing_descriptor(gcc_wrappers::decl::variable) const;
+         
          gcc_wrappers::type::optional_base type_transforms_into(gcc_wrappers::type::base);
    };
 }

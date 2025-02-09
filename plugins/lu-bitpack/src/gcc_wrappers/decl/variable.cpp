@@ -3,6 +3,7 @@
 #include "gcc_wrappers/identifier.h"
 #include "gcc_wrappers/_node_boilerplate-impl.define.h"
 #include <c-tree.h> // C_DECL_DECLARED_CONSTEXPR, c_bind
+#include <c-family/c-common.h> // add_stmt
 #include <toplev.h> // rest_of_decl_compilation
 #include "gcc_headers/plugin-version.h"
 #include "gcc_wrappers/environment/c/constexpr_supported.h"
@@ -65,6 +66,16 @@ namespace gcc_wrappers::decl {
       TREE_PUBLIC(this->_node) = v ? 1 : 0;
    }
    
+   bool variable::is_ever_read() const {
+      return DECL_READ_P(this->_node);
+   }
+   void variable::make_ever_read() {
+      set_is_ever_read(true);
+   }
+   void variable::set_is_ever_read(bool v) {
+      DECL_READ_P(this->_node) = v ? 1 : 0;
+   }
+   
    bool variable::is_declared_constexpr() const {
       #if GCCPLUGIN_VERSION_MAJOR >= 13 && GCCPLUGIN_VERSION_MINOR >= 1
          return C_DECL_DECLARED_CONSTEXPR(this->_node);
@@ -89,9 +100,25 @@ namespace gcc_wrappers::decl {
    }
    
    // https://gcc.gnu.org/pipermail/gcc/2022-November/240196.html
-   void variable::make_file_scope_static() {
+   void variable::make_file_scope_extern() {
       TREE_STATIC(this->_node) = 1;
       c_bind(DECL_SOURCE_LOCATION(this->_node), this->_node, true); // c/c-tree.h
       rest_of_decl_compilation(this->_node, true, false); // toplev.h
+   }
+   
+   void variable::commit_to_current_scope() {
+      assert(DECL_CONTEXT(this->_node) == NULL_TREE);
+      //
+      // The `c_bind` API binds a variable to either function-scope or 
+      // file-scope.
+      //
+      if (current_function_decl == NULL_TREE) {
+         TREE_STATIC(this->_node) = 1;
+      }
+      c_bind(DECL_SOURCE_LOCATION(this->_node), this->_node, false); // c/c-tree.h
+      rest_of_decl_compilation(this->_node, true, false); // toplev.h
+      if (!DECL_FILE_SCOPE_P(this->_node)) {
+         add_stmt(make_declare_expr().unwrap());
+      }
    }
 }

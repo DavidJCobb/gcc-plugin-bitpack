@@ -235,6 +235,8 @@ static void register_attributes(void* event_data, void* user_data) {
 #include "pragma_handlers/debug_dump_identifier.h"
 #include "pragma_handlers/enable.h"
 #include "pragma_handlers/generate_functions.h"
+#include "pragma_handlers/serialized_offset_to_constant.h"
+#include "pragma_handlers/serialized_sector_id_to_constant.h"
 #include "pragma_handlers/set_options.h"
 
 static void register_pragmas(void* event_data, void* user_data) {
@@ -262,6 +264,16 @@ static void register_pragmas(void* event_data, void* user_data) {
       "lu_bitpack",
       "generate_functions",
       &pragma_handlers::generate_functions
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "serialized_offset_to_constant",
+      &pragma_handlers::serialized_offset_to_constant
+   );
+   c_register_pragma_with_expansion(
+      "lu_bitpack",
+      "serialized_sector_id_to_constant",
+      &pragma_handlers::serialized_sector_id_to_constant
    );
    c_register_pragma_with_expansion(
       "lu_bitpack",
