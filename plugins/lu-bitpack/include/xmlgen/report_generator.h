@@ -79,6 +79,9 @@ namespace xmlgen {
          
          owned_element _generate_root(const codegen::instructions::container&);
          
+         void _sort_category_list();
+         void _sort_type_list();
+         
       public:
          void process(const codegen::instructions::container& sector_root);
          void process(const codegen::whole_struct_function_dictionary&);

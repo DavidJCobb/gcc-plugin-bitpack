@@ -4,12 +4,11 @@
       <option name="max-sector-bytecount" value="16" />
    </config>
    <categories>
-      <category name="test-names">
-         <bitcounts total-unpacked="112" total-packed="112" />
-         <counts total="2">
+      <category name="327">
+         <bitcounts total-unpacked="32" total-packed="3" />
+         <counts total="1">
             <in-sector index="0" count="1" />
-            <in-sector index="1" count="1" />
-            <in-top-level-value name="sTestStruct" count="2" />
+            <in-top-level-value name="sTestStruct" count="1" />
          </counts>
       </category>
       <category name="player-name">
@@ -20,13 +19,6 @@
             <in-top-level-value name="sTestStruct" count="3" />
          </counts>
       </category>
-      <category name="327">
-         <bitcounts total-unpacked="32" total-packed="3" />
-         <counts total="1">
-            <in-sector index="0" count="1" />
-            <in-top-level-value name="sTestStruct" count="1" />
-         </counts>
-      </category>
       <category name="second-cat">
          <bitcounts total-unpacked="32" total-packed="3" />
          <counts total="1">
@@ -34,21 +26,29 @@
             <in-top-level-value name="sTestStruct" count="1" />
          </counts>
       </category>
+      <category name="test-names">
+         <bitcounts total-unpacked="112" total-packed="112" />
+         <counts total="2">
+            <in-sector index="0" count="1" />
+            <in-sector index="1" count="1" />
+            <in-top-level-value name="sTestStruct" count="2" />
+         </counts>
+      </category>
    </categories>
    <c-types>
-      <struct tag="TestStructWhole" c-alignment="1" c-sizeof="19">
+      <struct tag="Color" c-alignment="1" c-sizeof="3">
          <members>
-            <integer name="array_a" type="u8[19]" bitcount="6" min="0">
-               <array-rank extent="19" />
-            </integer>
+            <integer name="r" type="u8" bitcount="8" min="0" />
+            <integer name="g" type="u8" bitcount="8" min="0" />
+            <integer name="b" type="u8" bitcount="8" min="0" />
          </members>
          <instructions>
-            <loop array="array_a" start="0" count="19" counter-var="__a">
-               <integer value="array_a[__a]" type="u8" bitcount="6" min="0" />
-            </loop>
+            <integer value="r" type="u8" bitcount="8" min="0" />
+            <integer value="g" type="u8" bitcount="8" min="0" />
+            <integer value="b" type="u8" bitcount="8" min="0" />
          </instructions>
       </struct>
-      <struct name="NamedByTypedef" c-alignment="1" c-sizeof="1">
+      <struct tag="NamedByTag" c-alignment="1" c-sizeof="1">
          <members>
             <integer name="data" type="u8" bitcount="8" min="0" />
          </members>
@@ -56,7 +56,7 @@
             <integer value="data" type="u8" bitcount="8" min="0" />
          </instructions>
       </struct>
-      <struct tag="NamedByTag" c-alignment="1" c-sizeof="1">
+      <struct name="NamedByTypedef" c-alignment="1" c-sizeof="1">
          <members>
             <integer name="data" type="u8" bitcount="8" min="0" />
          </members>
@@ -71,28 +71,6 @@
          <instructions>
             <integer value="data" type="u8" bitcount="8" min="0" />
          </instructions>
-      </struct>
-      <struct tag="Color" c-alignment="1" c-sizeof="3">
-         <members>
-            <integer name="r" type="u8" bitcount="8" min="0" />
-            <integer name="g" type="u8" bitcount="8" min="0" />
-            <integer name="b" type="u8" bitcount="8" min="0" />
-         </members>
-         <instructions>
-            <integer value="r" type="u8" bitcount="8" min="0" />
-            <integer value="g" type="u8" bitcount="8" min="0" />
-            <integer value="b" type="u8" bitcount="8" min="0" />
-         </instructions>
-      </struct>
-      <struct tag="TestStructAlt" c-alignment="1" c-sizeof="41">
-         <members>
-            <integer name="array_a" type="u8[19]" bitcount="6" min="0">
-               <array-rank extent="19" />
-            </integer>
-            <integer name="array_b" type="u8[22]" bitcount="6" min="0">
-               <array-rank extent="22" />
-            </integer>
-         </members>
       </struct>
       <struct tag="TestStruct" c-alignment="4" c-sizeof="128">
          <members>
@@ -163,6 +141,28 @@
             <struct name="using_tag_name" type="NamedByTag" />
             <struct name="using_typedef_name" type="NamedByTypedef" />
          </members>
+      </struct>
+      <struct tag="TestStructAlt" c-alignment="1" c-sizeof="41">
+         <members>
+            <integer name="array_a" type="u8[19]" bitcount="6" min="0">
+               <array-rank extent="19" />
+            </integer>
+            <integer name="array_b" type="u8[22]" bitcount="6" min="0">
+               <array-rank extent="22" />
+            </integer>
+         </members>
+      </struct>
+      <struct tag="TestStructWhole" c-alignment="1" c-sizeof="19">
+         <members>
+            <integer name="array_a" type="u8[19]" bitcount="6" min="0">
+               <array-rank extent="19" />
+            </integer>
+         </members>
+         <instructions>
+            <loop array="array_a" start="0" count="19" counter-var="__a">
+               <integer value="array_a[__a]" type="u8" bitcount="6" min="0" />
+            </loop>
+         </instructions>
       </struct>
    </c-types>
    <sectors>

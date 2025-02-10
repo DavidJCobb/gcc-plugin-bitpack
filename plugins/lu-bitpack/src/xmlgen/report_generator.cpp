@@ -266,6 +266,87 @@ namespace xmlgen {
       return node_ptr;
    }
    
+   void report_generator::_sort_category_list() {
+      auto& list = this->_categories;
+      std::sort(
+         list.begin(),
+         list.end(),
+         [](const auto& info_a, const auto& info_b) {
+            return info_a.name.compare(info_b.name) < 0;
+         }
+      );
+   }
+   void report_generator::_sort_type_list() {
+      auto& list = this->_types;
+      std::sort(
+         list.begin(),
+         list.end(),
+         [](const auto& info_a, const auto& info_b) {
+            auto type_a = info_a.stats.type;
+            auto type_b = info_b.stats.type;
+            
+            bool a_is_tag = true;
+            bool b_is_tag = true;
+            auto name_a = type_a.tag_name();
+            auto name_b = type_b.tag_name();
+            if (name_a.empty()) {
+               auto decl = type_a.declaration();
+               if (decl) {
+                  name_a = decl->name();
+                  a_is_tag = false;
+               }
+            }
+            if (name_b.empty()) {
+               auto decl = type_b.declaration();
+               if (decl) {
+                  name_b = decl->name();
+                  b_is_tag = false;
+               }
+            }
+            //
+            // Compare the names according to the following criteria, in 
+            // order of descending priority:
+            //
+            //  - ASCII-case-insensitive comparison
+            //  - Length comparison (shorter first)
+            //  - ASCII-case-sensitive comparison (uppercase first)
+            //  - Sort tag names before symbol names
+            //  - Sort by GCC type-node pointer (last-resort fallback)
+            //
+            size_t end = name_a.size();
+            if (end > name_b.size())
+               end = name_b.size();
+            
+            for(size_t i = 0; i < end; ++i) { // case-insensitive
+               char c = name_a[i];
+               char d = name_b[i];
+               if (c >= 'a' && c <= 'z')
+                  c -= 0x20;
+               if (d >= 'a' && d <= 'z')
+                  d -= 0x20;
+               if (c == d)
+                  continue;
+               return (c < d);
+            }
+            if (end > name_a.size())
+               return true; // a is shorter
+            if (end > name_b.size())
+               return false; // a is longer
+            for(size_t i = 0; i < end; ++i) {
+               char c = name_a[i];
+               char d = name_b[i];
+               if (c == d)
+                  continue;
+               return (c & 0x20) == 0; // whether a is uppercase
+            }
+            if (a_is_tag != b_is_tag) {
+               return a_is_tag; // tag names before symbol names
+            }
+            return type_a.unwrap() < type_b.unwrap(); // fallback
+         }
+      );
+   }
+   
    void report_generator::process(const codegen::instructions::container& root) {
       auto& info = this->_sectors.emplace_back();
       info.instructions = _generate_root(root);
@@ -337,6 +418,7 @@ namespace xmlgen {
       {  // categories
          auto& list = this->_categories;
          if (!list.empty()) {
+            this->_sort_category_list();
             out += "   <categories>\n";
             for(const auto& info : list) {
                auto node_ptr = info.stats.to_xml(info.name);
@@ -349,6 +431,7 @@ namespace xmlgen {
       {  // seen types
          auto& list = this->_types;
          if (!list.empty()) {
+            this->_sort_type_list();
             out += "   <c-types>\n";
             for(auto& info : list) {
                auto  node_ptr = info.stats.to_xml();
