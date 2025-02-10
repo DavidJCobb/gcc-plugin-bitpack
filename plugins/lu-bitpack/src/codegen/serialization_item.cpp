@@ -516,6 +516,46 @@ namespace codegen {
       return true;
    }
    
+   bool serialization_item::has_whole_overlap(const serialization_item& other) const {
+      if (this->segments.empty() || other.segments.empty())
+         return false;
+      if (!this->segments.back().is_basic())
+         return false;
+      if (!other.segments.back().is_basic())
+         return false;
+      
+      size_t size = this->segments.size();
+      if (size > other.segments.size())
+         size = other.segments.size();
+      
+      for(size_t i = 0; i < size; ++i) {
+         if (!this->segments[i].is_basic())
+            return false;
+         if (!other.segments[i].is_basic())
+            return false;
+         auto& segm_a = this->segments[i].as_basic();
+         auto& segm_b = other.segments[i].as_basic();
+         if (segm_a.desc != segm_b.desc)
+            return false;
+         
+         size_t depth = segm_a.array_accesses.size();
+         if (depth > segm_b.array_accesses.size())
+            depth = segm_b.array_accesses.size();
+         
+         for(size_t j = 0; j < depth; ++j) {
+            size_t a_start = segm_a.array_accesses[j].start;
+            size_t a_end   = segm_a.array_accesses[j].count + a_start;
+            size_t b_start = segm_b.array_accesses[j].start;
+            size_t b_end   = segm_b.array_accesses[j].count + b_start;
+            if (a_start > b_start && a_end > b_end)
+               return false;
+            if (b_start > a_start && b_end > a_end)
+               return false;
+         }
+      }
+      return true;
+   }
+   
    std::string serialization_item::to_string() const {
       if (this->segments.empty()) {
          return "<empty>";

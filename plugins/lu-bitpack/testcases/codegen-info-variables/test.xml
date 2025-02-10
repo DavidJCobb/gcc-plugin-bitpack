@@ -1,6 +1,6 @@
 <data>
    <config>
-      <option value="6" name="max-sector-count" />
+      <option value="8" name="max-sector-count" />
       <option value="16" name="max-sector-bytecount" />
    </config>
    <categories>
@@ -36,6 +36,18 @@
       </category>
    </categories>
    <c-types>
+      <struct c-sizeof="19" c-alignment="1" tag="TestStructWhole">
+         <members>
+            <integer min="0" bitcount="6" type="u8[19]" name="array_a">
+               <array-rank extent="19" />
+            </integer>
+         </members>
+         <instructions>
+            <loop counter-var="__a" count="19" start="0" array="array_a">
+               <integer min="0" bitcount="6" type="u8" value="array_a[__a]" />
+            </loop>
+         </instructions>
+      </struct>
       <struct c-alignment="1" c-sizeof="1" name="NamedByTypedef">
          <members>
             <integer min="0" bitcount="8" type="u8" name="data" />
@@ -255,6 +267,14 @@
             <loop counter-var="__a" count="20" start="2" array="(*sTestStructAltPtr).array_b">
                <integer min="0" bitcount="6" type="u8" value="(*sTestStructAltPtr).array_b[__a]" />
             </loop>
+         </instructions>
+      </sector>
+      <sector>
+         <stats>
+            <bitcounts total-packed="114" />
+         </stats>
+         <instructions>
+            <struct type="TestStructWhole" value="(*sTestStructWholePtr)" />
          </instructions>
       </sector>
    </sectors>

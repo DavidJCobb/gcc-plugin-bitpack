@@ -68,7 +68,7 @@ namespace pragma_handlers {
       size_t sector_count = result.sector_count();
       std::optional<size_t> value;
       for(size_t i = 0; i < sector_count; ++i) {
-         auto& items = result.get_sector_items()[i];
+         auto& items = result.get_sector_expanded_items()[i];
          for(auto& item : items) {
             if (item.is_whole_or_part(requested_item)) {
                value = i;

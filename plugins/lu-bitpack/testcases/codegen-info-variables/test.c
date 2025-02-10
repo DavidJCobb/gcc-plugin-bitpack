@@ -3,7 +3,7 @@
 #include "bitstreams.h"
 #include "helpers.h"
 
-#define SECTOR_COUNT 6
+#define SECTOR_COUNT 8
 #define SECTOR_SIZE 16
 
 #pragma lu_bitpack enable
@@ -111,13 +111,18 @@ struct TestStructAlt {
 };
 static struct TestStructAlt* sTestStructAltPtr;
 
+struct TestStructWhole {
+   LU_BP_BITCOUNT(6) u8 array_a[19];
+};
+static struct TestStructWhole* sTestStructWholePtr;
+
 extern void generated_read(const u8* src, int sector_id);
 extern void generated_save(u8* dst, int sector_id);
 
 #pragma lu_bitpack generate_functions( \
    read_name = generated_read,         \
    save_name = generated_save,         \
-   data      = sTestStruct | *sTestStructAltPtr \
+   data      = sTestStruct | *sTestStructAltPtr | *sTestStructWholePtr \
    ,enable_debug_output=true\
 )
 //#pragma lu_bitpack debug_dump_function generated_read
@@ -160,6 +165,7 @@ void print_test_struct() {
    printf("   .xml_tricky_test = \"%.12s\",\n", sTestStruct.xml_tricky_test);
    printf("   .xml_tricky_test_2 = \"%.12s\",\n", sTestStruct.xml_tricky_test_2);
    printf("}\n");
+   
    printf("*sTestStructAltPtr == {\n");
    printf("   array_a == {\n");
    printf("      ");
@@ -176,10 +182,22 @@ void print_test_struct() {
    printf("\n");
    printf("   },\n");
    printf("}\n");
+   
+   printf("*sTestStructWholePtr == {\n");
+   printf("   array_a == {\n");
+   printf("      ");
+   for(int i = 0; i < 14; ++i) {
+      printf("%u, ", sTestStructWholePtr->array_a[i]);
+   }
+   printf("\n");
+   printf("   },\n");
+   printf("}\n");
 }
 
 #include <stdlib.h> // malloc
 
+const unsigned int offset_of_boolean;
+const unsigned int sector_of_boolean;
 #pragma lu_bitpack serialized_offset_to_constant    offset_of_boolean sTestStruct.boolean
 #pragma lu_bitpack serialized_sector_id_to_constant sector_of_boolean sTestStruct.boolean
 
@@ -218,6 +236,10 @@ int main() {
    sTestStructAltPtr->array_a[5] = 55;
    sTestStructAltPtr->array_b[5] = 55;
    
+   sTestStructWholePtr = (struct TestStructWhole*) malloc(sizeof(struct TestStructWhole));
+   memset(sTestStructWholePtr, 0, sizeof(struct TestStructWhole));
+   sTestStructWholePtr->array_a[5] = 33;
+   
    const char* divider = "====================================================\n";
    
    printf(divider);
@@ -240,6 +262,13 @@ int main() {
       #pragma lu_bitpack serialized_offset_to_constant    array_b_5_offset sTestStructAltPtr->array_b[5]
       printf("array_b_5_sector == %u\n", array_b_5_sector);
       printf("array_b_5_offset == %u\n", array_b_5_offset);
+      //
+      // Test array slicing in a pointed-to struct
+      //
+      #pragma lu_bitpack serialized_sector_id_to_constant array_w_5_sector sTestStructWholePtr->array_a[5]
+      #pragma lu_bitpack serialized_offset_to_constant    array_w_5_offset sTestStructWholePtr->array_a[5]
+      printf("array_w_5_sector == %u\n", array_w_5_sector);
+      printf("array_w_5_offset == %u\n", array_w_5_offset);
    }
    
    printf(divider);
@@ -271,28 +300,50 @@ int main() {
    printf(divider);
    printf("Values extracted based on variables:\n");
    {
-      struct lu_BitstreamState state;
-      lu_BitstreamInitialize(&state, sector_buffers[sector_of_boolean]);
-      state.target += offset_of_boolean / 8;
-      state.shift   = offset_of_boolean % 8;
-      bool8 v = lu_BitstreamRead_bool(&state);
-      printf("sTestStruct.boolean == %u\n", v);
-   }
-   {
-      struct lu_BitstreamState state;
-      lu_BitstreamInitialize(&state, sector_buffers[array_a_5_sector]);
-      state.target += array_a_5_offset / 8;
-      state.shift   = array_a_5_offset % 8;
-      u8 v = lu_BitstreamRead_u8(&state, 6);
-      printf("sTestStructAltPtr->array_a[5] == %u\n", v);
-   }
-   {
-      struct lu_BitstreamState state;
-      lu_BitstreamInitialize(&state, sector_buffers[array_b_5_sector]);
-      state.target += array_b_5_offset / 8;
-      state.shift   = array_b_5_offset % 8;
-      u8 v = lu_BitstreamRead_u8(&state, 6);
-      printf("sTestStructAltPtr->array_b[5] == %u\n", v);
+      const unsigned int array_a_5_sector;
+      const unsigned int array_a_5_offset;
+      const unsigned int array_b_5_sector;
+      const unsigned int array_b_5_offset;
+      const unsigned int array_w_5_sector;
+      const unsigned int array_w_5_offset;
+      #pragma lu_bitpack serialized_sector_id_to_constant array_a_5_sector sTestStructAltPtr->array_a[5]
+      #pragma lu_bitpack serialized_offset_to_constant    array_a_5_offset sTestStructAltPtr->array_a[5]
+      #pragma lu_bitpack serialized_sector_id_to_constant array_b_5_sector sTestStructAltPtr->array_b[5]
+      #pragma lu_bitpack serialized_offset_to_constant    array_b_5_offset sTestStructAltPtr->array_b[5]
+      #pragma lu_bitpack serialized_sector_id_to_constant array_w_5_sector sTestStructWholePtr->array_a[5]
+      #pragma lu_bitpack serialized_offset_to_constant    array_w_5_offset sTestStructWholePtr->array_a[5]
+      {
+         struct lu_BitstreamState state;
+         lu_BitstreamInitialize(&state, sector_buffers[sector_of_boolean]);
+         state.target += offset_of_boolean / 8;
+         state.shift   = offset_of_boolean % 8;
+         bool8 v = lu_BitstreamRead_bool(&state);
+         printf("sTestStruct.boolean == %u\n", v);
+      }
+      {
+         struct lu_BitstreamState state;
+         lu_BitstreamInitialize(&state, sector_buffers[array_a_5_sector]);
+         state.target += array_a_5_offset / 8;
+         state.shift   = array_a_5_offset % 8;
+         u8 v = lu_BitstreamRead_u8(&state, 6);
+         printf("sTestStructAltPtr->array_a[5] == %u\n", v);
+      }
+      {
+         struct lu_BitstreamState state;
+         lu_BitstreamInitialize(&state, sector_buffers[array_b_5_sector]);
+         state.target += array_b_5_offset / 8;
+         state.shift   = array_b_5_offset % 8;
+         u8 v = lu_BitstreamRead_u8(&state, 6);
+         printf("sTestStructAltPtr->array_b[5] == %u\n", v);
+      }
+      {
+         struct lu_BitstreamState state;
+         lu_BitstreamInitialize(&state, sector_buffers[array_w_5_sector]);
+         state.target += array_w_5_offset / 8;
+         state.shift   = array_w_5_offset % 8;
+         u8 v = lu_BitstreamRead_u8(&state, 6);
+         printf("sTestStructWholePtr->array_a[5] == %u\n", v);
+      }
    }
    
    return 0;

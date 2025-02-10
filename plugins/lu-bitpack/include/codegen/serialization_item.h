@@ -47,6 +47,10 @@ namespace codegen {
          
          // Think of this as akin to a `String.starts_with` check.
          bool is_whole_or_part(const serialization_item&) const;
+         
+         // Checks whether A is B, contains all of B, or is contained 
+         // by all of B.
+         bool has_whole_overlap(const serialization_item&) const;
       
       protected:
          std::vector<serialization_item> _expand_record() const;

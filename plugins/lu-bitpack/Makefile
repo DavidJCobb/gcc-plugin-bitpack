@@ -45,6 +45,7 @@ SOURCES=\
         src/codegen/instructions/union_switch.cpp \
         src/codegen/serialization_item_list_ops/divide_items_by_sectors.cpp \
         src/codegen/serialization_item_list_ops/fold_sequential_array_elements.cpp \
+        src/codegen/serialization_item_list_ops/force_expand_but_values_only.cpp \
         src/codegen/serialization_item_list_ops/force_expand_omitted_and_defaulted.cpp \
         src/codegen/serialization_item_list_ops/force_expand_unions_and_anonymous.cpp \
         src/codegen/serialization_item_list_ops/get_offsets_and_sizes.cpp \

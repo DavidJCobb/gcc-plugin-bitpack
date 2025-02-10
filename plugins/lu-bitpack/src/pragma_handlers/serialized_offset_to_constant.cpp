@@ -70,13 +70,13 @@ namespace pragma_handlers {
       size_t sector_count = result.sector_count();
       std::optional<size_t> value;
       for(size_t i = 0; i < sector_count; ++i) {
-         auto& items = result.get_sector_items()[i];
+         auto& items = result.get_sector_expanded_items()[i];
          for(size_t j = 0; j < items.size(); ++j) {
             auto& item = items[j];
             if (!item.is_whole_or_part(requested_item))
                continue;
             
-            const auto& offsets = result.get_sector_offsets(i);
+            const auto& offsets = result.get_sector_offsets_expanded(i);
             const auto& data    = offsets[j];
             size_t additional = 0;
             {
@@ -96,10 +96,9 @@ namespace pragma_handlers {
                //  - min_depth == 0
                //
                auto&  segm_a      = requested_item.segments.back().as_basic();
-               auto&  segm_b      = item.segments.back().as_basic();
+               auto&  segm_b      = item.segments[requested_item.segments.size() - 1].as_basic();
                size_t depth       = segm_a.array_accesses.size();
                size_t min_depth   = segm_b.array_accesses.size();
-               assert(segm_a.desc == segm_b.desc);
                assert(depth >= min_depth);
                if (depth >= 0) {
                   size_t single_size = segm_a.desc->serialized_type_size_in_bits();
