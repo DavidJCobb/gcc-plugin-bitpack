@@ -8,6 +8,13 @@
 #include "xmlgen/write_string_as_text_content.h"
 
 namespace xmlgen {
+   size_t xml_element::_index_of_attribute(std::string_view name) const noexcept {
+      for(size_t i = 0; i < this->attributes.size(); ++i)
+         if (this->attributes[i].first == name)
+            return i;
+      return index_of_none;
+   }
+   
    void xml_element::append_child(std::unique_ptr<xml_element>&& child) {
       assert(child != nullptr);
       if (child->parent) {
@@ -56,12 +63,22 @@ namespace xmlgen {
    }
    
    void xml_element::remove_attribute(std::string_view name) {
-      this->attributes.erase(std::string(name));
+      size_t i = this->_index_of_attribute(name);
+      if (i == index_of_none)
+         return;
+      this->attributes.erase(this->attributes.begin() + i);
    }
    
    void xml_element::set_attribute(std::string_view name, std::string_view value) {
       assert(is_valid_name(name));
-      this->attributes[std::string(name)] = value;
+      size_t i = this->_index_of_attribute(name);
+      if (i == index_of_none) {
+         auto& attr = this->attributes.emplace_back();
+         attr.first  = std::string(name);
+         attr.second = value;
+         return;
+      }
+      this->attributes[i].second = value;
    }
    void xml_element::set_attribute_b(std::string_view name, bool value) {
       this->set_attribute(name, value ? "true" : "false");
@@ -82,7 +99,7 @@ namespace xmlgen {
       out += indent;
       out += '<';
       out += this->node_name;
-      for(auto& pair : this->attributes) {
+      for(const auto& pair : this->attributes) {
          out += ' ';
          out += pair.first;
          out += '=';

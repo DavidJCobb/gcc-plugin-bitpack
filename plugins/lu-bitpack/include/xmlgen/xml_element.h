@@ -9,11 +9,19 @@
 namespace xmlgen {
    class xml_element {
       public:
+         using attribute = std::pair<std::string, std::string>; // name, value
+         
+         static constexpr const size_t index_of_none = std::string::npos;
+      
+      public:
          std::string  node_name;
-         std::unordered_map<std::string, std::string> attributes;
+         std::vector<attribute> attributes;
          std::vector<std::unique_ptr<xml_element>> children;
          xml_element* parent = nullptr;
          std::string  text_content;
+         
+      protected:
+         size_t _index_of_attribute(std::string_view) const noexcept;
          
       public:
          void append_child(std::unique_ptr<xml_element>&&);
