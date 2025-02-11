@@ -38,6 +38,14 @@ namespace codegen::instructions {
             pair_gene.save
          );
       }
+      if (this->else_case.get()) {
+         auto pair_gene = this->else_case->generate(ctxt);
+         if (this->cases.empty()) {
+            return pair_gene;
+         }
+         branches_read.set_else_branch(pair_gene.read);
+         branches_save.set_else_branch(pair_gene.save);
+      }
       return expr_pair(*branches_read.result, *branches_save.result);
    }
 }

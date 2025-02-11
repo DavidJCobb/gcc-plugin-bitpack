@@ -14,6 +14,7 @@ namespace codegen::serialization_items {
       
       std::vector<basic_segment> lhs;
       intmax_t rhs = 0;
+      bool     is_else = false;
       
       std::string to_string() const;
    };

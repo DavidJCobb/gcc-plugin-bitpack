@@ -251,7 +251,11 @@ namespace codegen::rechunked {
                   .chunk = chunk,
                   .node  = node.get(),
                });
-               {
+               if (casted->is_else) {
+                  auto& uniq = switch_node->else_case;
+                  assert(uniq.get() == nullptr);
+                  uniq = std::move(node);
+               } else {
                   auto& uniq = switch_node->cases[casted->rhs];
                   assert(uniq.get() == nullptr);
                   uniq = std::move(node);

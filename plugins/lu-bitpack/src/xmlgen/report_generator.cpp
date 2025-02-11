@@ -220,6 +220,16 @@ namespace xmlgen {
             child.append_child(_generate(*nested));
          }
       }
+      if (instr.else_case) {
+         auto  child_ptr = std::make_unique<xml_element>();
+         auto& child     = *child_ptr;
+         child.node_name = "fallback-case";
+         node.append_child(std::move(child_ptr));
+         
+         for(auto& nested : instr.else_case->instructions) {
+            child.append_child(_generate(*nested));
+         }
+      }
       
       return node_ptr;
    }

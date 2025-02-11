@@ -1,13 +1,84 @@
 <data>
    <config>
-      <option value="4" name="max-sector-count" />
-      <option value="16" name="max-sector-bytecount" />
+      <option name="max-sector-count" value="4" />
+      <option name="max-sector-bytecount" value="16" />
    </config>
    <c-types>
-      <union c-sizeof="12" c-alignment="4" tag="InternalTagType">
+      <union tag="InternalTagType" c-alignment="4" c-sizeof="12">
          <union-options tag="tag" />
+         <members>
+            <struct name="a">
+               <members>
+                  <integer name="header" type="int" bitcount="32" min="0" />
+                  <integer name="tag" type="int" bitcount="32" min="0" />
+               </members>
+            </struct>
+            <struct name="b">
+               <members>
+                  <integer name="header" type="int" bitcount="32" min="0" />
+                  <integer name="tag" type="int" bitcount="32" min="0" />
+                  <integer name="data" type="int" bitcount="32" min="0" />
+               </members>
+            </struct>
+         </members>
       </union>
-      <struct c-sizeof="44" c-alignment="4" tag="TestStruct" />
+      <struct tag="TestStruct" c-alignment="4" c-sizeof="44">
+         <members>
+            <integer name="external_tag" type="int" bitcount="32" min="0" />
+            <union-external-tag name="external_data" tag="external_tag">
+               <members>
+                  <integer name="x" type="int" bitcount="31" min="0" />
+                  <integer name="y" type="int" bitcount="15" min="0" />
+                  <integer name="z" type="int" bitcount="7" min="0" />
+               </members>
+            </union-external-tag>
+            <union-internal-tag name="internal" tag="tag">
+               <members>
+                  <struct name="x">
+                     <members>
+                        <integer name="header" type="int" bitcount="32" min="0" />
+                        <integer name="tag" type="int" bitcount="32" min="0" />
+                     </members>
+                  </struct>
+                  <struct name="y">
+                     <members>
+                        <integer name="header" type="int" bitcount="32" min="0" />
+                        <integer name="tag" type="int" bitcount="32" min="0" />
+                        <integer name="data" type="int" bitcount="32" min="0" />
+                     </members>
+                  </struct>
+                  <struct name="z">
+                     <members>
+                        <integer name="header" type="int" bitcount="32" min="0" />
+                        <integer name="tag" type="int" bitcount="32" min="0" />
+                        <integer name="data" type="char" bitcount="8" min="0" />
+                     </members>
+                  </struct>
+               </members>
+            </union-internal-tag>
+            <union-internal-tag name="typed" type="InternalTagType" tag="tag" />
+            <integer name="nested_outer_tag" type="int" bitcount="32" min="0" />
+            <union-external-tag name="outer" tag="nested_outer_tag">
+               <members>
+                  <union-internal-tag name="inner" tag="nested_inner_tag">
+                     <members>
+                        <struct name="a">
+                           <members>
+                              <integer name="nested_inner_tag" type="int" bitcount="32" min="0" />
+                           </members>
+                        </struct>
+                        <struct name="b">
+                           <members>
+                              <integer name="nested_inner_tag" type="int" bitcount="32" min="0" />
+                              <integer name="data" type="int" bitcount="32" min="0" />
+                           </members>
+                        </struct>
+                     </members>
+                  </union-internal-tag>
+               </members>
+            </union-external-tag>
+         </members>
+      </struct>
    </c-types>
    <sectors>
       <sector>
@@ -15,19 +86,22 @@
             <bitcounts total-packed="63" />
          </stats>
          <instructions>
-            <integer min="0" bitcount="32" type="int" value="sTestStruct.external_tag" />
+            <integer value="sTestStruct.external_tag" type="int" bitcount="32" min="0" />
             <switch operand="sTestStruct.external_tag">
                <case value="2">
-                  <integer min="0" bitcount="7" type="int" value="sTestStruct.external_data.z" />
+                  <integer value="sTestStruct.external_data.z" type="int" bitcount="7" min="0" />
                   <padding bitcount="24" />
                </case>
                <case value="1">
-                  <integer min="0" bitcount="15" type="int" value="sTestStruct.external_data.y" />
+                  <integer value="sTestStruct.external_data.y" type="int" bitcount="15" min="0" />
                   <padding bitcount="16" />
                </case>
                <case value="0">
-                  <integer min="0" bitcount="31" type="int" value="sTestStruct.external_data.x" />
+                  <integer value="sTestStruct.external_data.x" type="int" bitcount="31" min="0" />
                </case>
+               <fallback-case>
+                  <padding bitcount="31" />
+               </fallback-case>
             </switch>
          </instructions>
       </sector>
@@ -36,19 +110,22 @@
             <bitcounts total-packed="96" />
          </stats>
          <instructions>
-            <integer min="0" bitcount="32" type="int" value="sTestStruct.internal.x.header" />
-            <integer min="0" bitcount="32" type="int" value="sTestStruct.internal.x.tag" />
+            <integer value="sTestStruct.internal.x.header" type="int" bitcount="32" min="0" />
+            <integer value="sTestStruct.internal.x.tag" type="int" bitcount="32" min="0" />
             <switch operand="sTestStruct.internal.x.tag">
                <case value="2">
-                  <integer min="0" bitcount="8" type="char" value="sTestStruct.internal.z.data" />
+                  <integer value="sTestStruct.internal.z.data" type="char" bitcount="8" min="0" />
                   <padding bitcount="24" />
                </case>
                <case value="1">
-                  <integer min="0" bitcount="32" type="int" value="sTestStruct.internal.y.data" />
+                  <integer value="sTestStruct.internal.y.data" type="int" bitcount="32" min="0" />
                </case>
                <case value="0">
                   <padding bitcount="32" />
                </case>
+               <fallback-case>
+                  <padding bitcount="32" />
+               </fallback-case>
             </switch>
          </instructions>
       </sector>
@@ -57,17 +134,20 @@
             <bitcounts total-packed="128" />
          </stats>
          <instructions>
-            <integer min="0" bitcount="32" type="int" value="sTestStruct.typed.a.header" />
-            <integer min="0" bitcount="32" type="int" value="sTestStruct.typed.a.tag" />
+            <integer value="sTestStruct.typed.a.header" type="int" bitcount="32" min="0" />
+            <integer value="sTestStruct.typed.a.tag" type="int" bitcount="32" min="0" />
             <switch operand="sTestStruct.typed.a.tag">
                <case value="1">
-                  <integer min="0" bitcount="32" type="int" value="sTestStruct.typed.b.data" />
+                  <integer value="sTestStruct.typed.b.data" type="int" bitcount="32" min="0" />
                </case>
                <case value="0">
                   <padding bitcount="32" />
                </case>
+               <fallback-case>
+                  <padding bitcount="32" />
+               </fallback-case>
             </switch>
-            <integer min="0" bitcount="32" type="int" value="sTestStruct.nested_outer_tag" />
+            <integer value="sTestStruct.nested_outer_tag" type="int" bitcount="32" min="0" />
          </instructions>
       </sector>
       <sector>
@@ -77,16 +157,22 @@
          <instructions>
             <switch operand="sTestStruct.nested_outer_tag">
                <case value="0">
-                  <integer min="0" bitcount="32" type="int" value="sTestStruct.outer.inner.a.nested_inner_tag" />
+                  <integer value="sTestStruct.outer.inner.a.nested_inner_tag" type="int" bitcount="32" min="0" />
                   <switch operand="sTestStruct.outer.inner.a.nested_inner_tag">
                      <case value="1">
-                        <integer min="0" bitcount="32" type="int" value="sTestStruct.outer.inner.b.data" />
+                        <integer value="sTestStruct.outer.inner.b.data" type="int" bitcount="32" min="0" />
                      </case>
                      <case value="0">
                         <padding bitcount="32" />
                      </case>
+                     <fallback-case>
+                        <padding bitcount="32" />
+                     </fallback-case>
                   </switch>
                </case>
+               <fallback-case>
+                  <padding bitcount="64" />
+               </fallback-case>
             </switch>
          </instructions>
       </sector>

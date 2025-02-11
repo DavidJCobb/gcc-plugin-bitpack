@@ -94,6 +94,7 @@ struct TestStruct {
    data      = sTestStruct,            \
    enable_debug_output = true \
 )
+//#pragma lu_bitpack debug_dump_function __lu_bitpack_read_sector_0
 
 //
 // Testing:

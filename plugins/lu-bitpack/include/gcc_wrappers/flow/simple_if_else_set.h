@@ -9,6 +9,7 @@ namespace gcc_wrappers {
          protected:
             expr::optional_ternary previous;
             type::base             type;
+            bool did_else = false;
          
          public:
             simple_if_else_set(type::optional_base result_type = {});
@@ -17,6 +18,10 @@ namespace gcc_wrappers {
             expr::optional_ternary result;
             
             void add_branch(value condition, expr::base branch);
+            
+            // Adds a final "else" branch. Asserts that at least one branch 
+            // already exists.
+            void set_else_branch(expr::base branch);
       };
    }
 }

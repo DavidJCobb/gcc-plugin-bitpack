@@ -246,9 +246,31 @@ namespace codegen {
             // Zero-pad so that all union permutations are of the same length.
             //
             serialization_item padding = clone;
+            padding.is_defaulted = false;
+            padding.is_omitted   = false;
             padding.segments.back().data.emplace<padding_segment>().bitcount = max_size - clone_size;
             out.push_back(std::move(padding));
          }
+      }
+      //
+      // Finally, insert an "else" item.
+      //
+      {
+         serialization_item padding = *this;
+         padding.is_defaulted = false;
+         padding.is_omitted   = false;
+         {
+            auto& segm = padding.segments.emplace_back();
+            auto& data = segm.data.emplace<padding_segment>();
+            data.bitcount  = max_size;
+            
+            condition_type cnd;
+            cnd.lhs     = path_to_tag;
+            cnd.is_else = true;
+            
+            segm.condition = cnd;
+         }
+         out.push_back(std::move(padding));
       }
       return out;
    }
@@ -378,6 +400,8 @@ namespace codegen {
             // Zero-pad so that all union permutations are of the same length.
             //
             serialization_item padding = *this;
+            padding.is_defaulted = false;
+            padding.is_omitted   = false;
             {
                auto& segm = padding.segments.emplace_back();
                auto& data = segm.data.emplace<padding_segment>();
@@ -386,6 +410,26 @@ namespace codegen {
             }
             out.push_back(std::move(padding));
          }
+      }
+      //
+      // Finally, insert an "else" item.
+      //
+      {
+         serialization_item padding = *this;
+         padding.is_defaulted = false;
+         padding.is_omitted   = false;
+         {
+            auto& segm = padding.segments.emplace_back();
+            auto& data = segm.data.emplace<padding_segment>();
+            data.bitcount  = max_size;
+            
+            condition_type cnd;
+            cnd.lhs     = path_to_tag;
+            cnd.is_else = true;
+            
+            segm.condition = cnd;
+         }
+         out.push_back(std::move(padding));
       }
       return out;
    }

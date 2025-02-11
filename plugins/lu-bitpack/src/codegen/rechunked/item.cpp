@@ -17,7 +17,8 @@ namespace codegen::rechunked {
          if (segm.condition.has_value()) {
             auto& src_cnd = *segm.condition;
             auto  dst_cnd = std::make_unique<chunks::condition>();
-            dst_cnd->rhs = src_cnd.rhs;
+            dst_cnd->rhs     = src_cnd.rhs;
+            dst_cnd->is_else = src_cnd.is_else;
             dst_cnd->set_lhs_from_segments(src_cnd.lhs);
             this->chunks.push_back(std::move(dst_cnd));
          }

@@ -21,5 +21,6 @@ namespace codegen::instructions {
       public:
          value_path condition_operand;
          std::unordered_map<intmax_t, std::unique_ptr<union_case>> cases;
+         std::unique_ptr<union_case> else_case;
    };
 }

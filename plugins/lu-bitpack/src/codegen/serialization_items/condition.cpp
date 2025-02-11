@@ -14,8 +14,12 @@ namespace codegen::serialization_items {
          
          out += segm.to_string();
       }
-      out += " == ";
-      out += lu::stringf("%" PRIdMAX, this->rhs);
+      if (this->is_else) {
+         out += " else";
+      } else {
+         out += " == ";
+         out += lu::stringf("%" PRIdMAX, this->rhs);
+      }
       
       return out;
    }

@@ -102,9 +102,13 @@ namespace codegen::rechunked {
                }
                dst += ' ';
             }
-            dst += "== ";
-            dst += lu::stringf("%" PRIdMAX, casted->rhs);
-            dst += ')';
+            if (casted->is_else) {
+               dst += "else)";
+            } else {
+               dst += "== ";
+               dst += lu::stringf("%" PRIdMAX, casted->rhs);
+               dst += ')';
+            }
             continue;
          }
       }

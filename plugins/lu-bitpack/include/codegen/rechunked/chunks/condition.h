@@ -23,6 +23,7 @@ namespace codegen::rechunked::chunks {
             std::vector<std::unique_ptr<base>> chunks;
          } lhs;
          intmax_t rhs = 0;
+         bool     is_else = false;
          
       public:
          void set_lhs_from_segments(const std::vector<serialization_items::basic_segment>&);

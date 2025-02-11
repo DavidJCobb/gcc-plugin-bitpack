@@ -10,6 +10,7 @@ namespace gcc_wrappers::flow {
    {}
    
    void simple_if_else_set::add_branch(value condition, expr::base branch) {
+      assert(!this->did_else);
       auto cond = expr::ternary(
          this->type,
          condition,
@@ -21,5 +22,12 @@ namespace gcc_wrappers::flow {
          this->result = cond;
       }
       this->previous = cond;
+   }
+
+   void simple_if_else_set::set_else_branch(expr::base branch) {
+      assert(!this->did_else);
+      assert(this->previous);
+      this->previous->set_false_branch(branch);
+      this->did_else = true;
    }
 }

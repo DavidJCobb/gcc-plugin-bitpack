@@ -99,9 +99,9 @@ Example:
 
 Indicates zero-padding used to keep all permutations of a tagged union the same length in the serialized output. The `bitcount` attribute indicates the number of padding bits emitted.
 
-#### `switch` and `case`
+#### `switch`, `case`, and `fallback-case`
 
-Indicates a switch-case used to handle a tagged union. The `operand` attribute indicates the value that we're switching on. Each child element is a `case` element with a `value` attribute; during serialization, we execute the instructions belonging to whatever `case` the `operand` matches.
+Indicates a switch-case used to handle a tagged union. The `operand` attribute indicates the value that we're switching on. Each child element will typically be a `case` element with a `value` attribute; during serialization, we execute the instructions belonging to whatever `case` the `operand` matches. The last child element may be a `fallback-case` element, indicating instructions to run if the union tag doesn't match any defined case.
 
 #### `transform`
 

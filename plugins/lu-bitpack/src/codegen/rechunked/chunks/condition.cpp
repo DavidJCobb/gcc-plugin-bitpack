@@ -13,6 +13,8 @@ namespace codegen::rechunked::chunks {
       
       if (this->rhs != casted->rhs)
          return false;
+      if (this->is_else != casted->is_else)
+         return false;
       if (!this->compare_lhs(*casted))
          return false;
       
