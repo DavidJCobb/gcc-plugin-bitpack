@@ -27,11 +27,11 @@ Accessors for the `DECL_READ_P` flag, which indicates whether the variable has e
 ### Other members
 
 #### `commit_to_current_scope`
-This can be called while the parser is still running. It will take the scope that the parser is currently in, find the nearest scope capable of holding variables, and attempt to introduce the variable into that scope (for the purpose of name lookups and similar). In C, this introduces the variable into the nearest enclosing function scope or, if there is none, into the file/global scope (but not the extern scope).
+This can be called while the parser is still running. It will introduce the variable into the current function scope, if the parser is inside a function, or into the file/global scope (but not the extern scope) otherwise. Note that unfortunately, when compiling C, there is no way to introduce the variable into the current *lexical* scope (i.e. the individual code block currently being parsed), as GCC doesn't expose the functions or state needed.
 
 This has the side effect of finalizing compilation of the variable, generating whatever assembler labels, etc., are necessary for it. This also creates a `DECLARE_EXPR` for you, in the parser's current statement list.
 
-This function asserts that the variable is not already in a scope. However, GCC doesn't expose enough of its internals for us to check whether the scope contains a variable with the same name.
+This function asserts that the variable is not already in a scope. However, GCC doesn't expose enough of its internals for us to check whether the scope contains a variable with the same name. If a variable with the same name already exists at the scope into which this function would be introduced, GCC will emit a user-visible compiler error, but there's no (good) way for us to detect this (preemptively or after the fact).
 
 #### `initial_value` and `set_initial_value`
 Accessors for the variable's initial value, if it has one.

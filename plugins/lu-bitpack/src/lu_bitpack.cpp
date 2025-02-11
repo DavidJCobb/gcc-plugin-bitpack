@@ -315,11 +315,6 @@ int plugin_init (
       if (std::string_view(arg.key) == "xml-out") {
          auto& dst = basic_global_state::get().xml_output_path;
          dst = arg.value;
-         if (dst.ends_with(".xml")) {
-            std::cerr << "lu-bitpack: XML output path set:\n   " << arg.value << "\n";
-         } else {
-            std::cerr << "lu-bitpack: invalid XML output path (" << arg.value << "); must end in .xml; rejected\n";
-         }
          continue;
       }
    }

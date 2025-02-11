@@ -18,6 +18,10 @@ namespace pragma_handlers {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack serialized_sector_id_to_constant";
       
       auto& result = last_generation_result::get();
+      if (result.empty()) {
+         error("%s: no code has been generated yet", this_pragma_name);
+         return;
+      }
       
       location_t pragma_loc = UNKNOWN_LOCATION;
       
@@ -65,19 +69,7 @@ namespace pragma_handlers {
       }
       
       // Find what sector the to-be-serialized value is in.
-      size_t sector_count = result.sector_count();
-      std::optional<size_t> value;
-      for(size_t i = 0; i < sector_count; ++i) {
-         auto& items = result.get_sector_expanded_items()[i];
-         for(auto& item : items) {
-            if (item.is_whole_or_part(requested_item)) {
-               value = i;
-               break;
-            }
-         }
-         if (value.has_value())
-            break;
-      }
+      auto value = result.find_containing_sector(requested_item);
       
       // Generate the variable.
       bool variable_already_declared = !!generated_variable;
@@ -89,7 +81,7 @@ namespace pragma_handlers {
       {
          auto type = generated_variable->value_type();
          if (!value.has_value()) {
-            error("%qs: the requested value does not appear to be present in the bitstream", this_pragma_name);
+            error_at(pragma_loc, "%qs: the requested value does not appear to be present in the bitstream", this_pragma_name);
             //
             // We create the variable even if we don't have a match, so that user 
             // code which refers to the variable doesn't generate compiler errors 

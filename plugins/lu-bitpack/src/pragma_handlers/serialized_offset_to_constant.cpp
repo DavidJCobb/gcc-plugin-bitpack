@@ -19,6 +19,10 @@ namespace pragma_handlers {
       constexpr const char* this_pragma_name = "#pragma lu_bitpack serialized_offset_to_constant";
       
       auto& result = last_generation_result::get();
+      if (result.empty()) {
+         error("%s: no code has been generated yet", this_pragma_name);
+         return;
+      }
       
       location_t pragma_loc = UNKNOWN_LOCATION;
       
@@ -67,65 +71,7 @@ namespace pragma_handlers {
       
       // Find what sector the to-be-serialized value is in, and find its bit-offset 
       // within that sector.
-      size_t sector_count = result.sector_count();
-      std::optional<size_t> value;
-      for(size_t i = 0; i < sector_count; ++i) {
-         auto& items = result.get_sector_expanded_items()[i];
-         for(size_t j = 0; j < items.size(); ++j) {
-            auto& item = items[j];
-            if (!item.is_whole_or_part(requested_item))
-               continue;
-            
-            const auto& offsets = result.get_sector_offsets_expanded(i);
-            const auto& data    = offsets[j];
-            size_t additional = 0;
-            {
-               //
-               // Consider the following scenario: we have `int foo[7]`, and we query 
-               // the location of `foo[3]`. If the entirety of `foo` fit into a single 
-               // sector, then the only serialization item to find is `foo`, and the 
-               // offset of that serialization item will be the offset of `foo[0]`. To 
-               // find the offset of `foo[3]`, we have to drill down into the array.
-               //
-               // In the scenario where we want the offset of `foo[3]`, but only have 
-               // a serialization item for `foo`:
-               //
-               //  - segm_a    == `foo[3]`
-               //  - segm_b    == `foo`
-               //  - depth     == 1
-               //  - min_depth == 0
-               //
-               auto&  segm_a      = requested_item.segments.back().as_basic();
-               auto&  segm_b      = item.segments[requested_item.segments.size() - 1].as_basic();
-               size_t depth       = segm_a.array_accesses.size();
-               size_t min_depth   = segm_b.array_accesses.size();
-               assert(depth >= min_depth);
-               if (depth >= 0) {
-                  size_t single_size = segm_a.desc->serialized_type_size_in_bits();
-                  auto&  extents     = segm_a.desc->array.extents;
-                  for(size_t k = 0; k < depth; ++k) {
-                     size_t find_start = segm_a.array_accesses[k].start;
-                     size_t base_start = 0;
-                     if (segm_b.array_accesses.size() > k)
-                        base_start = segm_b.array_accesses[k].start;
-                     
-                     size_t diff = find_start - base_start;
-                     if (diff > 0) {
-                        for(size_t l = k + 1; l < extents.size(); ++l)
-                           diff *= extents[l];
-                        additional += diff * single_size;
-                     }
-                  }
-               }
-            }
-            
-            value = data.first + additional;
-            break;
-         }
-         
-         if (value.has_value())
-            break;
-      }
+      auto value = result.find_offset_within_sector(requested_item);
       
       // Generate the variable.
       bool variable_already_declared = !!generated_variable;
