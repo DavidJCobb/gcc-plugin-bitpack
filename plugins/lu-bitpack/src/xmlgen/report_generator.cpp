@@ -6,6 +6,8 @@
 #include "bitpacking/global_options.h"
 #include "basic_global_state.h"
 #include "codegen/decl_descriptor.h"
+#include "codegen/decl_dictionary.h"
+#include "codegen/generation_request.h"
 #include "codegen/stats_gatherer.h"
 #include "codegen/whole_struct_function_dictionary.h"
 #include "codegen/whole_struct_function_info.h"
@@ -16,6 +18,8 @@
 #include "gcc_wrappers/decl/type_def.h"
 #include "gcc_wrappers/type/record.h"
 #include "gcc_wrappers/type/untagged_union.h"
+#include "gcc_wrappers/identifier.h"
+#include <c-family/c-common.h> // lookup_name
 namespace gw {
    using namespace gcc_wrappers;
 }
@@ -357,6 +361,33 @@ namespace xmlgen {
       );
    }
    
+   void report_generator::process(const codegen::generation_request& request) {
+      auto& dict = codegen::decl_dictionary::get();
+      for(size_t i = 0; i < request.identifier_groups.size(); ++i) {
+         const auto& group = request.identifier_groups[i];
+         for(size_t j = 0; j < group.size(); ++j) {
+            const auto& item = group[j];
+            
+            auto& dst = this->_top_level_identifiers.emplace_back();
+            dst.identifier        = item.id.name();
+            dst.dereference_count = item.dereference_count;
+            if (i > 0 && j == 0)
+               dst.force_to_next_sector = true;
+            
+            auto decl = gw::decl::variable::wrap(lookup_name((tree)item.id.unwrap()));
+            dst.original_type = decl.value_type();
+            const auto& desc =
+               item.dereference_count > 0 ?
+                  dict.dereference_and_describe(decl, item.dereference_count)
+               :
+                  dict.describe(decl)
+            ;
+            
+            dst.serialized_type = desc.types.serialized;
+            dst.options         = desc.options;
+         }
+      }
+   }
    void report_generator::process(const codegen::instructions::container& root) {
       auto& info = this->_sectors.emplace_back();
       info.instructions = _generate_root(root);
@@ -474,6 +505,37 @@ namespace xmlgen {
             }
             out += "   </c-types>\n";
          }
+      }
+      {  // top-level values to save
+         out += "   <top-level-values>\n";
+         for(size_t i = 0; i < this->_top_level_identifiers.size(); ++i) {
+            auto& ident = this->_top_level_identifiers[i];
+            auto  node_ptr = std::make_unique<xml_element>();
+            auto& node     = *node_ptr;
+            node.set_attribute("name", ident.identifier);
+            if (ident.dereference_count > 0)
+               node.set_attribute_i("dereference-count", ident.dereference_count);
+            if (ident.force_to_next_sector)
+               node.set_attribute_b("force-to-next-sector", true);
+            
+            if (ident.original_type) {
+               auto pp = ident.original_type->pretty_print();
+               if (pp != "<unnamed>")
+                  node.set_attribute("type", pp);
+            }
+            if (ident.serialized_type) {
+               auto pp = ident.serialized_type->pretty_print();
+               if (pp != "<unnamed>")
+                  node.set_attribute("serialized-type", pp);
+            }
+            
+            bitpacking_x_options_to_xml(node, ident.options, false);
+            bitpacking_default_value_to_xml(node, ident.options);
+            
+            out += node.to_string(2);
+            out += '\n';
+         }
+         out += "   </top-level-values>\n";
       }
       {  // sectors
          auto& list = this->_sectors;

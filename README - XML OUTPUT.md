@@ -64,6 +64,23 @@ Struct and union types may also have the following child elements:
       </dd>
 </dl>
 
+### `top-level-values`
+
+This node contains elements which describe the to-be-serialized variables. Each element is a value element (see below) with the following additional attributes:
+
+<dl>
+   <dt><code>name</code></dt>
+      <dd>The identifier to be serialized</dd>
+   <dt><code>dereference-count</code></dt>
+      <dd>If present, the value indicates the number of times the identifier is dereferenced before serialization</dd>
+   <dt><code>force-to-next-sector</code></dt>
+      <dd>If present and set to <code>true</code>, then the identifier is forced to the start of the next sector, even if it could fit in the current sector</dd>
+   <dt><code>type</code></dt>
+      <dd>The variable's type, in C syntax. Absent if the type has no name.</dd>
+   <dt><code>serialized-type</code></dt>
+      <dd>The variable's serialized type, in C syntax. Absent if the type has no name. This can vary from the <code>type</code> if the variable is a transformed value, or if it's a dereferenced pointer.</dd>
+</dl>
+
 ### `sectors`
 
 This node contains one child `sector` element per sector in the serialized output. Each element may contain `instructions` and `stats` elements (one each).

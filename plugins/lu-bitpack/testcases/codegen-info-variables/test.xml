@@ -165,6 +165,11 @@
          </instructions>
       </struct>
    </c-types>
+   <top-level-values>
+      <struct name="sTestStruct" type="TestStruct" serialized-type="TestStruct" />
+      <struct name="sTestStructAltPtr" dereference-count="1" force-to-next-sector="true" type="TestStructAlt*" serialized-type="TestStructAlt" />
+      <struct name="sTestStructWholePtr" dereference-count="1" force-to-next-sector="true" type="TestStructWhole*" serialized-type="TestStructWhole" />
+   </top-level-values>
    <sectors>
       <sector>
          <stats>

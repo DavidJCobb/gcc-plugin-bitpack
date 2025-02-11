@@ -2,16 +2,17 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "bitpacking/data_options.h"
 #include "codegen/stats/c_type.h"
 #include "codegen/stats/category.h"
 #include "codegen/stats/sector.h"
 #include "codegen/decl_descriptor_pair.h"
 #include "xmlgen/xml_element.h"
 #include "gcc_wrappers/type/base.h"
-
-namespace bitpacking {
-   class data_options;
+namespace codegen {
+   class generation_request;
 }
+
 namespace codegen {
    namespace instructions {
       class base;
@@ -48,10 +49,20 @@ namespace xmlgen {
             codegen::stats::c_type stats;
             owned_element          instructions;
          };
-      
+         struct top_level_identifier {
+            std::string identifier;
+            size_t      dereference_count = 0;
+            bool        force_to_next_sector = false;
+            
+            gcc_wrappers::type::optional_base original_type;
+            gcc_wrappers::type::optional_base serialized_type;
+            bitpacking::data_options options;
+         };
+         
          std::vector<category_info> _categories;
          std::vector<sector_info>   _sectors;
          std::vector<type_info>     _types;
+         std::vector<top_level_identifier> _top_level_identifiers;
          
          // Used to give each loop variable a unique name and ID. We gather 
          // these up before generating XML. Each variable's ID is its index 
@@ -83,6 +94,7 @@ namespace xmlgen {
          void _sort_type_list();
          
       public:
+         void process(const codegen::generation_request&);
          void process(const codegen::instructions::container& sector_root);
          void process(const codegen::whole_struct_function_dictionary&);
          void process(const codegen::stats_gatherer&);

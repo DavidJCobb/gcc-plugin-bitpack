@@ -80,6 +80,9 @@
          </members>
       </struct>
    </c-types>
+   <top-level-values>
+      <struct name="sTestStruct" type="TestStruct" serialized-type="TestStruct" />
+   </top-level-values>
    <sectors>
       <sector>
          <stats>

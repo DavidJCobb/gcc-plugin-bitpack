@@ -378,6 +378,7 @@ namespace pragma_handlers {
             stats.gather_from_sectors(all_sectors_si);
             
             xmlgen::report_generator xml_gen;
+            xml_gen.process(request);
             xml_gen.process(result.whole_struct);
             for(const auto& node_ptr : instructions_by_sector)
                xml_gen.process(*node_ptr->as<codegen::instructions::container>());
