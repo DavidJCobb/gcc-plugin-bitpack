@@ -38,6 +38,9 @@ namespace xmlgen {
                   is_bespoke_struct_type = true;
                }
             }
+            if (type.is_integral()) {
+               child.set_attribute_b("type-is-signed", type.as_integral().is_signed());
+            }
          }
          {  // Bitpacking info and options
             const auto& desc = dict.describe(field);

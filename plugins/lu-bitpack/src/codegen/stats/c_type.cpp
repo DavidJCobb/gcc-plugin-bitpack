@@ -1,5 +1,6 @@
 #include "codegen/stats/c_type.h"
 #include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/type/integral.h"
 
 using xml_element = xmlgen::xml_element;
 
@@ -40,6 +41,10 @@ namespace codegen::stats {
       }
       if (this->c_info.size_of > 0) {
          out->set_attribute_i("c-sizeof", this->c_info.size_of);
+      }
+      
+      if (this->type.is_integral()) {
+         out->set_attribute_b("is-signed", this->type.as_integral().is_signed());
       }
       
       return out;

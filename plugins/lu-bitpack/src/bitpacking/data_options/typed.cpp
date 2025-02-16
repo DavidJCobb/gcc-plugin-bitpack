@@ -105,11 +105,8 @@ namespace bitpacking::typed_data_options::computed {
          }
       } else if (src.max.has_value()) {
          this->max = *src.max;
-         if (bitwidth.has_value()) {
-            this->min = this->max - (((size_t)1 << *bitwidth) - 1);
-         } else {
-            this->min      = it.minimum_value();
-            this->bitcount = this->max - this->min;
+         if (!bitwidth.has_value()) {
+            this->bitcount = this->max - it.minimum_value();
          }
       } else {
          if (!bitwidth.has_value()) {

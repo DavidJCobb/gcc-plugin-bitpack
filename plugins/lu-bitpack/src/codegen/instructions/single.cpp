@@ -273,7 +273,7 @@ namespace codegen::instructions {
                *ctxt.state_ptr.read,
                ic_bitcount
             );
-            if (int_opt.min != 0) {
+            if (int_opt.min != 0 && int_opt.min != typed_options::integral::no_minimum) {
                //
                // If a field's range of valid values is [a, b], then serialize it as (v - a), 
                // and then unpack it as (v + a). This means we don't need a sign bit when we 
@@ -286,7 +286,7 @@ namespace codegen::instructions {
          }
          {  // Save
             auto to_save = *value.save;
-            if (int_opt.min != 0)
+            if (int_opt.min != 0 && int_opt.min != typed_options::integral::no_minimum)
                to_save = to_save.sub(ic_min);
             out.save = gw::expr::call(
                *save_func,

@@ -28,10 +28,11 @@ namespace bitpacking::typed_data_options {
          constexpr bool operator==(const buffer&) const noexcept = default;
       };
       struct integral {
+         static constexpr const intmax_t  no_minimum = std::numeric_limits<intmax_t>::lowest();
          static constexpr const uintmax_t no_maximum = std::numeric_limits<uintmax_t>::max();
          
          size_t    bitcount = 0;
-         intmax_t  min      = 0;
+         intmax_t  min      = no_minimum;
          uintmax_t max      = no_maximum;
          
          bool load(gcc_wrappers::node target, const requested::integral&, bool complain = true);

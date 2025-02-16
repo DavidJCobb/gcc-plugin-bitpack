@@ -1,35 +1,38 @@
 <data>
    <config>
-      <option value="2" name="max-sector-count" />
-      <option value="16" name="max-sector-bytecount" />
+      <option name="max-sector-count" value="2" />
+      <option name="max-sector-bytecount" value="16" />
    </config>
    <c-types>
-      <struct c-sizeof="16" c-alignment="4" tag="TestStruct">
+      <struct tag="TestStruct" c-alignment="4" c-sizeof="16">
          <members>
-            <integer min="0" bitcount="3" type="int" name="a" />
-            <integer max="220" min="0" bitcount="8" type="int" name="b" />
-            <integer min="0" bitcount="32" type="int" name="c" />
-            <integer min="0" bitcount="7" type="u8[3]" name="d">
+            <integer name="a" type="int" type-is-signed="true" bitcount="3" />
+            <integer name="b" type="int" type-is-signed="true" bitcount="8" min="0" max="220" />
+            <integer name="c" type="int" type-is-signed="true" bitcount="32" />
+            <integer name="d" type="u8[3]" bitcount="7">
                <array-rank extent="3" />
             </integer>
          </members>
          <instructions>
-            <integer min="0" bitcount="3" type="int" value="a" />
-            <integer max="220" min="0" bitcount="8" type="int" value="b" />
-            <integer min="0" bitcount="32" type="int" value="c" />
-            <loop counter-var="__a" count="3" start="0" array="d">
-               <integer min="0" bitcount="7" type="u8" value="d[__a]" />
+            <integer value="a" type="int" bitcount="3" />
+            <integer value="b" type="int" bitcount="8" min="0" max="220" />
+            <integer value="c" type="int" bitcount="32" />
+            <loop array="d" start="0" count="3" counter-var="__a">
+               <integer value="d[__a]" type="u8" bitcount="7" />
             </loop>
          </instructions>
       </struct>
    </c-types>
+   <top-level-values>
+      <struct name="sTestStruct" type="TestStruct" serialized-type="TestStruct" />
+   </top-level-values>
    <sectors>
       <sector>
          <stats>
             <bitcounts total-packed="64" />
          </stats>
          <instructions>
-            <struct type="TestStruct" value="sTestStruct" />
+            <struct value="sTestStruct" type="TestStruct" />
          </instructions>
       </sector>
    </sectors>

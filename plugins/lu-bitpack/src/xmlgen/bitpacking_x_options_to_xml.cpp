@@ -37,6 +37,11 @@ namespace xmlgen {
             x_opt->node_name = "string-options";
          } else if (options.is<typed_options::tagged_union>()) {
             x_opt->node_name = "union-options";
+            //
+            // We'll need some additional attributes to preserve information 
+            // that would've otherwise been in the node name.
+            //
+            x_opt->set_attribute_b("is-internal", options.as<typed_options::tagged_union>().is_internal);
          } else if (options.is<typed_options::transformed>()) {
             x_opt->node_name = "transform-options";
          } else {
@@ -89,7 +94,9 @@ namespace xmlgen {
       } else if (options.is<typed_options::integral>()) {
          const auto& casted = options.as<typed_options::integral>();
          node.set_attribute_i("bitcount", casted.bitcount);
-         node.set_attribute_i("min", casted.min);
+         if (casted.min != typed_options::integral::no_minimum) {
+            node.set_attribute_i("min", casted.min);
+         }
          if (casted.max != typed_options::integral::no_maximum) {
             node.set_attribute_i("max", casted.max);
          }
