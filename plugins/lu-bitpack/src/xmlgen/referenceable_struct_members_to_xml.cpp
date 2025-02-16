@@ -52,6 +52,9 @@ namespace xmlgen {
                child.append_child(std::move(elem_ptr));
             }
             const auto& options = desc.options;
+            if (options.union_member_id.has_value()) {
+               child.set_attribute_i("union-tag-value", *options.union_member_id);
+            }
             bitpacking_default_value_to_xml(child, options);
             bitpacking_x_options_to_xml(child, options, false);
          }
