@@ -531,6 +531,16 @@ namespace xmlgen {
             
             bitpacking_x_options_to_xml(node, ident.options, false);
             bitpacking_default_value_to_xml(node, ident.options);
+            //
+            // Categories:
+            //
+            for(const auto& category : ident.options.stat_categories) {
+               auto  elem_ptr = std::make_unique<xml_element>();
+               auto& elem     = *elem_ptr;
+               elem.node_name = "category";
+               elem.set_attribute("name", category);
+               node.append_child(std::move(elem_ptr));
+            }
             
             out += node.to_string(2);
             out += '\n';

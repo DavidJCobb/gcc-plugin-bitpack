@@ -42,6 +42,26 @@ namespace xmlgen {
                child.set_attribute_b("type-is-signed", type.as_integral().is_signed());
             }
          }
+         {  // Field info
+            size_t offset = field.offset_in_bits();
+            size_t width  = field.size_in_bits();
+            if (field.is_bitfield()) {
+               child.set_attribute_i("c-bitfield-offset", offset);
+               child.set_attribute_i("c-bitfield-width",  width);
+            } else if (!(offset % 8) && !(width % 8)) {
+               //
+               // Not a bitfield, AND is byte-aligned. Output size and offset 
+               // information.
+               //
+               // NOTE: We need to get size information from the descriptor, 
+               // since this may be an array but we want the per-element size.
+               //
+               const auto& desc = dict.describe(field);
+               width = desc.types.serialized->size_in_bits();
+               child.set_attribute_i("c-offset", offset / 8);
+               child.set_attribute_i("c-size",   width / 8);
+            }
+         }
          {  // Bitpacking info and options
             const auto& desc = dict.describe(field);
             for(auto size : desc.array.extents) {
@@ -57,6 +77,16 @@ namespace xmlgen {
             }
             bitpacking_default_value_to_xml(child, options);
             bitpacking_x_options_to_xml(child, options, false);
+            //
+            // Categories:
+            //
+            for(const auto& category : options.stat_categories) {
+               auto  elem_ptr = std::make_unique<xml_element>();
+               auto& elem     = *elem_ptr;
+               elem.node_name = "category";
+               elem.set_attribute("name", category);
+               child.append_child(std::move(elem_ptr));
+            }
          }
          if (is_bespoke_struct_type) {
             auto members_ptr = referenceable_struct_members_to_xml(field.value_type().as_container());
