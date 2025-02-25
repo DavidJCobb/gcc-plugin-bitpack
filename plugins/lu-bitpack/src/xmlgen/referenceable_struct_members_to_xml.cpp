@@ -38,9 +38,6 @@ namespace xmlgen {
                   is_bespoke_struct_type = true;
                }
             }
-            if (type.is_integral()) {
-               child.set_attribute_b("type-is-signed", type.as_integral().is_signed());
-            }
          }
          {  // Field info
             size_t offset = field.offset_in_bits();
@@ -48,18 +45,6 @@ namespace xmlgen {
             if (field.is_bitfield()) {
                child.set_attribute_i("c-bitfield-offset", offset);
                child.set_attribute_i("c-bitfield-width",  width);
-            } else if (!(offset % 8) && !(width % 8)) {
-               //
-               // Not a bitfield, AND is byte-aligned. Output size and offset 
-               // information.
-               //
-               // NOTE: We need to get size information from the descriptor, 
-               // since this may be an array but we want the per-element size.
-               //
-               const auto& desc = dict.describe(field);
-               width = desc.types.serialized->size_in_bits();
-               child.set_attribute_i("c-offset", offset / 8);
-               child.set_attribute_i("c-size",   width / 8);
             }
          }
          {  // Bitpacking info and options

@@ -16,6 +16,7 @@
 #include "gcc_wrappers/constant/string.h"
 #include "gcc_wrappers/decl/param.h"
 #include "gcc_wrappers/decl/type_def.h"
+#include "gcc_wrappers/type/array.h"
 #include "gcc_wrappers/type/record.h"
 #include "gcc_wrappers/type/untagged_union.h"
 #include "gcc_wrappers/identifier.h"
@@ -61,6 +62,59 @@ namespace xmlgen {
             return info;
       auto& info = this->_types.emplace_back(type);
       return info;
+   }
+   
+   void report_generator::_on_integral_type_seen(gcc_wrappers::type::integral type) {
+      auto canonical = type.canonical().as_integral();
+      for(auto& info : this->_integral_types) {
+         if (info.canonical_node->is_same(type))
+            return;
+         if (info.canonical_node->is_same(canonical)) {
+            std::string name = type.name();
+            if (name.empty())
+               return;
+            for(auto& prior : info.alternate_names)
+               if (prior == name)
+                  return;
+            info.alternate_names.push_back(std::move(name));
+            return;
+         }
+      }
+      auto& info = this->_integral_types.emplace_back();
+      info.canonical_node = canonical;
+      info.canonical_name = canonical.name();
+      info.is_signed = type.is_signed();
+      {
+         auto align = type.alignment_in_bits();
+         if (!(align % 8))
+            info.alignment = align / 8;
+      }
+      {
+         auto size = type.size_in_bits();
+         if (!(size % 8))
+            info.size = size / 8;
+      }
+      if (!canonical.is_same(type)) {
+         auto name = type.name();
+         if (!name.empty())
+            info.alternate_names.push_back(type.name());
+      }
+   }
+   void report_generator::_find_integral_types_in(gcc_wrappers::type::container cont) {
+      cont.for_each_referenceable_field([this](gw::decl::field field) {
+         auto type = field.value_type();
+         while (type.is_array())
+            type = type.as_array().value_type();
+         
+         if (type.is_container() && type.name().empty()) {
+            this->_find_integral_types_in(type.as_container());
+            return;
+         }
+         if (!type.is_integral())
+            return;
+         
+         this->_on_integral_type_seen(type.as_integral());
+      });
    }
    
    std::string report_generator::_loop_variable_to_string(codegen::decl_descriptor_pair pair) const {
@@ -290,6 +344,56 @@ namespace xmlgen {
          }
       );
    }
+   void report_generator::_sort_integral_type_list() {
+      auto& list = this->_integral_types;
+      std::sort(
+         list.begin(),
+         list.end(),
+         [](const auto& info_a, const auto& info_b) {
+            auto type_a = info_a.canonical_node;
+            auto type_b = info_b.canonical_node;
+            
+            auto& name_a = info_a.canonical_name;
+            auto& name_b = info_b.canonical_name;
+            //
+            // Compare the names according to the following criteria, in 
+            // order of descending priority:
+            //
+            //  - ASCII-case-insensitive comparison
+            //  - Length comparison (shorter first)
+            //  - ASCII-case-sensitive comparison (uppercase first)
+            //  - Sort by GCC type-node pointer (last-resort fallback)
+            //
+            size_t end = name_a.size();
+            if (end > name_b.size())
+               end = name_b.size();
+            
+            for(size_t i = 0; i < end; ++i) { // case-insensitive
+               char c = name_a[i];
+               char d = name_b[i];
+               if (c >= 'a' && c <= 'z')
+                  c -= 0x20;
+               if (d >= 'a' && d <= 'z')
+                  d -= 0x20;
+               if (c == d)
+                  continue;
+               return (c < d);
+            }
+            if (end > name_a.size())
+               return true; // a is shorter
+            if (end > name_b.size())
+               return false; // a is longer
+            for(size_t i = 0; i < end; ++i) {
+               char c = name_a[i];
+               char d = name_b[i];
+               if (c == d)
+                  continue;
+               return (c & 0x20) == 0; // whether a is uppercase
+            }
+            return type_a.unwrap() < type_b.unwrap(); // fallback
+         }
+      );
+   }
    void report_generator::_sort_type_list() {
       auto& list = this->_types;
       std::sort(
@@ -385,6 +489,11 @@ namespace xmlgen {
             
             dst.serialized_type = desc.types.serialized;
             dst.options         = desc.options;
+            
+            if (dst.original_type->is_integral())
+               this->_on_integral_type_seen(dst.original_type->as_integral());
+            if (dst.serialized_type->is_integral())
+               this->_on_integral_type_seen(dst.serialized_type->as_integral());
          }
       }
    }
@@ -396,6 +505,9 @@ namespace xmlgen {
       dict.for_each([this](gw::type::base type, const codegen::whole_struct_function_info& ws_info) {
          auto& info = this->_get_or_create_type_info(type);
          info.instructions = _generate_root(*ws_info.instructions_root->as<codegen::instructions::container>());
+         
+         if (type.is_container())
+            this->_find_integral_types_in(type.as_container());
       });
    }
    void report_generator::process(const codegen::stats_gatherer& gatherer) {
@@ -470,10 +582,37 @@ namespace xmlgen {
          }
       }
       {  // seen types
-         auto& list = this->_types;
-         if (!list.empty()) {
+         out += "   <c-types>\n";
+         {
+            auto& list = this->_integral_types;
+            this->_sort_integral_type_list();
+            for(auto& item : list) {
+               auto  node_ptr = std::make_unique<xml_element>();
+               auto& node     = *node_ptr;
+               node.node_name = "integral";
+               node.set_attribute("name", item.canonical_name);
+               if (item.alignment) {
+                  node.set_attribute_i("alignment", item.alignment);
+               }
+               node.set_attribute_b("is-signed", item.is_signed);
+               if (item.size) {
+                  node.set_attribute_i("size", item.size);
+               }
+               
+               for(auto& alt : item.alternate_names) {
+                  auto  child_ptr = std::make_unique<xml_element>();
+                  auto& child     = *child_ptr;
+                  node.append_child(std::move(child_ptr));
+                  child.node_name = "typedef";
+                  child.set_attribute("name", alt);
+               }
+               out += node_ptr->to_string(2);
+               out += '\n';
+            }
+         }
+         {
+            auto& list = this->_types;
             this->_sort_type_list();
-            out += "   <c-types>\n";
             for(auto& info : list) {
                auto  node_ptr = info.stats.to_xml();
                {
@@ -503,8 +642,8 @@ namespace xmlgen {
                   info.instructions = node_ptr->take_child(*instr);
                }
             }
-            out += "   </c-types>\n";
          }
+         out += "   </c-types>\n";
       }
       {  // top-level values to save
          out += "   <top-level-values>\n";
