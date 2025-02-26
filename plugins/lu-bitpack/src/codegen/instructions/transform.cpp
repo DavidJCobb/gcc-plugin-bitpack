@@ -99,7 +99,7 @@ namespace codegen::instructions {
          //
          const auto& options = (
             i == 0 ?
-               this->to_be_transformed_value.segments.back().member_descriptor().read->options
+               this->to_be_transformed_value.bitpacking_options()
             :
                steps[i - 1].transformed_value.desc_pair.read->options
          ).as<typed_options::transformed>();
