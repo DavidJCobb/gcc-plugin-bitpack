@@ -55,6 +55,16 @@ namespace gcc_wrappers::decl {
    }
    
    size_t field::offset_in_bits() const {
+      #ifdef DECL_FIELD_BITPOS
+         return TREE_INT_CST_LOW(DECL_FIELD_BITPOS(this->_node));
+      #else
+         #ifdef DECL_FIELD_BIT_OFFSET
+            return int_bit_position(this->_node);
+         #else
+            #error Unknown macros to use here.
+         #endif
+      #endif
+      
       return TREE_INT_CST_LOW(_GCC_DECL_FIELD_BIT_OFFSET(this->_node));
    }
    size_t field::size_in_bits() const {
