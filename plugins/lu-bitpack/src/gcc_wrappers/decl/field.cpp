@@ -54,18 +54,19 @@ namespace gcc_wrappers::decl {
       return type::base::wrap(TREE_TYPE(this->_node));
    }
    
+   size_t field::offset_in_bytes() const {
+      return TREE_INT_CST_LOW(DECL_FIELD_OFFSET(this->_node));
+   }
    size_t field::offset_in_bits() const {
-      #ifdef DECL_FIELD_BITPOS
-         return TREE_INT_CST_LOW(DECL_FIELD_BITPOS(this->_node));
+      #ifdef DECL_FIELD_BIT_OFFSET
+         return int_bit_position(this->_node);
       #else
-         #ifdef DECL_FIELD_BIT_OFFSET
-            return int_bit_position(this->_node);
+         #ifdef DECL_FIELD_BITPOS // old macro
+            return TREE_INT_CST_LOW(DECL_FIELD_BITPOS(this->_node));
          #else
             #error Unknown macros to use here.
          #endif
       #endif
-      
-      return TREE_INT_CST_LOW(_GCC_DECL_FIELD_BIT_OFFSET(this->_node));
    }
    size_t field::size_in_bits() const {
       //
@@ -86,6 +87,19 @@ namespace gcc_wrappers::decl {
    
    bool field::is_bitfield() const {
       return DECL_BIT_FIELD(this->_node);
+   }
+   size_t field::bitfield_offset_within_unit() const {
+      if (!is_bitfield()) {
+         return 0;
+      }
+      #ifdef DECL_FIELD_BIT_OFFSET
+         return TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(this->_node));
+      #else
+         //
+         // TODO: For ancient GCC, how did DECL_FIELD_BITPOS work here?
+         //
+         #error Unknown macros to use here.
+      #endif
    }
    type::optional_base field::bitfield_type() const {
       if (!is_bitfield())

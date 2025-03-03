@@ -21,12 +21,14 @@ namespace gcc_wrappers::decl {
          
          type::base value_type() const; // override, to handle bitfields
          
+         size_t offset_in_bytes() const;
          size_t offset_in_bits() const;
          size_t size_in_bits() const;
          
          // Indicates whether this field is a bitfield. If so, 
          // `size_in_bits` is the field width.
          bool is_bitfield() const;
+         size_t bitfield_offset_within_unit() const;
          type::optional_base bitfield_type() const; // return the type variant created for a bitfield
          
          bool is_non_addressable() const; // DECL_NONADDRESSABLE_P
