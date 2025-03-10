@@ -292,7 +292,7 @@ int plugin_init (
    struct plugin_gcc_version* version
 ) {
    if (!plugin_default_version_check(version, &gcc_version)) {
-      std::cerr << "This plug-in is for version " <<
+      std::cerr << "Plug-in " << plugin_info->base_name << " is for version " <<
                    GCCPLUGIN_VERSION_MAJOR << "." <<
                    GCCPLUGIN_VERSION_MINOR << ".\n";
       if (gcc_version.basever) {
@@ -308,7 +308,7 @@ int plugin_init (
       /* user_data */ &_my_plugin_info
    );
    
-   std::cerr << "Loaded plug-in: " << plugin_info->base_name << ".\n";
+   //std::cerr << "Loaded plug-in: " << plugin_info->base_name << ".\n";
    
    for(int i = 0; i < plugin_info->argc; ++i) {
       const auto& arg = plugin_info->argv[i];
