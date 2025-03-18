@@ -46,12 +46,14 @@ Elements that represent struct and union types may contain `instructions` and `s
       <dd>The type's tag, i.e. <code>struct TagHere { ... }</code>. In C, but not C++, names and tags have different behavior.</dd>
 </dl>
 
+#### Struct and union types
+
 Struct and union types may also have the following child elements:
 
 <dl>
    <dt><code>members</code></dt>
       <dd>
-         <p>A list of all referenceable members in the struct, as value elements (see below). Anonymous struct types (e.g. <code>struct { ...} foo</code>) may contain their own <code>&lt;members&gt;</code> elements as well.</p>
+         <p>A list of all referenceable members in the struct, as member elements (see below). Anonymous struct types (e.g. <code>struct { ...} foo</code>) may contain their own <code>&lt;members&gt;</code> elements as well.</p>
          <p>This is emitted regardless of whether the struct has a whole-struct function generated (i.e. regardless of whether an <code>instructions</code> element is also present). The general pattern that tools would want to use, when using the XML output, is to use <code>members</code> as the canonical reference for what data is in a given struct type, and then read <code>instructions</code> nodes from the various relevant places (starting with the sectors) to see when and how data is read into those members.</p>
       </dd>
    <dt><code>opaque-buffer-options</code></dt>
@@ -64,12 +66,16 @@ Struct and union types may also have the following child elements:
       </dd>
 </dl>
 
+#### Integral types
+
 Integral types will have an `integral` node for the "canonical" type, which may have the following child elements:
 
 <dl>
    <dt><code>typedef</code></dt>
       <dd><p>Indicates an existing <code>typedef</code> of the integral type. The <code>name</code> attribute is the typedef'd name.</p></dd>
 </dl>
+
+Integral types (`integral` and `typedef`) may also possess attributes describing integral bitpacking options (see `integer` value elements below).
 
 ### `top-level-values`
 
@@ -154,12 +160,6 @@ These elements may also have a `type` attribute indicating the value's declared 
 
 These elements may additionally have a `default-value` attribute or a `default-value-string` child node, indicating the element's default value, if it has one. The latter is used for string-type defaults; otherwise, the former is used. We currently support integer, float, and string defaults; unrecognized defaults that somehow make it through the codegen process without erroring are encoded as `default-value="???"`.
 
-When a value element appears in a struct or union's member list, then it may additionally contain the following child elements:
-
-* **`annotation`:** Indicates a miscellaneous annotation, whose content is the `text` attribute.
-* **`array-rank`:** Indicates that the value element is an array. One of these children will be present per array rank, each with an `extent` attribute.
-* **`category`:** Indicates membership in a bitpacking category (see the `name` attribute).
-
 ##### `boolean`
 
 Indicates a boolean value serialized as a single bit.
@@ -207,6 +207,20 @@ Indicates an internally-tagged union. The `tag` attribute identifies the union t
 ##### `unknown`
 
 Fallback node name that should never appear. Indicates that something went wrong with code generation, without causing an error.
+
+
+#### Member elements
+
+Member elements are the children of a struct or union `c-type` element's `members` node. These elements are generally the same as value elements, save for the following differences:
+
+* The presence of the following children within the member element:
+  * **`annotation`:** Indicates a miscellaneous annotation, whose content is the `text` attribute.
+  * **`array-rank`:** Indicates that the value element is an array. One of these children will be present per array rank, each with an `extent` attribute.
+  * **`category`:** Indicates membership in a bitpacking category (see the `name` attribute).
+* An optimization: if a member element is an integral value, and there exists a `c-types > integral` or `c-types > integral > typedef` element representing the member's value type, then the following attributes will be omitted under the following conditions:
+  * The `bitcount` attribute ordinarily present on `integer` member elements is omitted if its value would be identical to the member element's `c-bitfield-width` or to the `bitcount` element on the corresponding `integral` type element. The attribute is not omitted if those two values differ.
+  * The `min` and `max` attributes ordinarily present on `integer` member elements are omitted if their values would be identical to those of the corresponding attributes on the corresponding `integral`/`typedef` type element.
+  * `category` and `annotation` child elements are omitted if they would be identical to any such elements on the corresponding `integral`/`typedef` type element.
 
 
 ### `stats`
