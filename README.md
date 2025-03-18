@@ -361,6 +361,11 @@ The following attributes may be used on non-array types or on struct field decla
 The following attributes may be used on variable and field declarations only:
 
 <dl>
+   <dt><code>lu_bitpack_misc_annotation("<var>text</var>")</code></dt>
+      <dd>
+         <p>Applies a miscellaneous text annotation to the declaration. The XML output, if enabled, will contain this annotation. These can be used to feed data to external tools that act on the XML.</p>
+         <p>This attribute can be used multiple times on the same declaration.</p>
+      </dd>
    <dt><code>lu_bitpack_stat_category("<var>name</var>")</code></dt>
       <dd>
          <p>Applies a given name to the declaration for stat-tracking purposes. The XML output, if enabled, will report how many values of a given category appear in various parts of the serialized output. In the case of arrays, the element type is used unless the array is marked as a string (see below), in which case the innermost array type is considered "one instance."</p>

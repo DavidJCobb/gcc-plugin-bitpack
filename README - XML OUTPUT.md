@@ -31,7 +31,7 @@ Each `category` has a `name` attribute indicating the category name, and otherwi
 
 ### `c-types`
 
-This node contains one child element for each noteworthy type in the to-be-serialized output. Child elements may use the node names `struct`, `union`, or `unknown-type`. (The `unknown-type` node name is a fallback that should never appear in valid data.)
+This node contains one child element for each noteworthy type in the to-be-serialized output. Child elements may use the node names `integral`, `struct`, `union`, or `unknown-type`. (The `unknown-type` node name is a fallback that should never appear in valid data.)
 
 Elements that represent struct and union types may contain `instructions` and `stats` elements (one each). They additionally may have the following attributes:
 
@@ -62,6 +62,13 @@ Struct and union types may also have the following child elements:
       <dd>
          <p>Indicates the transform bitpacking options applied to this type, and has the same attributes as a <code>transformed</code> value element (see below).</p>
       </dd>
+</dl>
+
+Integral types will have an `integral` node for the "canonical" type, which may have the following child elements:
+
+<dl>
+   <dt><code>typedef</code></dt>
+      <dd><p>Indicates an existing <code>typedef</code> of the integral type. The <code>name</code> attribute is the typedef'd name.</p></dd>
 </dl>
 
 ### `top-level-values`
@@ -146,6 +153,12 @@ A `value` attribute follows similar syntax to C accessors, e.g. `a.b.c[4][5][6].
 These elements may also have a `type` attribute indicating the value's declared type in C. If a `typedef` was used, this attribute will name the typedef, not the original type. The attribute should include most qualifiers and other type information mimicking C syntax, e.g. `int` or `int[3]` or `const volatile float*`.
 
 These elements may additionally have a `default-value` attribute or a `default-value-string` child node, indicating the element's default value, if it has one. The latter is used for string-type defaults; otherwise, the former is used. We currently support integer, float, and string defaults; unrecognized defaults that somehow make it through the codegen process without erroring are encoded as `default-value="???"`.
+
+When a value element appears in a struct or union's member list, then it may additionally contain the following child elements:
+
+* **`annotation`:** Indicates a miscellaneous annotation, whose content is the `text` attribute.
+* **`array-rank`:** Indicates that the value element is an array. One of these children will be present per array rank, each with an `extent` attribute.
+* **`category`:** Indicates membership in a bitpacking category (see the `name` attribute).
 
 ##### `boolean`
 
