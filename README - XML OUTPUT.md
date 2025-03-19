@@ -33,7 +33,7 @@ Each `category` has a `name` attribute indicating the category name, and otherwi
 
 This node contains one child element for each noteworthy type in the to-be-serialized output. Child elements may use the node names `integral`, `struct`, `union`, or `unknown-type`. (The `unknown-type` node name is a fallback that should never appear in valid data.)
 
-Elements that represent struct and union types may contain `instructions` and `stats` elements (one each). They additionally may have the following attributes:
+Type elements may additionally have the following attributes:
 
 <dl>
    <dt><code>c-alignment</code></dt>
@@ -48,9 +48,17 @@ Elements that represent struct and union types may contain `instructions` and `s
 
 #### Struct and union types
 
-Struct and union types may also have the following child elements:
+Struct and union types may have the following child elements:
 
 <dl>
+   <dt><code>instructions</code></dt>
+      <dd>
+         <p>A tree of instruction nodes. When the struct or union is serialized as a whole unit (i.e. not split across sectors), it will be serialized by invoking a generated function whose body maps to these instruction nodes. If the struct or union is never serialized as a whole unit, then this child element will not be present.</p>
+      </dd>
+   <dt><code>stats</code></dt>
+      <dd>
+         <p>Bitpacking statistics for this type.</p>
+      </dd>
    <dt><code>members</code></dt>
       <dd>
          <p>A list of all referenceable members in the struct, as member elements (see below). Anonymous struct types (e.g. <code>struct { ...} foo</code>) may contain their own <code>&lt;members&gt;</code> elements as well.</p>
@@ -75,7 +83,7 @@ Integral types will have an `integral` node for the "canonical" type, which may 
       <dd><p>Indicates an existing <code>typedef</code> of the integral type. The <code>name</code> attribute is the typedef'd name.</p></dd>
 </dl>
 
-Integral types (`integral` and `typedef`) may also possess attributes describing integral bitpacking options (see `integer` value elements below).
+Integral types (`integral` and `typedef`) *may* also possess attributes describing integral bitpacking options (see `integer` value elements below). These attributes will be absent if the integral type is never *directly* used by a to-be-serialized `VAR_DECL` or `FIELD_DECL` with integer bitpacking options (e.g. because the type is always treated as a boolean, or because the type itself is never used but a typedef thereof is used).
 
 ### `top-level-values`
 
@@ -219,11 +227,12 @@ Member elements are the children of a struct or union `c-type` element's `member
   * **`category`:** Indicates membership in a bitpacking category (see the `name` attribute).
 * An optimization: if a member element is an integral value, and there exists a `c-types > integral` or `c-types > integral > typedef` element representing the member's value type, then the following attributes will be omitted under the following conditions:
   * The `bitcount` attribute ordinarily present on `integer` member elements is omitted if any of the following conditions are true:
-    * The member is a bitfield, and its `bitcount` attribute would be equivalent to the bitfield width.
+    * The member is a bitfield, and its `bitcount` attribute would be equivalent to the bitfield width.[^bool-typedef-edgecase]
     * The member is not a bitfield, and its `bitcount` attribute would be equivalent to the corresponding attribute on the corresponding `integral`/`typedef` type element.
   * The `min` and `max` attributes ordinarily present on `integer` member elements are omitted if their values would be identical to those of the corresponding attributes on the corresponding `integral`/`typedef` type element.
   * `category` and `annotation` child elements are omitted if they would be identical to any such elements on the corresponding `integral`/`typedef` type element.
 
+[^bool-typedef-edgecase]: When writing tools that act on the XML, be mindful of an edge-case here. If the global bitpacking options specify that some integral typedef should be treated as a boolean, *and* any to-be-serialized struct has a bitfield member declared to that ype, *and* the bitfield width is greater than 1, *and* the member in question either does not specify bitpacking options which would change its bitcount *or* specifies bitpacking options that work out to the same bitcount as the bitfield width, *then* there will exist an `integral` or `typedef` type node for the boolean type, but the boolean type will lack a `bitcount` attribute.
 
 ### `stats`
 
