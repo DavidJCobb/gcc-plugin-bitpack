@@ -89,10 +89,12 @@ namespace xmlgen {
                //
                // HACK: Clear redundant attributes.
                //
+               size_t type_bitcount  = 0;
+               size_t field_bitcount = 0;
                if (integral_type_info) {
                   const auto& casted_b = integral_type_info->options.as<typed_options::integral>();
                   if (casted_a.bitcount == casted_b.bitcount) {
-                     child.remove_attribute("bitcount");
+                     type_bitcount = casted_b.bitcount;
                   }
                   if (casted_a.min == casted_b.min) {
                      child.remove_attribute("min");
@@ -102,9 +104,16 @@ namespace xmlgen {
                   }
                }
                if (bitfield_width.has_value()) {
-                  if (casted_a.bitcount == *bitfield_width) {
+                  field_bitcount = *bitfield_width;
+               } else {
+                  field_bitcount = type_bitcount;
+               }
+               if (field_bitcount) {
+                  if (casted_a.bitcount == field_bitcount)
                      child.remove_attribute("bitcount");
-                  }
+               } else if (type_bitcount) {
+                  if (casted_a.bitcount == type_bitcount)
+                     child.remove_attribute("bitcount");
                }
             }
             //
@@ -148,7 +157,7 @@ namespace xmlgen {
             }
          }
          if (is_bespoke_struct_type) {
-            auto members_ptr = referenceable_struct_members_to_xml(field.value_type().as_container());
+            auto members_ptr = referenceable_struct_members_to_xml(field.value_type().as_container(), known_integral_types);
             child.append_child(std::move(members_ptr));
          }
          node.append_child(std::move(child_ptr));

@@ -218,7 +218,9 @@ Member elements are the children of a struct or union `c-type` element's `member
   * **`array-rank`:** Indicates that the value element is an array. One of these children will be present per array rank, each with an `extent` attribute.
   * **`category`:** Indicates membership in a bitpacking category (see the `name` attribute).
 * An optimization: if a member element is an integral value, and there exists a `c-types > integral` or `c-types > integral > typedef` element representing the member's value type, then the following attributes will be omitted under the following conditions:
-  * The `bitcount` attribute ordinarily present on `integer` member elements is omitted if its value would be identical to the member element's `c-bitfield-width` or to the `bitcount` element on the corresponding `integral` type element. The attribute is not omitted if those two values differ.
+  * The `bitcount` attribute ordinarily present on `integer` member elements is omitted if any of the following conditions are true:
+    * The member is a bitfield, and its `bitcount` attribute would be equivalent to the bitfield width.
+    * The member is not a bitfield, and its `bitcount` attribute would be equivalent to the corresponding attribute on the corresponding `integral`/`typedef` type element.
   * The `min` and `max` attributes ordinarily present on `integer` member elements are omitted if their values would be identical to those of the corresponding attributes on the corresponding `integral`/`typedef` type element.
   * `category` and `annotation` child elements are omitted if they would be identical to any such elements on the corresponding `integral`/`typedef` type element.
 
